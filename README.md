@@ -1,22 +1,28 @@
-# 👋 Welcome to A Product
+---
+description: >-
+  vCons safely and securely carry all conversations between the systems that
+  host them and the applications that need them, enabling responsible use of
+  personal data.
+---
 
-{% hint style="info" %}
-**GitBook tip:** your product docs aren't just a reference of all your features! use them to encourage folks to perform certain actions and discover the value in your product.
-{% endhint %}
+# 👋 Welcome to the Home of the vCons
 
-## Overview
+A vCon is the container for data and information relating to a real-time, human conversation. It is analogous to a \[[vCard](https://datatracker.ietf.org/doc/html/draft-petrie-vcon#vCard)] which enables the definition, interchange and storage of an individual's various points of contact. The data contained in a vCon may be derived from any multimedia session, traditional phone call, video conference, SMS or MMS message exchange, webchat or email thread. The data in the container relating to the conversation may include Call Detail Records (CDR), call meta data, participant identity information (e.g. STIR PASSporT), the actual conversational data exchanged (e.g. audio, video, text), realtime or post conversational analysis and attachments of files exchanged during the conversation. A standardized conversation container enables many applications, establishes a common method of storage and interchange, and supports identity, privacy and security efforts (see \[[vCon-white-paper](https://datatracker.ietf.org/doc/html/draft-petrie-vcon#vCon-white-paper)])[¶](https://datatracker.ietf.org/doc/html/draft-petrie-vcon#section-abstract-1)
 
-Here are a couple of example overviews from products with really great docs:
+## Why?
 
-> Loom is a video messaging tool that helps you get your message across through instantly shareable videos.
->
-> With Loom, you can record your camera, microphone, and desktop simultaneously. Your video is then instantly available to share through Loom's patented technology.
->
-> — From the [Loom Docs](https://support.loom.com/hc/en-us/articles/360002158057-What-is-Loom-)
+We have [iCal](https://en.wikipedia.org/wiki/ICalendar) that enables anyone to store and exchange calendaring and scheduling information such as events, to-dos, journal entries, and free/busy information. And [vCards](https://en.wikipedia.org/wiki/VCard) so anyone can store and exchange electronic business cards, name and address information, phone numbers, e-mail addresses, URLs (Universal Resource Locator), logos, photographs, and audio clips.&#x20;
 
-> The Mailchimp Marketing API provides programmatic access to Mailchimp data and functionality, allowing developers to build custom features to do things like sync email activity and campaign analytics with their database, manage audiences and campaigns, and more.
->
-> — From the [Mailchimp Marketing API docs](https://mailchimp.com/developer/marketing/docs/fundamentals/)
+Yet despite all the talk about conversations in the programmable communications industry, conversation data remains trapped in silos. vCon (virtual Conversation, like vCard), is a new open standard for sharing conversation data: transcript, video, audio, participants, metadata like timestamps and location, tamper protections, certifications, etc. vCon has the potential to create an ecosystem of innovators focused on creating new conversation intelligence tools, in addition to established platform providers.
+
+Sharing conversation data is a significant problem faced by programmable communications developers today. vCon makes working with conversations easier, hence the addressable market of developers expands ten thousand fold across web and enterprise developers. This happened one decade ago when telecoms became easy to use with simple web-centric APIs. This will happen again for conversations thanks to vCon.&#x20;
+
+An innovation ecosystem of specialists in conversation intelligence will flourish solving specific business pain points across operations, compliance, privacy, security, ethics, etc. Being able to access customer data often trapped within communication platforms. Think of vCon as ‘robot food’, enabling conversation data to be presented in a common format and more easily cleaned for training of machine learning. ASR and conversation AI solutions do not meet the needs of some businesses with respect to accuracy, vCon will help our industry close the gap with respect to the hype.
+
+vCon will do the same. Conversations currently trapped in silos of communication platforms or simply stored in the company’s data lake will become common units, where innovators will create new value, solve business problems, and deliver valuable insights because their business lives/dies on delivering that. vCon is the next leap forward in the programmable communications industry.
+
+\
+
 
 ## Quick links
 
