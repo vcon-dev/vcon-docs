@@ -16,3 +16,27 @@ From a system perspective, shown above, the Conserver attaches to information sy
 
 In contrast to other data platforms, the Conserver is dedicated to managing the particular complexities of real time conversational sources. For instance, the amount of bandwidth and storage required to manage an hour long audio recording is an order of magnitude larger than managing a typical business object like a PDF. However, even this is just a start. Video is a few orders of magnitude greater than that, and the data creation for service providers such as Zoom and Skype are magnitudes of order still greater. From a legal perspective, regulatory compliance for customer data protections are particular for recorded conversations, and require support for tracking data’s use by automations, and for tracking deletion from a “Right to be Forgotten” request.
 
+## Data Privacy
+
+Data privacy, also known as information privacy or data protection, refers to the practice of safeguarding individuals' personal information from unauthorized access, use, disclosure, alteration, or destruction. It involves ensuring that individuals have control over their own personal data and that organizations that collect, store, and process personal data do so in a manner that respects individuals' privacy rights.
+
+Key concepts and principles of data privacy include:
+
+1. Consent: Organizations should obtain individuals' informed consent before collecting, using, or sharing their personal data. Consent should be freely given, specific, informed, and unambiguous.
+2. Purpose Limitation: Personal data should be collected for specific, explicit, and legitimate purposes, and it should not be used for purposes that are incompatible with those for which it was originally collected.
+3. Data Minimization: Organizations should collect only the minimum amount of personal data necessary to achieve the stated purpose. Excessive or irrelevant data should not be collected.
+4. Accuracy: Personal data should be accurate, complete, and up-to-date. Organizations should take reasonable steps to correct or delete inaccurate data.
+5. Storage Limitation: Personal data should be retained only for as long as necessary to fulfill the purposes for which it was collected. Organizations should establish retention policies and securely dispose of data that is no longer needed.
+6. Security: Organizations should implement appropriate technical and organizational measures to protect personal data from unauthorized access, data breaches, theft, and other security risks. This may include encryption, access controls, and regular security assessments.
+7. Transparency: Organizations should be transparent about their data collection and processing practices. This includes providing clear privacy policies and notices that inform individuals about how their data is being used and their rights regarding their data.
+8. Individual Rights: Individuals have certain rights regarding their personal data, including the right to access their data, the right to request corrections or deletions, the right to object to certain uses of their data, and the right to data portability (the ability to transfer their data from one organization to another).
+9. Accountability: Organizations are responsible for complying with data privacy laws and regulations and for demonstrating their compliance. This may involve conducting privacy impact assessments, appointing a data protection officer, and maintaining records of data processing activities.
+
+Data privacy laws and regulations vary by jurisdiction, but many countries and regions have enacted legislation to protect individuals' personal data. Examples of data privacy laws include the General Data Protection Regulation (GDPR) in the European Union, the California Consumer Privacy Act (CCPA) in the United States, and the Personal Data Protection Act (PDPA) in Singapore.
+
+Overall, data privacy is a critical aspect of modern society, as the collection and use of personal data have become pervasive in many aspects of life, including online services, healthcare, finance, and commerce. Respecting data privacy helps build trust between individuals and organizations and protects individuals' rights and freedoms.
+
+## Data Protection
+
+Data protection is closely related to data privacy, and the terms are sometimes used interchangeably. However, data protection is more focused on the technical and organizational measures that organizations take to secure personal data, while data privacy encompasses the broader set of legal, ethical, and social considerations related to the collection and use of personal data.
+
