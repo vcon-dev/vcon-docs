@@ -20,8 +20,8 @@ Here are a couple of example overviews from products with really great docs:
 
 ## Quick links
 
-{% content-ref url="overview/what-we-do.md" %}
-[what-we-do.md](overview/what-we-do.md)
+{% content-ref url="overview/concepts.md" %}
+[concepts.md](overview/concepts.md)
 {% endcontent-ref %}
 
 {% content-ref url="overview/our-features.md" %}
