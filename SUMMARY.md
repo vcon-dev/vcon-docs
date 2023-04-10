@@ -22,5 +22,9 @@
 
 ## Use Cases
 
-* [🎨 For Designers](use-cases/for-designers.md)
+* [Overview](use-cases/overview.md)
+* [Service Provider Migration](use-cases/service-provider-migration.md)
+* [AI Integration](use-cases/ai-integration.md)
+* [Speech Recognition Test Set](use-cases/speech-recognition-test-set.md)
+* [PII Compliance](use-cases/pii-compliance.md)
 * [🖥 For Developers](use-cases/for-developers.md)
