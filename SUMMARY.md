@@ -11,6 +11,7 @@
 
 ## Product Guides
 
+* [⚙ API Documentation](product-guides/api-documentation.md)
 * [📪 Making a post](product-guides/making-a-post.md)
 * [📎 Understanding Projects](product-guides/understanding-projects.md)
 
