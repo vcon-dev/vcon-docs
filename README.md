@@ -24,8 +24,8 @@ Here are a couple of example overviews from products with really great docs:
 [concepts.md](overview/concepts.md)
 {% endcontent-ref %}
 
-{% content-ref url="overview/our-features.md" %}
-[our-features.md](overview/our-features.md)
+{% content-ref url="overview/more-information.md" %}
+[more-information.md](overview/more-information.md)
 {% endcontent-ref %}
 
 ## Get Started
