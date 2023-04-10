@@ -5,6 +5,7 @@
 ## Overview
 
 * [💡 Concepts](overview/concepts.md)
+* [💬 vCons](overview/vcons.md)
 * [✨ Our Features](overview/our-features.md)
 
 ## Product Guides
