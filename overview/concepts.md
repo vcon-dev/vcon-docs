@@ -93,6 +93,23 @@ Implementing data minimization practices can help organizations reduce the risk 
 
 Data protection is closely related to data privacy, and the terms are sometimes used interchangeably. However, data protection is more focused on the technical and organizational measures that organizations take to secure personal data, while data privacy encompasses the broader set of legal, ethical, and social considerations related to the collection and use of personal data.
 
+## Consent
+
+Customer consent refers to the process by which a customer or user gives their explicit and informed permission for an organization to collect, use, or disclose their personal data for specific purposes. Consent is a fundamental concept in privacy and data protection laws, and it is one of the legal bases that organizations can rely on to process personal data.
+
+Key aspects of customer consent include the following:
+
+1. Freely Given: Consent must be given voluntarily, without coercion or undue pressure. Customers should have a genuine choice to either give or withhold their consent. If consent is required as a condition for accessing a service, and there is no reasonable alternative, the consent may not be considered freely given.
+2. Specific: Consent must be specific to the particular purpose or purposes for which the data will be used. Organizations should clearly explain the purpose of data collection and processing, and consent should not be sought for broad or undefined purposes.
+3. Informed: Customers must be provided with clear and understandable information about what data will be collected, how it will be used, and with whom it may be shared. This information should be presented in a transparent and easily accessible manner, so that customers can make an informed decision about whether to give their consent.
+4. Unambiguous: Consent must be expressed through a clear, affirmative action. This means that customers must actively indicate their agreement, such as by ticking a box, signing a form, or clicking a button. Passive or implied consent (e.g., pre-ticked boxes or inactivity) is not considered valid consent.
+5. Revocable: Customers have the right to withdraw their consent at any time, and the process for doing so should be straightforward and easily accessible. Organizations must inform customers of their right to withdraw consent and provide a mechanism for doing so.
+6. Documented: Organizations should keep a record of when and how consent was obtained, as well as the specific information that was provided to the customer at the time of consent. This documentation can help demonstrate compliance with legal and regulatory requirements.
+
+It's important to note that there are certain situations where consent may not be the appropriate legal basis for processing personal data. For example, consent may not be valid if there is a significant power imbalance between the organization and the individual (e.g., in an employer-employee relationship), or if the processing is necessary to fulfill a legal obligation or a contract.
+
+Additionally, some data protection laws, such as the European Union's General Data Protection Regulation (GDPR), provide enhanced protections for certain categories of sensitive personal data (e.g., health information, religious beliefs, sexual orientation), and additional requirements may apply when seeking consent for the processing of such data.
+
 ## Link
 
 A link is the basic unit of processing in the conserver. A link takes a single vCon and processes it. Examples of links include:
