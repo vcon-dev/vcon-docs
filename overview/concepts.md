@@ -16,6 +16,41 @@ From a system perspective, shown above, the Conserver attaches to information sy
 
 In contrast to other data platforms, the Conserver is dedicated to managing the particular complexities of real time conversational sources. For instance, the amount of bandwidth and storage required to manage an hour long audio recording is an order of magnitude larger than managing a typical business object like a PDF. However, even this is just a start. Video is a few orders of magnitude greater than that, and the data creation for service providers such as Zoom and Skype are magnitudes of order still greater. From a legal perspective, regulatory compliance for customer data protections are particular for recorded conversations, and require support for tracking data’s use by automations, and for tracking deletion from a “Right to be Forgotten” request.
 
+## Parties
+
+The parties section of the vCon is an array that refers to the people or systems in the conversation. Each "dialog" provides an index into the parties array to identify the people.  Each party identifies the
+
+* Network identifier of the party, currently held in the 'tel" field
+* The mail adress
+* The name of the party
+* The role of the party, represented by a string (we use labels like customer, agent)&#x20;
+* A validation field, allowing for evidence of third party validation of the identities of the parties
+* Other information, such as civic address, timezone or jCard.
+
+## Dialogs
+
+The dialogs section of the vCon is an array of transcripts and recordings that represent the media of the conversation itself.  Each dialog contains an identification of:
+
+* The type of the dialog (recording, transcript)
+* The start time
+* Duration
+* The parties in the conversation
+* The originating party of the conversation
+* The mimetype of the recording
+* Any associated filename
+
+The content of the dialog comes in two flavors: packed and unpacked.  Packed data is included in the vCon itself in the body field.  Unpacked data is not included in the vCon, but is instead referenced by URL, not necessarily publicly accessible.  For both cases, the media of the vCon can be signed to prevent tampering or modification after the vCon is constructed.&#x20;
+
+## Analysis
+
+The analysis section of the vCon is an array of objects that represents third party analysis of the vCon itself. Examples of Analysis includes:
+
+* Sentiment analysis of the conversation itself
+* A list of promises made by the people on the call
+* A summary of the conversation
+
+Each analysis captures the vendor, schema and details of the analysis itself. In addition to the value that the analysis provides, this also becomes an accounting of the times and places this conversation has been processed by third parties. This list is critical in compliance to data regulations as it allows data controllers to fulfill their obligations to reporting and removing personal data on demand of people and regulators.
+
 ## Data Privacy
 
 Data privacy, also known as information privacy or data protection, refers to the practice of safeguarding individuals' personal information from unauthorized access, use, disclosure, alteration, or destruction. It involves ensuring that individuals have control over their own personal data and that organizations that collect, store, and process personal data do so in a manner that respects individuals' privacy rights.
@@ -60,6 +95,10 @@ The input of the chain is one or more REDIS lists, which are themselves filled b
 ## Storage
 
 A storage is an external data store, the "final resting place" for vCons as they are processed by the conserver, and are specified for each chain.  Examples of storages include S3, Mongo, postgres or a local file system.  For some storages, such as the file system. S3 or mongo, the storage format is the standard vCon format.  For relational storages, such as postgres, a schema is defined in the repo.
+
+## Encryption and Signing
+
+vCons support encryption of the parent object, and each of the analysis sections can carry encrypted bodies.   In addition, external URLs and the vCon itself are signed, allowing for tamper detection of the contents.
 
 
 
