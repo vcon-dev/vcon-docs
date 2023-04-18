@@ -51,6 +51,10 @@ The analysis section of the vCon is an array of objects that represents third pa
 
 Each analysis captures the vendor, schema and details of the analysis itself. In addition to the value that the analysis provides, this also becomes an accounting of the times and places this conversation has been processed by third parties. This list is critical in compliance to data regulations as it allows data controllers to fulfill their obligations to reporting and removing personal data on demand of people and regulators.
 
+## Attachments
+
+The attachments section of the vCon is an array of objects that are documents, traces and other pieces of data that provides the context of a conversation.  For instance, a sales organization may store the lead information in the attachment; a conference call may include the powerpoint that was discussed.  Links in the conserver use attachments to store tracing information, such as the raw responses from external systems or the original source of the vCon.&#x20;
+
 ## Data Privacy
 
 Data privacy, also known as information privacy or data protection, refers to the practice of safeguarding individuals' personal information from unauthorized access, use, disclosure, alteration, or destruction. It involves ensuring that individuals have control over their own personal data and that organizations that collect, store, and process personal data do so in a manner that respects individuals' privacy rights.
