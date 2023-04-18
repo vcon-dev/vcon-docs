@@ -135,5 +135,7 @@ A storage is an external data store, the "final resting place" for vCons as they
 
 vCons support encryption of the parent object, and each of the analysis sections can carry encrypted bodies.   In addition, external URLs and the vCon itself are signed, allowing for tamper detection of the contents.
 
+## Data Projection
 
+Since the vCon is a nested document, sometimes it is more convenient to format the data in a vCon in other formats, particularly for relational data storage.  For instance, a call log link may need to provide a single database row for each vCon into a spreadsheet.  A data projection picks and chooses the data inside the vCon to create the spreadsheet row.  Normally, data is lost through a projection.&#x20;
 
