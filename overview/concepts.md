@@ -139,3 +139,32 @@ vCons support encryption of the parent object, and each of the analysis sections
 
 Since the vCon is a nested document, sometimes it is more convenient to format the data in a vCon in other formats, particularly for relational data storage.  For instance, a call log link may need to provide a single database row for each vCon into a spreadsheet.  A data projection picks and chooses the data inside the vCon to create the spreadsheet row.  Normally, data is lost through a projection.&#x20;
 
+## Sensitive Personal Data
+
+The General Data Protection Regulation (GDPR) specifically mentions DNA, health records, and biometric data as types of personal data that are considered "special categories of personal data" (often referred to as "sensitive personal data"). These special categories of personal data are subject to additional protections under the GDPR due to their sensitive nature and the potential risks associated with their processing.
+
+Article 9 of the GDPR addresses the processing of special categories of personal data, which includes the following types of data:
+
+* Racial or ethnic origin
+* Political opinions
+* Religious or philosophical beliefs
+* Trade union membership
+* Genetic data (which includes DNA)
+* Biometric data (where processed to uniquely identify a person)
+* Health data (which includes health records)
+* Data concerning a person's sex life or sexual orientation
+
+The processing of special categories of personal data is generally prohibited under the GDPR, with certain exceptions. Article 9(2) of the GDPR provides a list of specific conditions under which the processing of special categories of personal data may be permitted. These conditions include, but are not limited to, the following:
+
+* The data subject has given explicit consent to the processing for one or more specified purposes (unless prohibited by EU or member state law).
+* The processing is necessary for the purposes of carrying out the obligations and exercising specific rights of the data controller or data subject in the field of employment, social security, and social protection law (subject to certain safeguards).
+* The processing is necessary to protect the vital interests of the data subject or another person where the data subject is physically or legally incapable of giving consent.
+* The processing relates to personal data that has been made public by the data subject.
+* The processing is necessary for the establishment, exercise, or defense of legal claims or for courts acting in their judicial capacity.
+* The processing is necessary for reasons of substantial public interest, based on EU or member state law.
+* The processing is necessary for medical diagnosis, the provision of health or social care, or the management of health or social care systems (subject to certain safeguards).
+* The processing is necessary for reasons of public interest in the area of public health (subject to certain safeguards).
+
+Organizations that process special categories of personal data must comply with these additional requirements and ensure that they have a valid legal basis for processing such data. They must also implement appropriate safeguards to protect the rights and freedoms of data subjects.
+
+\
