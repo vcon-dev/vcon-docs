@@ -3,6 +3,7 @@ description: >-
   vCons safely and securely carry all conversations between the systems that
   host them and the applications that need them, enabling responsible use of
   personal data.
+coverY: 0
 ---
 
 # 👋 Welcome to the Home of the vCons
