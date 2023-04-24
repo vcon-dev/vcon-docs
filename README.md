@@ -1,7 +1,7 @@
 ---
 description: >-
-  vCons safely and securely carry all conversations between the systems that
-  host them and the applications that need them, enabling responsible use of
+  vCons safely and securely carry conversations from the network elements that
+  create them to the applications that analyze them, enabling responsible use of
   personal data.
 cover: .gitbook/assets/Conserver Pictures (7).jpg
 coverY: 0
