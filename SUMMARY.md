@@ -8,12 +8,12 @@
 * [💬 vCons](overview/vcons.md)
 * [🚀 Conserver](overview/conserver.md)
 * [✨ More Information](overview/more-information.md)
+* [vCon IETF Working Group](https://datatracker.ietf.org/group/vcon/about/)
+* [GitHub Repo](https://github.com/vcon-dev/vcon)
 
 ## Product Guides
 
 * [⚙ API Documentation](product-guides/api-documentation.md)
-* [📪 Making a post](product-guides/making-a-post.md)
-* [📎 Understanding Projects](product-guides/understanding-projects.md)
 
 ## Fundamentals
 
@@ -25,12 +25,11 @@
 
 * [Overview](vcon-use-cases/overview.md)
 * [Service Provider Migration](vcon-use-cases/service-provider-migration.md)
-* [AI Integration](vcon-use-cases/ai-integration.md)
 * [Speech Recognition Test Set](vcon-use-cases/speech-recognition-test-set.md)
+* [AI Integration](vcon-use-cases/ai-integration.md)
 * [PII Compliance](vcon-use-cases/pii-compliance.md)
 * [Customer Experience Improvement](vcon-use-cases/customer-experience-improvement.md)
 * [Sharing Conversations with Third Parties](vcon-use-cases/sharing-conversations-with-third-parties.md)
 * [Verbal Agreements - Converted to Writing](vcon-use-cases/verbal-agreements-converted-to-writing.md)
-* [Insights from Customer Conversations](vcon-use-cases/insights-from-customer-conversations.md)
 * [Authenticating and Certifying Conversations](vcon-use-cases/authenticating-and-certifying-conversations.md)
-* [🖥 For Developers](vcon-use-cases/for-developers.md)
+* [Insights from Customer Conversations](vcon-use-cases/insights-from-customer-conversations.md)
