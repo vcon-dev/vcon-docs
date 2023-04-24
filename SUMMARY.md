@@ -18,6 +18,7 @@
 ***
 
 * [Inside the Conserver](inside-the-conserver.md)
+* [Day In the Life of a vCon](day-in-the-life-of-a-vcon.md)
 
 ## Fundamentals
 
