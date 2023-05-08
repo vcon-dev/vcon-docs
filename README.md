@@ -3,13 +3,24 @@ description: >-
   vCons safely and securely carry conversations from the network elements that
   create them to the applications that analyze them, enabling responsible use of
   personal data.
-cover: .gitbook/assets/Conserver Pictures (7).jpg
-coverY: 0
+layout: landing
 ---
 
 # 👋 Welcome to the Home of the vCons
 
+
+
+<details>
+
+<summary>What the heck is a vCon?</summary>
+
+
+
 A vCon is the container for data and information relating to a real-time, human conversation. It is analogous to a \[[vCard](https://datatracker.ietf.org/doc/html/draft-petrie-vcon#vCard)] which enables the definition, interchange and storage of an individual's various points of contact. The data contained in a vCon may be derived from any multimedia session, traditional phone call, video conference, SMS or MMS message exchange, webchat or email thread. The data in the container relating to the conversation may include Call Detail Records (CDR), call meta data, participant identity information (e.g. STIR PASSporT), the actual conversational data exchanged (e.g. audio, video, text), realtime or post conversational analysis and attachments of files exchanged during the conversation. A standardized conversation container enables many applications, establishes a common method of storage and interchange, and supports identity, privacy and security efforts (see \[[vCon-white-paper](https://datatracker.ietf.org/doc/html/draft-petrie-vcon#vCon-white-paper)])[¶](https://datatracker.ietf.org/doc/html/draft-petrie-vcon#section-abstract-1)
+
+</details>
+
+<figure><img src=".gitbook/assets/Conserver Pictures (8).jpg" alt=""><figcaption></figcaption></figure>
 
 ## Why?
 
