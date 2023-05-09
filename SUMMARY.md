@@ -15,12 +15,10 @@
 
 ## Product Guides
 
+* [Inside the Conserver](product-guides/inside-the-conserver.md)
+* [Day In the Life of a vCon](product-guides/day-in-the-life-of-a-vcon.md)
+* [Page 1](product-guides/page-1.md)
 * [⚙ API Documentation](product-guides/api-documentation.md)
-
-***
-
-* [Inside the Conserver](inside-the-conserver.md)
-* [Day In the Life of a vCon](day-in-the-life-of-a-vcon.md)
 
 ## Fundamentals
 
