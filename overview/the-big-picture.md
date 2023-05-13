@@ -6,15 +6,15 @@ description: A Brief Introduction to vCons and the Conserver
 
 ## vCons are "PDFs" for Conversations
 
-A vCon is created to describe a conversation that involves a "natural" person.  As a simple example, a vCon could be created from the last conversation you had with a customer service agent.  Just like PDFs allow you to create and share any written document; vCons allow you to create and share any human conversation. A vCon identifies the people in the call, recordings and transcripts, analysis and supporting attachments, like documents and logs.  Implemented in easy to manage JSON, vCons are both encryptable and tamper proof.
+A vCon describes a conversation that involves a "natural" person.  As a simple example, a vCon could be created from the last conversation you had with a customer service agent.  Just like PDFs allow you to create and share any written document; vCons allow you to create and share any human conversation. A vCon identifies the people in the call, recordings and transcripts, analysis and supporting attachments, like documents and logs.  Implemented in easy to manage JSON, vCons are both encryptable and tamper proof.&#x20;
 
 ## vCons are an Essential Tool in the Management of Personal Data
 
-By defining the contents and participants of a conversation, vCons enable software tools that are able assert the presence, the absence and the authenticity of personal and biometric information. vCons are best understood as a functional toolset for fine-grained control of personal information, authenticity, context and ethical treatment of personal data. &#x20;
+By defining the contents and participants of a conversation, vCons enable software tools that are able assert the presence, the absence and the authenticity of personal and biometric information. By tracking and consolidating the interactions with external systems with personal data, vCons enable responsible management of "Right to be Forgotten" regulations.  vCons are best understood as a functional toolset for fine-grained control of personal information, authenticity, context and ethical treatment of personal data. &#x20;
 
 ## Are vCons Open?
 
-Yes, vCons are both an open source project, it is also an open standards effort.   vCons enable the Internet to work better by defining the interchange standard for our most personal information: the sounds of of voice, and the images of our face.  vCons enable the responsible management of personal data, enabling true compliance to customer data protections such as "Right to Know".&#x20;
+Yes, vCons are both an open source project, it is also an open standards effort supported by the IETF.   vCons enable the Internet to work better by defining the interchange standard for our most personal information: the sounds of of voice, and the images of our face.  vCons enable the responsible management of personal data, enabling true compliance to customer data protections such as "Right to Know".&#x20;
 
 ## vCons are mostly After the Fact
 
