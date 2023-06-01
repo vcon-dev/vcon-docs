@@ -31,7 +31,7 @@ Our Open Source Repository for vCons and the Conserver
 {% endembed %}
 
 {% embed url="https://datatracker.ietf.org/group/vcon/about/" %}
-The IETF Working Group for vCons&#x20;
+The IETF vCon Group&#x20;
 {% endembed %}
 
 ## Quick links
