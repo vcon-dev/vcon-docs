@@ -4,27 +4,24 @@
 
 ## Overview
 
+* [🛠 Quick Start](overview/quick-start.md)
 * [🌎 The Big Picture](overview/the-big-picture.md)
-* [🧠 Why vCons?](overview/why-vcons.md)
 * [💬 vCons in a Nutshell](overview/vcons-in-a-nutshell.md)
+* [🧠 Why vCons?](overview/why-vcons.md)
 * [🚀 Conserver](overview/conserver.md)
 * [💡 Concepts](overview/concepts.md)
 * [✨ More Information](overview/more-information.md)
-* [vCon IETF Working Group](https://datatracker.ietf.org/group/vcon/about/)
-* [GitHub Repo](https://github.com/vcon-dev/vcon)
 
 ## Product Guides
 
 * [Inside the Conserver](product-guides/inside-the-conserver.md)
 * [Day In the Life of a vCon](product-guides/day-in-the-life-of-a-vcon.md)
-* [Page 1](product-guides/page-1.md)
 * [⚙ API Documentation](product-guides/api-documentation.md)
 
-## Fundamentals
+## Deep Dives
 
-* [🛠 Quick Start](fundamentals/quick-start/README.md)
-  * [📝 Setting permissions](fundamentals/quick-start/setting-permissions.md)
-  * [🧑 Inviting Members](fundamentals/quick-start/inviting-members.md)
+* [GitHub Repo](https://github.com/vcon-dev/vcon)
+* [vCon IETF Working Group](https://datatracker.ietf.org/group/vcon/about/)
 
 ## VCon Use Cases
 

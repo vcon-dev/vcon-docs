@@ -62,14 +62,14 @@ The IETF vCon Group&#x20;
 
 We've put together some helpful guides for you to get setup with our product quickly and easily.
 
-{% content-ref url="fundamentals/quick-start/" %}
-[quick-start](fundamentals/quick-start/)
+{% content-ref url="overview/quick-start.md" %}
+[quick-start.md](overview/quick-start.md)
 {% endcontent-ref %}
 
-{% content-ref url="fundamentals/quick-start/setting-permissions.md" %}
-[setting-permissions.md](fundamentals/quick-start/setting-permissions.md)
+{% content-ref url="broken-reference" %}
+[Broken link](broken-reference)
 {% endcontent-ref %}
 
-{% content-ref url="fundamentals/quick-start/inviting-members.md" %}
-[inviting-members.md](fundamentals/quick-start/inviting-members.md)
+{% content-ref url="broken-reference" %}
+[Broken link](broken-reference)
 {% endcontent-ref %}
