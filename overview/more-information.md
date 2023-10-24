@@ -10,9 +10,17 @@ Read the [IETF draft proposal](https://datatracker.ietf.org/doc/html/draft-petri
 
 Track our [group's progress at the IETF](https://datatracker.ietf.org/doc/charter-ietf-vcon/)
 
+## vCon Software and Implementations
+
 Visit our [open source library for the vCon and the Conserver](https://github.com/vcon-dev/vcon). (Give us a star!)
 
+[The Repo for the py-vcon and py-vcon-server Projects](https://github.com/dgpetrie/py-vcon#the-repo-for-the-py-vcon-and-py-vcon-server-projects)
+
 ## Videos and Presentations
+
+See the [Keynote at TAD Summit](https://youtu.be/TVq7Y1SoGo4?si=Led6pdqP6rmvynkW), Paris, October, 2023
+
+See the [TADSummit Podcast](https://youtu.be/Ijmvras0DFE?si=5Qs-3VtDK8agW-Ud) with Alan Quayle, September, 2023
 
 See the [Birds of a Feather session at IETF 116, Yokohama](https://youtu.be/EF2OMbo6Qj4), March, 2023
 
