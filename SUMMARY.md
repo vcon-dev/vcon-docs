@@ -22,9 +22,9 @@
 
 ## Fundamentals
 
-* [🛠 Getting set up](fundamentals/getting-set-up/README.md)
-  * [📝 Setting permissions](fundamentals/getting-set-up/setting-permissions.md)
-  * [🧑 Inviting Members](fundamentals/getting-set-up/inviting-members.md)
+* [🛠 Quick Start](fundamentals/quick-start/README.md)
+  * [📝 Setting permissions](fundamentals/quick-start/setting-permissions.md)
+  * [🧑 Inviting Members](fundamentals/quick-start/inviting-members.md)
 
 ## VCon Use Cases
 
