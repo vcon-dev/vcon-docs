@@ -4,7 +4,7 @@
 
 ## Overview
 
-* [🛠 Quick Start](overview/quick-start.md)
+* [🛠️ Quick Start](overview/quick-start.md)
 * [🌎 The Big Picture](overview/the-big-picture.md)
 * [💬 vCons in a Nutshell](overview/vcons-in-a-nutshell.md)
 * [🧠 Why vCons?](overview/why-vcons.md)
@@ -16,7 +16,7 @@
 
 * [Inside the Conserver](product-guides/inside-the-conserver.md)
 * [Day In the Life of a vCon](product-guides/day-in-the-life-of-a-vcon.md)
-* [⚙ API Documentation](product-guides/api-documentation.md)
+* [⚙️ API Documentation](product-guides/api-documentation.md)
 
 ## Deep Dives
 
