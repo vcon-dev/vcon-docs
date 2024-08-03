@@ -18,6 +18,7 @@
 * [❤️ Inside the Conserver](conserver/inside-the-conserver.md)
 * [📆 Day In the Life of a vCon](conserver/day-in-the-life-of-a-vcon.md)
 * [GitHub Repo](https://github.com/vcon-dev/vcon-server)
+* [App Integration](conserver/app-integration.md)
 
 ## Product Guides
 
