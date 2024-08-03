@@ -1,4 +1,4 @@
-# Day In the Life of a vCon
+# 📆 Day In the Life of a vCon
 
 To illustrate the normal operation of the conserver, let’s follow along as a conversation is extracted, transformed and the data is provided to a business team. For this example, we’ll assume the Conserver is started and configured to take conversations from a Freeswitch system, transcribe them, look for a particular subject (recalls) and send those to a PostGres table for the operations team.
 

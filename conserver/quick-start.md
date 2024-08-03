@@ -2,7 +2,7 @@
 description: A quick start to getting the conserver up and running
 ---
 
-# 🛠 Quick Start
+# 🐰 Quick Start
 
 ## Ubuntu Install&#x20;
 

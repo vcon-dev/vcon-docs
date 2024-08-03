@@ -2,7 +2,7 @@
 description: The Machinery of the Conserver
 ---
 
-# Inside the Conserver
+# ❤️ Inside the Conserver
 
 The Conserver processes vCons, storing them locally, and projecting them into the third party information services.  The building blocks of the Conserver are links, which have an interface to accept a single vCon, and can then forward that vCon, or create new ones, to other links for further processing.  Links are formed into chains, designed to apply a series of analysis and transformation to the vCons.  Chains are executed by the conserver periodically on a timer, or on request from a third party system.&#x20;
 
@@ -22,7 +22,7 @@ Configuration is provided through a file structure that defines the environment,
 
 ## Creating a vCon
 
-The Conserver is a native vCon device.  Generally, all the operations that are internal to the conserver use vCons as their inputs and outputs.  [vCons are like PDFs for conversations](../overview/vcons-in-a-nutshell.md); the contents of each vCon is decided by the system that makes it.   Some systems are vCon native, and support the creation of vCons as they export conversations. Other systems support API access, where adapters can create the vCons using data collected through the APIs before forwarding them to the conversation.  At the time of this writing, adapters exist for Bria, Quiq, Volie, Mailgun and RingPlan.&#x20;
+The Conserver is a native vCon device.  Generally, all the operations that are internal to the conserver use vCons as their inputs and outputs.  [vCons are like PDFs for conversations](../overview/a-vcon-primer.md); the contents of each vCon is decided by the system that makes it.   Some systems are vCon native, and support the creation of vCons as they export conversations. Other systems support API access, where adapters can create the vCons using data collected through the APIs before forwarding them to the conversation.  At the time of this writing, adapters exist for Bria, Quiq, Volie, Mailgun and RingPlan.&#x20;
 
 vCons may be created using the vCon library and recordings and meta data extracted from third party systems.  To add this vCon to the conserver, you could then either POST the vCon to the Conserver API, or you could store it directly in REDIS, then insert the vCon UUID in the desired chain's input list.
 

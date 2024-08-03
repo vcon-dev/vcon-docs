@@ -3,7 +3,17 @@ description: >-
   vCons safely and securely carry conversations from the network elements that
   create them to the applications that analyze them, enabling responsible
   management of the most personal of data.
-layout: landing
+layout:
+  title:
+    visible: true
+  description:
+    visible: true
+  tableOfContents:
+    visible: true
+  outline:
+    visible: true
+  pagination:
+    visible: true
 ---
 
 # 👋 Welcome to the Home of the vCons
@@ -36,16 +46,16 @@ The IETF vCon Group&#x20;
 
 ## Quick links
 
-{% content-ref url="overview/the-big-picture.md" %}
-[the-big-picture.md](overview/the-big-picture.md)
+{% content-ref url="overview/vcons-are....md" %}
+[vcons-are....md](overview/vcons-are....md)
 {% endcontent-ref %}
 
-{% content-ref url="overview/vcons-in-a-nutshell.md" %}
-[vcons-in-a-nutshell.md](overview/vcons-in-a-nutshell.md)
+{% content-ref url="overview/a-vcon-primer.md" %}
+[a-vcon-primer.md](overview/a-vcon-primer.md)
 {% endcontent-ref %}
 
-{% content-ref url="overview/conserver.md" %}
-[conserver.md](overview/conserver.md)
+{% content-ref url="conserver/conserver-introduction.md" %}
+[conserver-introduction.md](conserver/conserver-introduction.md)
 {% endcontent-ref %}
 
 {% content-ref url="overview/concepts.md" %}
@@ -62,8 +72,8 @@ The IETF vCon Group&#x20;
 
 We've put together some helpful guides for you to get setup with our product quickly and easily.
 
-{% content-ref url="overview/quick-start.md" %}
-[quick-start.md](overview/quick-start.md)
+{% content-ref url="conserver/quick-start.md" %}
+[quick-start.md](conserver/quick-start.md)
 {% endcontent-ref %}
 
 {% content-ref url="broken-reference" %}
