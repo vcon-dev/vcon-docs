@@ -17,12 +17,9 @@
 * [🏫 Concepts](conserver/concepts.md)
 * [❤️ Inside the Conserver](conserver/inside-the-conserver.md)
 * [📆 Day In the Life of a vCon](conserver/day-in-the-life-of-a-vcon.md)
+* [🧩 API](conserver/api.md)
+* [🔌 Integrating Your App](conserver/integrating-your-app.md)
 * [GitHub Repo](https://github.com/vcon-dev/vcon-server)
-* [App Integration](conserver/app-integration.md)
-
-## Product Guides
-
-* [⚙️ API Documentation](product-guides/api-documentation.md)
 
 ## Deep Dives
 

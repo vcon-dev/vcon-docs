@@ -2,7 +2,7 @@
 description: Using the Conserver with your Application
 ---
 
-# App Integration
+# 🔌 Integrating Your App
 
 Using the Conserver with your application is straightforward:
 
