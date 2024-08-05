@@ -16,6 +16,7 @@
 * [🐰 Conserver Quick Start](conserver/conserver-quick-start.md)
 * [🏫 Concepts](conserver/concepts.md)
 * [❤️ Inside the Conserver](conserver/inside-the-conserver.md)
+* [🔗 Standard Links](conserver/standard-links.md)
 * [📆 Day In the Life of a vCon](conserver/day-in-the-life-of-a-vcon.md)
 * [🧩 API](conserver/api.md)
 * [🔌 Integrating Your App](conserver/integrating-your-app.md)
