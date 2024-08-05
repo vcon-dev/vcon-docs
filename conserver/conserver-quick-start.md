@@ -2,7 +2,7 @@
 description: A quick start to getting the conserver up and running
 ---
 
-# 🐰 Quick Start
+# 🐰 Conserver Quick Start
 
 ## Ubuntu Install&#x20;
 
@@ -15,6 +15,16 @@ cd vcon/
 ```
 
 Create an \~/vcon/.env file for some of the global environmental stuff.  See example .env below.
+
+## Conserver Start
+
+The conserver repo can be downloaded directly, but is also included in the vcon repo as a sub-repo in the von-server directory.
+
+```
+cd vcon-server
+```
+
+Secrets for the conserver are kept in the .env file at the root of the vcon\_server directory.&#x20;
 
 ## Example .env file
 
@@ -41,20 +51,11 @@ CONSERVER_CONFIG_FILE=./config.yml
 
 ```
 
-```
-cd vcon
-```
-
 Create a new config file in the server directory, then docker compose up.
 
 ## Example ./config.yml
 
 ```
-environment:
-  HOSTNAME: https://localhost:8000
-  STITCHER_DATABASE_URL: ''
-  SLACK_TOKEN: ''
-  OPENAI_API_KEY: ''
 links:
   transcribe:
     module: links.transcribe
@@ -126,6 +127,8 @@ chains:
     enabled: 1
     
 ```
+
+### Start the Conserver
 
 ```
 docker compose up

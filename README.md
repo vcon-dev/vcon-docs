@@ -72,8 +72,8 @@ The IETF vCon Group&#x20;
 
 We've put together some helpful guides for you to get setup with our product quickly and easily.
 
-{% content-ref url="conserver/quick-start.md" %}
-[quick-start.md](conserver/quick-start.md)
+{% content-ref url="conserver/conserver-quick-start.md" %}
+[conserver-quick-start.md](conserver/conserver-quick-start.md)
 {% endcontent-ref %}
 
 {% content-ref url="broken-reference" %}

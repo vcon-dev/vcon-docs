@@ -13,7 +13,7 @@
 ## Conserver
 
 * [🚀 Conserver Introduction](conserver/conserver-introduction.md)
-* [🐰 Quick Start](conserver/quick-start.md)
+* [🐰 Conserver Quick Start](conserver/conserver-quick-start.md)
 * [🏫 Concepts](conserver/concepts.md)
 * [❤️ Inside the Conserver](conserver/inside-the-conserver.md)
 * [📆 Day In the Life of a vCon](conserver/day-in-the-life-of-a-vcon.md)
