@@ -14,7 +14,7 @@ This primer explores the vCon, a groundbreaking technology designed to revolutio
 
 #### What is vCon?
 
-A vCon (virtual conversation) is akin to a PDF, but instead of holding a readable document, it holds a recording of a conversation involving a “natural person” (2). It serves as a standardized format to document, store, and analyze conversations. The concept of vCon originated from a casual remark by Brian Galvin, a former CTO at Genesis, who mused about the lack of a vCard equivalent for conversations. Thus, the term vCon was coined: virtual conversations.
+A vCon (virtual conversation) is akin to a PDF, but instead of holding a readable document, it holds a recording of a conversation involving a “natural person” (2). It serves as a standardized format to document, store, and analyze conversations. The concept of vCon originated from a casual remark by Brian Galvin, a former CTO at Genesys, who mused about the lack of a vCard equivalent for conversations. Thus, the term vCon was coined: virtual conversations.
 
 Think of a vCon as a document format for conversations, ensuring that data is secure and authentic. The primary goal of a vCon is to enable a system of open tools to empower customer privacy and facilitate the management of personal information in conversations.
 
