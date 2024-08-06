@@ -31,12 +31,8 @@ layout:
 <figure><img src=".gitbook/assets/Conserver Internals (1).jpg" alt=""><figcaption><p>A depiction of an analysis link, a fundamental component of the conserver.  Links contain the processing of a vCon.  Chains are composed of links, representing workflow in the Conserver. In this example, the Analysis link accepts a vCon as an input, then using an LLM or other AI system, adds a new item to the vCon analysis array to track the interaction. </p></figcaption></figure>
 {% endtab %}
 
-{% tab title="How does it protect privacy?" %}
-A standardized conversation container like vCon enables many applications, establishes a common method of storage and interchange, and supports identity, privacy and security efforts.  The Conserver collects, protects, redacts and governs the sharing of the data they contain.  Using vCons and the Conserver enhances compliance to customer data protection guidelines such as GDPR and California Consumer Privacy Act, enables best practices in support of data minimization and privacy. Both the vCon and the Conserver are provided as open source and supported by open standards, designed and operated by industry veterans.&#x20;
-{% endtab %}
-
-{% tab title="How does it enable AI?" %}
-By separating the data layer (the storage of conversations) and the applications layer (the analysis of the conversations), every department in the company can listen to customers. The Conserver collects conversations from phone systems, cloud communication platforms and chat transcripts, eliminating data silos.  Similar to the benefits of the database, the aggregation of conversations in the conserver enables governance, sharing and compliance required for responsible data handling.&#x20;
+{% tab title="How can I write my vCon application?" %}
+<figure><img src=".gitbook/assets/App Integration (1).jpg" alt=""><figcaption></figcaption></figure>
 {% endtab %}
 {% endtabs %}
 
