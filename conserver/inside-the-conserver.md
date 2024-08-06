@@ -58,7 +58,7 @@ Links can return one of two kinds of values.  Links can return a vCon UUID, or N
 
 The fundamental implementation of workflow is created by a series of links.  These chains take vCon uuids from REDIS lists, runs the chain of links on the vCon, stores it, then places the uuids in egress REDIS links.&#x20;
 
-<figure><img src="../.gitbook/assets/Conserver Internals (4) (1).jpg" alt=""><figcaption><p>A Chain</p></figcaption></figure>
+<figure><img src="../.gitbook/assets/Conserver Internals (4) (1) (1).jpg" alt=""><figcaption><p>A Chain</p></figcaption></figure>
 
 ### Chain Processing, Link by Link
 
