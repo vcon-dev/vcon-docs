@@ -24,10 +24,8 @@ The Conserver API provides a token based authentication, controlled by the envir
 [openapi (1).json](<../.gitbook/assets/openapi (1).json>)
 {% endswagger %}
 
-
-
-{% swagger src="../.gitbook/assets/openapi.json" path="/vcon/search" method="get" %}
-[openapi.json](../.gitbook/assets/openapi.json)
+{% swagger src="../.gitbook/assets/openapi-2.json" path="/vcons/search" method="get" %}
+[openapi-2.json](../.gitbook/assets/openapi-2.json)
 {% endswagger %}
 
 ## Chain Management
