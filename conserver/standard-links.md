@@ -1,6 +1,14 @@
 # 🔗 Standard Links
 
-The conserver ships with a standard set of links.  Custom links can be installed by adding them into the "links" subdirectory.   Currently, the standard sets of links are:
+The conserver ships with a standard set of links.  Custom links can be installed by adding them into the "links" subdirectory.    The link represents an operation on a vCon, such as redaction, sharing and analysis.  The conserver can have many different configurations of the same kind of link, making them the essential unit of functionality. &#x20;
+
+<div align="center">
+
+<figure><img src="../.gitbook/assets/Conserver Internals (1).jpg" alt=""><figcaption><p>An example of a link.</p></figcaption></figure>
+
+</div>
+
+Currently, the standard sets of links are:
 
 * **Analyze**:  Calls OpenAI to process a vCon with a LLM prompt, and adding a new item to the analysis array.
 * **Deepgram**:  Calls Deepgram to transcribe the dialog and add an new "transcription" item to the analysis array.
