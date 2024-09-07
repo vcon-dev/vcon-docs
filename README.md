@@ -27,7 +27,7 @@ layout:
 <figure><img src=".gitbook/assets/SCITT and vCon (3).jpg" alt=""><figcaption><p>The IETF SCITT WG defines a set of interoperable building blocks that will allow implementers to build integrity and accountability into software supply chain systems to help assure trustworthy operation. <br><br>vCons ❤️ SCITT</p></figcaption></figure>
 {% endtab %}
 
-{% tab title="Untitled" %}
+{% tab title="What is the Conserver?" %}
 <figure><img src=".gitbook/assets/Conserver Internals (5).jpg" alt=""><figcaption><p>The Conserver creates, processes and manages the lifecycle of vCons at scale.</p></figcaption></figure>
 {% endtab %}
 
