@@ -4,218 +4,156 @@ description: A quick start to getting the conserver up and running
 
 # 🐰 Conserver Quick Start
 
-## Ubuntu Install&#x20;
+The quickstart will cover:
 
-Based on a digital ocean install, to keep it vanilla. Created a 4 GB Memory / 2 Intel vCPUs / 120 GB Disk / NYC3 - Ubuntu 23.04 x64 droplet, logged in.
+- [Installing the conserver with Docker](#ubuntu-install-wdocker)
+- [Viewing the default configuration](#conserver-configuration)
+- [Staring a conserver for processing](#start-the-conserver)
+- [Monitoring realtime logs](#viewing-logs-realtime)
+- [Submitting a vCon](#submit-a-vcon)
+- [Process a vCon](#process-a-chain-of-vcons)
 
-```
-snap install docker
-git clone https://github.com/vcon-dev/vcon.git
-cd vcon/
-git submodule sync
-git submodule update --init --recursive
-```
+## Ubuntu Install w/Docker
 
-Create an \~/vcon/.env file for some of the global environmental stuff.  See example .env below.
+- Install the [Docker client](https://www.docker.com/get-started/), or equivalent
 
-## Conserver Start
+  ```bash
+  snap install docker
+  ```
 
-The conserver repo can be downloaded directly, but is also included in the vcon repo as a sub-repo in the von-server directory.
+- Clone the vCon Repos
 
-```
-cd vcon-server
-```
+  ```bash
+  git clone https://github.com/vcon-dev/vcon.git
+  cd vcon/
+  git submodule sync
+  git submodule update --init --recursive
+  ```
 
-Secrets for the conserver are kept in the .env file at the root of the vcon\_server directory.&#x20;
+## Conserver Configuration
 
-## Example vcon-server/.env file
+A conserver has two configuration files:
 
-```
-AWS_BUCKET=vcon-storage
-AWS_KEY_ID=xxxxx
-AWS_SECRET_KEY=xxxxx
-DEEPGRAM_KEY=xxxxx
-ENV=dev
+- Service Host & Secret Configuration: `vcon-server/.env`
+- Service Processing Configuration: `vcon-server/config.yml`
 
-# CORE DEPENDENCIES
-ENV=dev
-HOSTNAME=http://0.0.0.0:8000
-HOST=0.0.0.0
-PORT=8000
-REDIS_URL=redis://redis
+The conserver repo (`/vcon-server`) can be downloaded directly, but is also included in the `vcon` repo cloned above as a sub-repo in the vcon-server directory.
 
-# Overriding these on pairing so they don't conflict with django port etc
-REDIS_EXTERNAL_PORT=8001
-CONSERVER_EXTERNAL_PORT=8000
+- Configure secrets in the `vcon_server/.env` directory.  
+  For the purposes of getting started in a local container, no changes are needed.
 
-CONSERVER_API_TOKEN=1111111
-CONSERVER_CONFIG_FILE=./config.yml
-```
+  **Example `vcon-server/.env` file**
 
-Create a new config file in the server directory
+  ```bash
+  # CORE DEPENDENCIES
+  ENV=dev
+  HOSTNAME=http://0.0.0.0:8000
+  HOST=0.0.0.0
+  PORT=8000
+  REDIS_URL=redis://redis
 
-## Example vcon-server/config.yml
+  # Overriding these on pairing so they don't conflict with django port etc
+  REDIS_EXTERNAL_PORT=8001
+  CONSERVER_EXTERNAL_PORT=8000
 
-```
-links:
-  webhook_store_call_log:
-    module: links.webhook
-    options:
-      webhook-urls:
-        - https://example.com/conserver
-  expire_vcon:
-    module: links.expire_vcon
-    options:
-      seconds: 604800
-  expire_vcon_in_10_minutes:
-    module: links.expire_vcon
-    options:
-      seconds: 600 
-  deepgram:
-    module: links.deepgram
-    options:
-      DEEPGRAM_KEY: xxxxxxxxxxxx
-      minimum_duration: 30
-      api:
-        model: "nova-2"
-        smart_format: true  
-        detect_language: true
-  summarize:
-    module: links.analyze
-    options:
-      OPENAI_API_KEY: xxxxx
-      prompt: "Summarize this transcript in a few sentences, identify the purpose and the parties of the conversation. Mention if there was a voicemail or if the customer and agent spoke."
-      analysis_type: summary
-      model: 'gpt-4o-mini'
-  sentiment:
-    module: links.analyze
-    options:
-      OPENAI_API_KEY: xxxx
-      prompt: "Based on this transcript - if the customer complained, if the customer said they were angry or disappointed, if the customer threatened or used profanity, respond with only the words 'NEEDS REVIEW', otherwise respond 'NO REVIEW NEEDED'."
-      analysis_type: customer_frustration
-      model: 'gpt-4o-mini'
-  diarize:
-    module: links.analyze
-    options:
-      OPENAI_API_KEY: xxxx
-      prompt: "Go step by step: 1. Diarize the conversation and also identify the Agent and the Customer and show the names along with it like Agent(Agent Name) and output in markdown and label each speaker in bold. Don't add any extra information except for the speakers. Don't add 
-the word markdown. 2. If it's only one speaker, return the transcript. 3. If you can't diarize the transcript, return an empty string."
-      analysis_type: diarized
-      model: 'gpt-4o'
-  send_frustration_for_review:
-    module: links.post_analysis_to_slack
-    options:
-      token: xoxb-739777144080-xxxxxxxxxxx
-      default_channel_name: team-rainbow-alerts
-      url: "https:/www.moredetails.com/ca8ae4f5-0423-4b02-9975-42ed4e3eb155/latest"
-      analysis_to_post: summary
-      only_if: 
+  CONSERVER_API_TOKEN=1111111
+  CONSERVER_CONFIG_FILE=./config.yml
+  ```
+
+- View the Conserver config file in the server directory.
+  See [Configuring Links](./configuring-links.md) for more details.
+
+  **Example `vcon-server/config.yml`**
+
+  ```yaml
+  links:
+    deepgram:
+      module: links.deepgram
+      options:
+        DEEPGRAM_KEY: xxxxxxxxxxxx
+        minimum_duration: 30
+        api:
+          model: "nova-2"
+          smart_format: true  
+          detect_language: true
+    diarize:
+      module: links.analyze
+      options:
+        OPENAI_API_KEY: xxxx
+        prompt: "Go step by step: 1. Diarize the conversation and also identify the Agent and the Customer and show the names along with it like Agent(Agent Name) and output in markdown and label each speaker in bold. Don't add any extra information except for the speakers. Don't add the word markdown. 2. If it's only one speaker, return the transcript. 3. If you can't diarize the transcript, return an empty string."
+        analysis_type: diarized
+        model: 'gpt-4o'
+    sentiment:
+      module: links.analyze
+      options:
+        OPENAI_API_KEY: xxxx
+        prompt: "Based on this transcript - if the customer complained, if the customer said they were angry or disappointed, if the customer threatened or used profanity, respond with only the words 'NEEDS REVIEW', otherwise respond 'NO REVIEW NEEDED'."
         analysis_type: customer_frustration
-        includes: NEEDS REVIEW
-storages:
-  postgres:
-    module: storage.postgres
-    options:
-      user: postgres
-      password: xxxxxxxx
-      host: xxxxxx.us-east-1.rds.amazonaws.com
-      port: "5432"
-      database: postgres
-  s3:
-    module: storage.s3
-    options:
-      aws_access_key_id: xxxxx
-      aws_secret_access_key: xxxx
-      aws_bucket: vcons
-  elasticsearch:
-    module: storage.elasticsearch
-    options:
-      cloud_id: "xxxxx:xxxx=="
-      api_key: "xxxxxxx=="
-      index: vcon_index
+        model: 'gpt-4o-mini'
+    summarize:
+      module: links.analyze
+      options:
+        OPENAI_API_KEY: xxxxx
+        prompt: "Summarize this transcript in a few sentences, identify the purpose and the parties of the conversation. Mention if there was a voicemail or if the customer and agent spoke."
+        analysis_type: summary
+        model: 'gpt-4o-mini'
+  storages:
 
-chains:
-  bria_chain:
-    links:
-      - deepgram
+  chains:
+    my-chain:
+      links:
+        - deepgram
+        - diarize
+        - sentiment
+        - summarize
+      ingress_lists:
+        - default_ingress
+      storages:
+      egress_lists:
+        - default_egress
+      enabled: 1
+
+    summarize_only:
+      links:
       - summarize
-      - sentiment
-      - diarize
-      - agent_note
-      - webhook_store_call_log
-      - send_frustration_for_review
-      - expire_vcon
-    ingress_lists:
-      - default_ingress
-    storages:
-      - postgres
-      - s3
-      - elasticsearch
-    egress_lists:
-      - default_egress
-    enabled: 1
-
-  volie_chain:
-    links:
-      - expire_vcon
-    ingress_lists:
-      - volie_ingress
-    storages:
-      - postgres
-      - s3
-    egress_lists:
-      - volie_egress
-    enabled: 1
-
-  elastic_only:
-    links:
-      - expire_vcon
-    ingress_lists:
-      - elastic_ingress
-    storages:
-      - elasticsearch
-
-  # This is to fix some old vcons (incorrect lead attachments and etc)
-  store_and_expire:
-    links:
-      - expire_vcon_in_10_minutes
-    ingress_lists:
-      - store_and_expire_ingress
-    storages:
-      - postgres
-      - s3
-      - elasticsearch
-
-```
+      ingress_lists:
+        - summarize_ingress
+      egress_lists:
+        - summarize_egress
+  ```
 
 ### Start the Conserver
 
-```
+Using a local Docker configuration, start
+
+```bash
 docker network create conserver
-docker compose build
-docker compose up
-docker compose up --scale conserver=4 -d
+docker compose up -d
 ```
 
-## Troubleshooting and Checking
+### Troubleshooting and Checking
 
-You can validate that the conserver is running on the command line using "docker ps".  In the example below, we can see four instances running.
+You can validate that the conserver is running on the command line using `docker ps`.  
+In the example below, we can see:
 
-```
-root@partner-demo:~/vcon/vcon-server# docker ps
+- `vcon-server-conserver-1`: processes vcons
+- `vcon-server-api-1`: ingests requests
+- `vcon-server-redis-1`: default storage and persistance
+
+```output
+# docker ps
 CONTAINER ID   IMAGE                      COMMAND                  CREATED         STATUS                   PORTS                                                 NAMES
-21bc6e3aacd7   vcon-server-conserver      "/app/docker/wait_fo…"   4 minutes ago   Up 4 minutes                                                                   vcon-server-conserver-4
-2e3a0341043d   vcon-server-conserver      "/app/docker/wait_fo…"   4 minutes ago   Up 4 minutes                                                                   vcon-server-conserver-2
-9c699287f035   vcon-server-conserver      "/app/docker/wait_fo…"   4 minutes ago   Up 4 minutes                                                                   vcon-server-conserver-3
 ffe6f68941c8   vcon-server-conserver      "/app/docker/wait_fo…"   5 minutes ago   Up 5 minutes                                                                   vcon-server-conserver-1
 8136e15912c5   vcon-server-api            "/app/docker/wait_fo…"   5 minutes ago   Up 5 minutes             0.0.0.0:8000->8000/tcp, :::8000->8000/tcp             vcon-server-api-1
 e3388b5f23be   redis/redis-stack:latest   "/entrypoint.sh"         5 minutes ago   Up 5 minutes (healthy)   6379/tcp, 0.0.0.0:8001->8001/tcp, :::8001->8001/tcp   vcon-server-redis-1
-root@partner-demo:~/vcon/vcon-server# 
 ```
 
-You can see the operational logs using "docker compose logs -f".  Here's a typical log:
+## Viewing Logs Realtime
 
-```
+Monitor operational logs using `docker compose logs -f`.  
+A typical log:
+
+```output
 vcon-server-redis-1      | 9:C 23 Aug 2024 17:27:20.581 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
 vcon-server-redis-1      | 9:C 23 Aug 2024 17:27:20.582 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
 vcon-server-redis-1      | 9:C 23 Aug 2024 17:27:20.582 * Redis version=7.4.0, bits=64, commit=00000000, modified=0, pid=9, just started
@@ -283,8 +221,12 @@ vcon-server-api-1        | {"asctime": "2024-08-23 17:27:24,227", "levelname": "
 vcon-server-conserver-1  | Redis is ready!
 vcon-server-conserver-1  | Redis is ready. Starting the dependent service...
 vcon-server-conserver-1  | {"asctime": "2024-08-23 17:27:22,240", "levelname": "INFO", "name": "__main__", "message": "Starting main loop", "taskName": null}
-
 ```
 
-The [vCon admin program](https://github.com/vcon-dev/vcon-admin) is a nice tool for managing the conserver.&#x20;
+## Submit a vCon
 
+## Process a Chain of vCons
+
+## Postman Configuration
+
+The [vCon admin program](https://github.com/vcon-dev/vcon-admin) is a nice tool for managing the conserver.

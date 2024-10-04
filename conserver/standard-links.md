@@ -1,6 +1,9 @@
 # 🔗 Standard Links
 
-The conserver ships with a standard set of links.  Custom links can be installed by adding them into the "links" subdirectory.    The link represents an operation on a vCon, such as redaction, sharing and analysis.  The conserver can have many different configurations of the same kind of link, making them the essential unit of functionality. &#x20;
+The conserver ships with a standard set of links.
+Custom links can be installed by adding them into the "links" subdirectory.
+The link represents an operation on a vCon, such as redaction, sharing and analysis.
+The conserver can have many different configurations of the same kind of link, making them the essential unit of functionality.
 
 <div align="center">
 
