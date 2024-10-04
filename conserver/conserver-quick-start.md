@@ -39,8 +39,8 @@ A conserver has two configuration files:
 
 The conserver repo (`/vcon-server`) can be downloaded directly, but is also included in the `vcon` repo cloned above as a sub-repo in the vcon-server directory.
 
-- Configure secrets in the `vcon_server/.env` directory.  
-  For the purposes of getting started in a local container, no changes are needed.
+- Review the HOst & Secrets configuration in `vcon_server/.env`.  
+  For the purposes of getting started in a local container, no changes are necessary.
 
   **Example `vcon-server/.env` file**
 
@@ -60,7 +60,7 @@ The conserver repo (`/vcon-server`) can be downloaded directly, but is also incl
   CONSERVER_CONFIG_FILE=./config.yml
   ```
 
-- View the Conserver config file in the server directory.
+- View the Conserver config file in the server directory.  
   See [Configuring Links](./configuring-links.md) for more details.
 
   **Example `vcon-server/config.yml`**
@@ -124,7 +124,13 @@ The conserver repo (`/vcon-server`) can be downloaded directly, but is also incl
 
 ### Start the Conserver
 
-Using a local Docker configuration, start
+- Run from the vcon-server directory
+
+  ```bash
+  cd vcon-server/
+  ```
+
+- Start the services with a local Docker configuration
 
 ```bash
 docker network create conserver
@@ -223,9 +229,55 @@ vcon-server-conserver-1  | Redis is ready. Starting the dependent service...
 vcon-server-conserver-1  | {"asctime": "2024-08-23 17:27:22,240", "levelname": "INFO", "name": "__main__", "message": "Starting main loop", "taskName": null}
 ```
 
+## Configure Postman
+
+A Postman workspaces provides examples for the subsequent steps.
+The equivalent steps can be run with `curl` or other API clients.
+
+View the [Conserver Postman Collection](https://datatrails-inc.postman.co/workspace/Conserver~318b4e24-2e1f-464b-9da4-919135ef4dd3/request/3276815-c7a61c87-9ef7-4b29-b727-6c043bba6608?tab=body)
+
 ## Submit a vCon
 
+To process a vCon, it must first be submitted to the vCon server.
+
+A set of sample vCons are located at: https://github.com/vcon-dev/fake-vcons/
+
+NOTE: Use vcons in the https://github.com/vcon-dev/fake-vcons/tree/main/2024/05/10 directory for compatibility with these quickstart docs.
+
+Paste the contents of a vCon into the body, formatted as json.
+
+Note recent versions of conserver require the first element: `"vcon": "0.0.1",`
+
+```bash
+headers: "x-conserver-api-token": "1111111"
+body:
+{
+    "vcon": "0.0.1",
+    "uuid": "bbba043b-d1aa-4691-8739-ac3ddd030382",
+    "created_at": "2024-05-07T16:33:29.004994",
+    ...
+POST http://localhost:8000/vcon
+```
+
 ## Process a Chain of vCons
+
+To process a chain of links:
+
+- Post to: `http://localhost:8000/vcon/ingress`
+- specify the ingress queue: `?ingress_list=default_ingress` in the query parameters.
+- Specify one or more `vcon_uuid`'s in the body.  
+  Note: the body is a json array.
+
+```bash
+headers: "x-conserver-api-token": "1111111"
+body:
+[
+    "bbba043b-d1aa-4691-8739-ac3ddd030382"
+]
+POST http://localhost:8000/vcon/ingress?ingress_list=default_ingress
+```
+
+Note the output in the console where the docker logs are monitored.
 
 ## Postman Configuration
 
