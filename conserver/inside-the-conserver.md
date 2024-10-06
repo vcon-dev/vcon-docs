@@ -69,7 +69,7 @@ The [main loop of the conserver](https://github.com/vcon-dev/vcon-server/blob/86
 * When an item (vCon ID) is found, it creates a VconChainRequest and processes it.
 * Handles exceptions by moving problematic vCons to a Dead Letter Queue.
 
-Step by step:&#x20;
+Step by Step:
 
 1. Processing starts when vCon UUIDs are placed into a ingress list.  Chains may have several ingress lists, and have to have at least one to kick off processing.  Lists are implemented as REDIS lists, and processing is controlled at the thread layer by blocking until the a new element is placed on the list.  UUIDs can be added to the ingress list by other chains, allowing them to be placed in series, from links that can request processing, or from the API.  A typical pattern is to create the vCon using the API, then inserting the UUID into the desired ingress list.
 2.  For each vCon taken from the ingress list, it is processed by each link in the chain.   This `_process_link` function handles the execution of a single link in the processing chain for a vCon. Here's a summary of its functionality:
@@ -98,4 +98,3 @@ REDIS is responsible for storing the conversations, while FAST API coordinates t
 Each vcon is stored in REDIS using JSON and named with a regular key: vcon:\{{vcon-uuid\}},  as are chains "chains:\{{name\}}", links "link:\{{name\}}" and storages "storage:\{{name\}}}".   REDIS allows for the addition of dedicated hardware to accelerate long running and high compute use cases such as transcription and video redaction, as these systems can connect directly to REDIS relieving scale issues from general purpose hardware, while managing the overhead of moving large amounts of data.  Links take a vCon ID as inputs, and bear the responsibility of reading vCons if required, or giving them the option to hand off to optimized hardware.
 
 FAST API provides the application infrastructure for the conserver. The transformation steps are developed as Python modules and loaded as tasks managed by FAST API. As each task finishes, it notifies other system elements by publishing UUID of the vCon. Other tasks wait on these notifications, and when they receive the notification, they can act on that same vCon for whatever purpose they may have. In addition, FAST API provides a REST API to the store of vCons, and a simple UI to manage the conserver.
-
