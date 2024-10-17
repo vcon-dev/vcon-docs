@@ -156,7 +156,12 @@ e3388b5f23be   redis/redis-stack:latest   "/entrypoint.sh"         5 minutes ago
 
 ## Viewing Logs Realtime
 
-Monitor operational logs using `docker compose logs -f`.  
+Monitor operational logs using:
+
+```bash
+docker compose logs -f`
+```
+
 A typical log:
 
 ```output
