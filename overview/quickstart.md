@@ -4,8 +4,6 @@ description: The Python vCon library
 
 # 🐰 Quickstart
 
-## vCon API Tutorial
-
 This tutorial will guide you through creating a vCon (Virtual Conversation) object using the vCon API. We'll cover creating a new vCon, adding parties and dialogs, attaching metadata and analysis, and finally signing and verifying the vCon.
 
 ### Prerequisites
@@ -49,7 +47,7 @@ vcon.add_party(agent)
 
 ### Step 4: Add Dialogs
 
-Now, let's add some dialog to our vCon. We'll add an initial message from the caller and a response from the agent.
+Now, let's add some dialog to our vCon.
 
 ```python
 start_time = datetime.datetime.now(datetime.timezone.utc)
@@ -59,20 +57,9 @@ dialog = Dialog(
     parties=[0, 1],  # Indices of the parties in the vCon
     originator=0,  # The caller (Alice) is the originator
     mimetype="text/plain",
-    body="Hello, I need help with my account.",
+    body="Hello, I need help with my account."
 )
 vcon.add_dialog(dialog)
-
-response_time = start_time + datetime.timedelta(minutes=1)
-response = Dialog(
-    type="text",
-    start=response_time.isoformat(),
-    parties=[0, 1],
-    originator=1,  # The agent (Bob) is the originator
-    mimetype="text/plain",
-    body="Certainly! I'd be happy to help. Can you please provide your account number?",
-)
-vcon.add_dialog(response)
 ```
 
 Note that we're using ISO format strings for the datetime values and including UTC timezone information.
@@ -167,7 +154,7 @@ def main():
         parties=[0, 1],  # Indices of the parties in the vCon
         originator=0,  # The caller (Alice) is the originator
         mimetype="text/plain",
-        body="Hello, I need help with my account.",
+        body="Hello, I need help with my account."
     )
     vcon.add_dialog(dialog)
 
@@ -179,7 +166,7 @@ def main():
         parties=[0, 1],
         originator=1,  # The agent (Bob) is the originator
         mimetype="text/plain",
-        body="Certainly! I'd be happy to help. Can you please provide your account number?",
+        body="Certainly! I'd be happy to help. Can you please provide your account number?"
     )
     vcon.add_dialog(response)
 
@@ -222,4 +209,28 @@ if __name__ == "__main__":
     main()
 ```
 
-This tutorial demonstrates how to create a vCon object, add parties and dialogs, attach metadata and analysis, and sign and verify the vCon. By following these steps, you can create and manipulate vCon objects in your own applications.
+##
+
+### Contributing
+
+Contributions to the vCon library are welcome! Please submit pull requests or open issues on the GitHub repository.
+
+### License
+
+This project is licensed under the MIT License:
+
+MIT License
+
+Copyright (c) 2023 Thomas McCarthy-Howe
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+### Contact
+
+For questions or support, please contact:
+
+Thomas McCarthy-Howe Email: ghostofbasho@gmail.com

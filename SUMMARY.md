@@ -9,9 +9,10 @@
 * [🧠 Why vCons?](overview/why-vcons.md)
 * [💡 Concepts](overview/concepts.md)
 * [✨ More Information](overview/more-information.md)
-* [Library](overview/library/README.md)
-  * [🐰 Quickstart](overview/library/quickstart.md)
-  * [GitHub Repo](http://github.com/vcon-dev/vcon-lib)
+* [PYTHON LIBRARY](overview/python-library.md)
+* [🐰 Quickstart](overview/quickstart.md)
+* [Library API](overview/library-api.md)
+* [GitHub Repo](http://github.com/vcon-dev/vcon-lib)
 
 ## Conserver
 
