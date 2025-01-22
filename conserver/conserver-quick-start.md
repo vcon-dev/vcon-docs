@@ -16,45 +16,36 @@ git submodule sync
 git submodule update --init --recursive
 ```
 
-Create an \~/vcon/.env file for some of the global environmental stuff.  See example .env below.
-
 ## Conserver Start
 
-The conserver repo can be downloaded directly, but is also included in the vcon repo as a sub-repo in the von-server directory.
+The conserver repo [can be downloaded directly](https://github.com/vcon-dev/vcon-server), but is also included in the vcon repo in the von-server directory.
 
 ```
 cd vcon-server
 ```
 
-Secrets for the conserver are kept in the .env file at the root of the vcon\_server directory.&#x20;
-
-## Example vcon-server/.env file
+Create an \~/vcon/.env file.  See example .env below. \*Note that the default URL for REDIS assumes it is running in a docker container, thus the hostname "redis".
 
 ```
-AWS_BUCKET=vcon-storage
-AWS_KEY_ID=xxxxx
-AWS_SECRET_KEY=xxxxx
-DEEPGRAM_KEY=xxxxx
-ENV=dev
-
-# CORE DEPENDENCIES
-ENV=dev
-HOSTNAME=http://0.0.0.0:8000
-HOST=0.0.0.0
-PORT=8000
 REDIS_URL=redis://redis
 
-# Overriding these on pairing so they don't conflict with django port etc
-REDIS_EXTERNAL_PORT=8001
-CONSERVER_EXTERNAL_PORT=8000
+# Leave this blank to disable API security
+# You set this before opening the port in your firewall
+CONSERVER_API_TOKEN=
 
-CONSERVER_API_TOKEN=1111111
-CONSERVER_CONFIG_FILE=./config.yml
+# to customize the config copy example_config.yml to config.yml
+# modify the values in config.yml as needed
+# and set CONSERVER_CONFIG_FILE to ./config.yml below
+CONSERVER_CONFIG_FILE=config.yml
 ```
 
-Create a new config file in the server directory
+
 
 ## Example vcon-server/config.yml
+
+Most of the configuration is done through the config.yml file.
+
+
 
 ```
 links:

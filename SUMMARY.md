@@ -18,6 +18,7 @@
 
 * [🚀 Conserver Introduction](conserver/conserver-introduction.md)
 * [🐰 Conserver Quick Start](conserver/conserver-quick-start.md)
+* [Configuring the Conserver](conserver/configuring-the-conserver.md)
 * [🏫 Concepts](conserver/concepts.md)
 * [❤️ Inside the Conserver](conserver/inside-the-conserver.md)
 * [🔗 Standard Links](conserver/standard-links.md)
