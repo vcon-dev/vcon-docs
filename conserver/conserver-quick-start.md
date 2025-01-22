@@ -43,140 +43,40 @@ CONSERVER_CONFIG_FILE=config.yml
 
 ## Example vcon-server/config.yml
 
-Most of the configuration is done through the config.yml file.
-
-
+Most of the configuration is done through the config.yml file. Here's a very simple one. Inbound vCons in the ingress chain cause a slack webhook into a workflow, then it will be stored in mongo.
 
 ```
 links:
-  webhook_store_call_log:
+  slack:
     module: links.webhook
     options:
       webhook-urls:
-        - https://example.com/conserver
-  expire_vcon:
-    module: links.expire_vcon
-    options:
-      seconds: 604800
-  expire_vcon_in_10_minutes:
-    module: links.expire_vcon
-    options:
-      seconds: 600 
-  deepgram:
-    module: links.deepgram
-    options:
-      DEEPGRAM_KEY: xxxxxxxxxxxx
-      minimum_duration: 30
-      api:
-        model: "nova-2"
-        smart_format: true  
-        detect_language: true
-  summarize:
-    module: links.analyze
-    options:
-      OPENAI_API_KEY: xxxxx
-      prompt: "Summarize this transcript in a few sentences, identify the purpose and the parties of the conversation. Mention if there was a voicemail or if the customer and agent spoke."
-      analysis_type: summary
-      model: 'gpt-4o-mini'
-  sentiment:
-    module: links.analyze
-    options:
-      OPENAI_API_KEY: xxxx
-      prompt: "Based on this transcript - if the customer complained, if the customer said they were angry or disappointed, if the customer threatened or used profanity, respond with only the words 'NEEDS REVIEW', otherwise respond 'NO REVIEW NEEDED'."
-      analysis_type: customer_frustration
-      model: 'gpt-4o-mini'
-  diarize:
-    module: links.analyze
-    options:
-      OPENAI_API_KEY: xxxx
-      prompt: "Go step by step: 1. Diarize the conversation and also identify the Agent and the Customer and show the names along with it like Agent(Agent Name) and output in markdown and label each speaker in bold. Don't add any extra information except for the speakers. Don't add 
-the word markdown. 2. If it's only one speaker, return the transcript. 3. If you can't diarize the transcript, return an empty string."
-      analysis_type: diarized
-      model: 'gpt-4o'
-  send_frustration_for_review:
-    module: links.post_analysis_to_slack
-    options:
-      token: xoxb-739777144080-xxxxxxxxxxx
-      default_channel_name: team-rainbow-alerts
-      url: "https:/www.moredetails.com/ca8ae4f5-0423-4b02-9975-42ed4e3eb155/latest"
-      analysis_to_post: summary
-      only_if: 
-        analysis_type: customer_frustration
-        includes: NEEDS REVIEW
+      - https://slack.com/shortcuts/Ft089N3FB65U/xxxxxx
 storages:
-  postgres:
-    module: storage.postgres
+  mongo:
+    module: storage.mongo
     options:
-      user: postgres
-      password: xxxxxxxx
-      host: xxxxxx.us-east-1.rds.amazonaws.com
-      port: "5432"
-      database: postgres
-  s3:
-    module: storage.s3
-    options:
-      aws_access_key_id: xxxxx
-      aws_secret_access_key: xxxx
-      aws_bucket: vcons
-  elasticsearch:
-    module: storage.elasticsearch
-    options:
-      cloud_id: "xxxxx:xxxx=="
-      api_key: "xxxxxxx=="
-      index: vcon_index
-
+      MONGO_URL: mongodb://mongodb:27017/
+      database: conserver
+      collection: vcons
 chains:
-  bria_chain:
+  ingress_chain:
     links:
-      - deepgram
-      - summarize
-      - sentiment
-      - diarize
-      - agent_note
-      - webhook_store_call_log
-      - send_frustration_for_review
-      - expire_vcon
+    - slack
     ingress_lists:
-      - default_ingress
+    - ingress_list
     storages:
-      - postgres
-      - s3
-      - elasticsearch
-    egress_lists:
-      - default_egress
+    - mongo
     enabled: 1
+```
 
-  volie_chain:
-    links:
-      - expire_vcon
-    ingress_lists:
-      - volie_ingress
-    storages:
-      - postgres
-      - s3
-    egress_lists:
-      - volie_egress
-    enabled: 1
+### Standalone Operation
 
-  elastic_only:
-    links:
-      - expire_vcon
-    ingress_lists:
-      - elastic_ingress
-    storages:
-      - elasticsearch
+When running a conserver in "standalone mode" (using vcon-admin as a simple portal, which will also provide the basic versions of all of the apps and databases), it will automatically register a domain name and generate a valid SSL certificate using LetsEncrypt, assuming that the domain name has an A record pointing to your server.
 
-  # This is to fix some old vcons (incorrect lead attachments and etc)
-  store_and_expire:
-    links:
-      - expire_vcon_in_10_minutes
-    ingress_lists:
-      - store_and_expire_ingress
-    storages:
-      - postgres
-      - s3
-      - elasticsearch
-
+```
+export DNS_REGISTRATION_EMAIL=mulligan.mccarthy@strolid.com
+export DNS_HOST=mulligan.strolid.net
 ```
 
 ### Start the Conserver
