@@ -12,6 +12,7 @@
 * [PYTHON LIBRARY](overview/python-library.md)
 * [🐰 Quickstart](overview/quickstart.md)
 * [Library API](overview/library-api.md)
+* [Cheat Sheet](overview/cheat-sheet.md)
 * [GitHub Repo](http://github.com/vcon-dev/vcon-lib)
 
 ## Conserver
