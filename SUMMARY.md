@@ -29,6 +29,11 @@
 * [🔌 Integrating Your App](conserver/integrating-your-app.md)
 * [GitHub Repo](https://github.com/vcon-dev/vcon-server)
 
+***
+
+* [HELPS and HACKS](helps-and-hacks/README.md)
+  * [Coding Prompt Cheat Sheet](helps-and-hacks/coding-prompt-cheat-sheet.md)
+
 ## Deep Dives
 
 * [GitHub Repo](https://github.com/vcon-dev/vcon)
