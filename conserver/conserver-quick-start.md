@@ -14,6 +14,12 @@ git clone https://github.com/vcon-dev/vcon.git
 cd vcon/
 git submodule sync
 git submodule update --init --recursive
+cd vcon-server/
+git checkout main
+cd ..
+cd vcon-admin/
+git checkout main
+cd ..
 ```
 
 ## Conserver Start
@@ -47,24 +53,27 @@ Most of the configuration is done through the config.yml file. Here's a very sim
 
 ```
 links:
-  slack:
-    module: links.webhook
+  tag:
+    module: links.tag
+    ingress-lists: []
+    egress-lists: []
     options:
-      webhook-urls:
-      - https://slack.com/shortcuts/Ft089N3FB65U/xxxxxx
+      tags:
+      - smart_trunk_ingress
+  
 storages:
   mongo:
     module: storage.mongo
     options:
-      MONGO_URL: mongodb://mongodb:27017/
+      url: mongodb://root:example@mongo:27017/
       database: conserver
       collection: vcons
 chains:
-  ingress_chain:
-    links:
-    - slack
+  demo_chain:
     ingress_lists:
-    - ingress_list
+    - ingress
+    links:
+    - tag
     storages:
     - mongo
     enabled: 1
