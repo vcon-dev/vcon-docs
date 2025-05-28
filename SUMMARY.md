@@ -41,3 +41,5 @@
   * [Verbal Agreements - Converted to Writing](use-cases-studies/verbal-agreements-converted-to-writing.md)
   * [Authenticating and Certifying Conversations](use-cases-studies/authenticating-and-certifying-conversations.md)
   * [Insights from Customer Conversations](use-cases-studies/insights-from-customer-conversations.md)
+* [vCon Apps and Stores](vcon-apps-and-stores/README.md)
+  * [TADHack vCon](vcon-apps-and-stores/tadhack-vcon.md)
