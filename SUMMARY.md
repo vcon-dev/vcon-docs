@@ -43,3 +43,5 @@
   * [Insights from Customer Conversations](use-cases-studies/insights-from-customer-conversations.md)
 * [vCon Apps and Stores](vcon-apps-and-stores/README.md)
   * [TADHack vCon](vcon-apps-and-stores/tadhack-vcon.md)
+  * [vCon Stores and Apps](https://youtu.be/TgAwtYP0pjA)
+  * [vCon App Template ](https://github.com/vcon-dev/vcon-app-template)
