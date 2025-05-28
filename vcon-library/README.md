@@ -1,4 +1,8 @@
-# PYTHON LIBRARY
+---
+icon: plug
+---
+
+# vCon Library
 
 ## vCon Python Library
 
@@ -57,5 +61,3 @@ The vCon (Virtual Conversation) format is being developed as an open standard th
    * Help with implementations and interoperability testing
 
 For more information about the IETF standardization process and how to participate, visit: https://www.ietf.org/about/participate/
-
-###

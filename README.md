@@ -50,24 +50,24 @@ The IETF vCon Group&#x20;
 
 ## Quick links
 
-{% content-ref url="overview/vcons-are....md" %}
-[vcons-are....md](overview/vcons-are....md)
+{% content-ref url="vcons/vcons-are....md" %}
+[vcons-are....md](vcons/vcons-are....md)
 {% endcontent-ref %}
 
-{% content-ref url="overview/a-vcon-primer.md" %}
-[a-vcon-primer.md](overview/a-vcon-primer.md)
+{% content-ref url="vcons/a-vcon-primer.md" %}
+[a-vcon-primer.md](vcons/a-vcon-primer.md)
 {% endcontent-ref %}
 
 {% content-ref url="conserver/conserver-introduction.md" %}
 [conserver-introduction.md](conserver/conserver-introduction.md)
 {% endcontent-ref %}
 
-{% content-ref url="overview/concepts.md" %}
-[concepts.md](overview/concepts.md)
+{% content-ref url="vcons/concepts.md" %}
+[concepts.md](vcons/concepts.md)
 {% endcontent-ref %}
 
-{% content-ref url="overview/more-information.md" %}
-[more-information.md](overview/more-information.md)
+{% content-ref url="vcons/more-information.md" %}
+[more-information.md](vcons/more-information.md)
 {% endcontent-ref %}
 
 

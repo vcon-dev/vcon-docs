@@ -1,53 +1,43 @@
 # Table of contents
 
 * [👋 Welcome to the Home of the vCons](README.md)
-
-## Overview
-
-* [💬 A vCon Primer](overview/a-vcon-primer.md)
-* [🌎 vCons are...](overview/vcons-are....md)
-* [🧠 Why vCons?](overview/why-vcons.md)
-* [💡 Concepts](overview/concepts.md)
-* [✨ More Information](overview/more-information.md)
-* [PYTHON LIBRARY](overview/python-library.md)
-* [🐰 Quickstart](overview/quickstart.md)
-* [Library API](overview/library-api.md)
-* [Cheat Sheet](overview/cheat-sheet.md)
-* [GitHub Repo](http://github.com/vcon-dev/vcon-lib)
-
-## Conserver
-
-* [🚀 Conserver Introduction](conserver/conserver-introduction.md)
-* [🐰 Conserver Quick Start](conserver/conserver-quick-start.md)
-* [Configuring the Conserver](conserver/configuring-the-conserver.md)
-* [🏫 Concepts](conserver/concepts.md)
-* [❤️ Inside the Conserver](conserver/inside-the-conserver.md)
-* [🔗 Standard Links](conserver/standard-links.md)
-* [🗄️ Storage](conserver/storage.md)
-* [📆 Day In the Life of a vCon](conserver/day-in-the-life-of-a-vcon.md)
-* [🧩 API](conserver/api.md)
-* [🔌 Integrating Your App](conserver/integrating-your-app.md)
-* [GitHub Repo](https://github.com/vcon-dev/vcon-server)
-
-***
-
+* [vCons](vcons/README.md)
+  * [💬 A vCon Primer](vcons/a-vcon-primer.md)
+  * [🌎 vCons are...](vcons/vcons-are....md)
+  * [🧠 Why vCons?](vcons/why-vcons.md)
+  * [💡 Concepts](vcons/concepts.md)
+  * [✨ More Information](vcons/more-information.md)
+* [vCon Library](vcon-library/README.md)
+  * [🐰 Quickstart](vcon-library/quickstart.md)
+  * [Library API](vcon-library/library-api.md)
+  * [Cheat Sheet](vcon-library/cheat-sheet.md)
+  * [GitHub Repo](http://github.com/vcon-dev/vcon-lib)
+* [Conserver](conserver/README.md)
+  * [🚀 Conserver Introduction](conserver/conserver-introduction.md)
+  * [🐰 Conserver Quick Start](conserver/conserver-quick-start.md)
+  * [Configuring the Conserver](conserver/configuring-the-conserver.md)
+  * [🏫 Concepts](conserver/concepts.md)
+  * [❤️ Inside the Conserver](conserver/inside-the-conserver.md)
+  * [🔗 Standard Links](conserver/standard-links.md)
+  * [🗄️ Storage](conserver/storage.md)
+  * [📆 Day In the Life of a vCon](conserver/day-in-the-life-of-a-vcon.md)
+  * [🧩 API](conserver/api.md)
+  * [🔌 Integrating Your App](conserver/integrating-your-app.md)
+  * [GitHub Repo](https://github.com/vcon-dev/vcon-server)
 * [HELPS and HACKS](helps-and-hacks/README.md)
   * [Coding Prompt Cheat Sheet](helps-and-hacks/coding-prompt-cheat-sheet.md)
-
-## Deep Dives
-
-* [GitHub Repo](https://github.com/vcon-dev/vcon)
-* [vCon IETF Working Group](https://datatracker.ietf.org/group/vcon/about/)
-
-## VCon Use Cases
-
-* [Overview](vcon-use-cases/overview.md)
-* [Service Provider Migration](vcon-use-cases/service-provider-migration.md)
-* [Speech Recognition Test Set](vcon-use-cases/speech-recognition-test-set.md)
-* [AI Integration](vcon-use-cases/ai-integration.md)
-* [PII Compliance](vcon-use-cases/pii-compliance.md)
-* [Customer Experience Improvement](vcon-use-cases/customer-experience-improvement.md)
-* [Sharing Conversations with Third Parties](vcon-use-cases/sharing-conversations-with-third-parties.md)
-* [Verbal Agreements - Converted to Writing](vcon-use-cases/verbal-agreements-converted-to-writing.md)
-* [Authenticating and Certifying Conversations](vcon-use-cases/authenticating-and-certifying-conversations.md)
-* [Insights from Customer Conversations](vcon-use-cases/insights-from-customer-conversations.md)
+  * [Fake vCons](https://github.com/vcon-dev/tadhack-2025)
+* [Deep Dives](deep-dives/README.md)
+  * [GitHub Repo](https://github.com/vcon-dev/vcon)
+  * [vCon IETF Working Group](https://datatracker.ietf.org/group/vcon/about/)
+* [Use Cases / Studies](use-cases-studies/README.md)
+  * [Overview](use-cases-studies/overview.md)
+  * [Service Provider Migration](use-cases-studies/service-provider-migration.md)
+  * [Speech Recognition Test Set](use-cases-studies/speech-recognition-test-set.md)
+  * [AI Integration](use-cases-studies/ai-integration.md)
+  * [PII Compliance](use-cases-studies/pii-compliance.md)
+  * [Customer Experience Improvement](use-cases-studies/customer-experience-improvement.md)
+  * [Sharing Conversations with Third Parties](use-cases-studies/sharing-conversations-with-third-parties.md)
+  * [Verbal Agreements - Converted to Writing](use-cases-studies/verbal-agreements-converted-to-writing.md)
+  * [Authenticating and Certifying Conversations](use-cases-studies/authenticating-and-certifying-conversations.md)
+  * [Insights from Customer Conversations](use-cases-studies/insights-from-customer-conversations.md)
