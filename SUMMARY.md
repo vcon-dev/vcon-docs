@@ -45,3 +45,7 @@
   * [TADHack vCon](vcon-apps-and-stores/tadhack-vcon.md)
   * [vCon Stores and Apps](https://youtu.be/TgAwtYP0pjA)
   * [vCon App Template ](https://github.com/vcon-dev/vcon-app-template)
+* [Tools](tools/README.md)
+  * [vCon Faker](https://vcon-faker.streamlit.app/)
+  * [vCon Admin](https://github.com/vcon-dev/vcon-admin)
+  * [Mongo Redis Sync](https://github.com/vcon-dev/mongo-redis-sync)
