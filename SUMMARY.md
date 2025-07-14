@@ -35,6 +35,8 @@
 * [Deep Dives](deep-dives/README.md)
   * [GitHub Repo](https://github.com/vcon-dev/vcon)
   * [vCon IETF Working Group](https://datatracker.ietf.org/group/vcon/about/)
+  * [vCon Lifecycle Management using SCITT](deep-dives/vcon-lifecycle-management-using-scitt.md)
+  * [vCon Consent Attachment](https://claude.ai/public/artifacts/f62b38a6-8ab3-45c9-a4b2-ff9b5c756799)
 * [HELPS and HACKS](helps-and-hacks/README.md)
   * [Coding Prompt Cheat Sheet](helps-and-hacks/coding-prompt-cheat-sheet.md)
   * [Fake vCons](https://github.com/vcon-dev/tadhack-2025)
