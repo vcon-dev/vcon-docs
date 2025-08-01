@@ -38,6 +38,7 @@
   * [vCon Lifecycle Management using SCITT](deep-dives/vcon-lifecycle-management-using-scitt.md)
   * [vCon Consent Attachment](https://claude.ai/public/artifacts/f62b38a6-8ab3-45c9-a4b2-ff9b5c756799)
   * [Privacy-First Conversation Management](deep-dives/privacy-first-conversation-management.md)
+  * [SCITT: Supply Chain Integrity, Transparency and Trust](deep-dives/scitt-supply-chain-integrity-transparency-and-trust.md)
 * [HELPS and HACKS](helps-and-hacks/README.md)
   * [Coding Prompt Cheat Sheet](helps-and-hacks/coding-prompt-cheat-sheet.md)
   * [Fake vCons](https://github.com/vcon-dev/tadhack-2025)
