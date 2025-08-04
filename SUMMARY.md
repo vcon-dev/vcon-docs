@@ -17,6 +17,7 @@
   * [🐰 Conserver Quick Start](conserver/conserver-quick-start.md)
   * [Configuring the Conserver](conserver/configuring-the-conserver.md)
   * [🏫 Concepts](conserver/concepts.md)
+  * [💲 Operational Benefits of Conservers](conserver/operational-benefits-of-conservers.md)
   * [❤️ Inside the Conserver](conserver/inside-the-conserver.md)
   * [🔗 Standard Links](conserver/standard-links.md)
   * [🗄️ Storage](conserver/storage.md)
