@@ -24,6 +24,7 @@ from vcon import Vcon
 from vcon.party import Party
 from vcon.dialog import Dialog
 from vcon.party import PartyHistory
+from vcon.civic_address import CivicAddress
 ```
 
 ### Step 2: Create a New vCon Object
@@ -207,6 +208,45 @@ def main():
 
 if __name__ == "__main__":
     main()
+```
+
+### Extensions and Required Features
+
+```python
+# Declare extension capabilities
+vcon.add_extension("com.example.feature")
+vcon.add_must_support("com.example.required")
+
+# Check extension support
+extensions = vcon.get_extensions()
+required = vcon.get_must_support()
+```
+
+### Enhanced Party Information
+
+```python
+# Create party with new contact methods
+party = Party(
+    tel="+1234567890",
+    sip="sip:user@example.com",
+    did="did:example:123",
+    jCard="...",  # RFC 7095 format
+    timezone="America/New_York"
+)
+
+# Add GEOPRIV-compliant address
+address = CivicAddress(
+    country="US",
+    a1="California",  # State
+    a2="San Francisco",  # County
+    sts="Market",  # Street
+    hno="123"  # House number
+)
+party.civic_address = address
+
+# Track party events
+party.add_event("join", "2025-08-15T10:00:00Z")
+party.add_event("mute", "2025-08-15T10:05:00Z")
 ```
 
 ##
