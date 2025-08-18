@@ -50,6 +50,14 @@ Note: If no dictionary is provided, an empty vCon object will be created. Use `b
 * `add_dialog(dialog: Dialog) -> None`: Add a dialog to the vCon.
 * `sign(private_key: Union[rsa.RSAPrivateKey, bytes]) -> None`: Sign the vCon using JWS.
 * `verify(public_key: Union[rsa.RSAPublicKey, bytes]) -> bool`: Verify the JWS signature of the vCon.
+* `add_extension(extension_name: str) -> None`: Adds an extension capability to the vCon.
+* `remove_extension(extension_name: str) -> None`: Removes an extension capability.
+* `get_extensions() -> List[str]`: Returns list of declared extensions.
+* `add_must_support(feature: str) -> None`: Adds a required extension feature.
+* `remove_must_support(feature: str) -> None`: Removes a required extension feature.
+* `get_must_support() -> List[str]`: Returns list of required extensions.
+* `calculate_content_hash() -> str`: Calculates SHA-256 hash for content integrity.
+* `verify_content_hash() -> bool`: Verifies content integrity using stored hash.
 
 #### Properties
 
@@ -152,6 +160,9 @@ Note: Optional parameters that are set to None will not create attributes on the
 * `is_email() -> bool`: Checks if the dialog is an email dialog.
 * `is_external_data_changed() -> bool`: Checks if the external data dialog's contents have changed.
 * `to_inline_data() -> None`: Converts the dialog from an external data dialog to an inline data dialog.
+* `calculate_content_hash() -> str`: Calculates SHA-256 hash for dialog content.
+* `verify_content_hash() -> bool`: Verifies dialog content integrity.
+* `is_content_changed() -> bool`: Checks if content has been modified since last hash.
 
 #### Example Usage
 
@@ -208,6 +219,9 @@ Note: Optional parameters that are set to None will not create attributes on the
 #### Methods
 
 * `to_dict() -> dict`: Returns a dictionary representation of the Party object.
+* `add_event(event: str, timestamp: str) -> None`: Adds a party history event (join, drop, hold, unhold, mute, unmute).
+* `get_events() -> List[dict]`: Returns list of party history events.
+* `validate_events() -> Tuple[bool, List[str]]`: Validates party history events.
 
 #### Example Usage
 

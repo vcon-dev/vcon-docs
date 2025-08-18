@@ -10,6 +10,7 @@ icon: scroll
 from vcon import Vcon
 from vcon.party import Party
 from vcon.dialog import Dialog
+from vcon.civic_address import CivicAddress
 ```
 
 #### Creating vCons
@@ -40,20 +41,37 @@ dict_data = vcon.to_dict()
 #### Creating & Adding Parties
 
 ```python
-# Create party
+# Create party with new fields
 party = Party(
     tel="+1234567890",
     name="John Doe",
     mailto="john@example.com",
     role="customer",
+    sip="sip:john@example.com",
+    did="did:example:123",
+    jCard="...",  # RFC 7095 format
+    timezone="America/New_York",
     meta={"custom": "data"}
 )
 
-# Add to vCon
-vcon.add_party(party)
+# Add civic address
+address = CivicAddress(
+    country="US",
+    a1="California",  # State
+    a2="San Francisco",  # County
+    a3="San Francisco",  # City
+    pc="94105",  # Postal code
+    sts="Market",  # Street
+    hno="123",  # House number
+    flr="4"  # Floor
+)
+party.civic_address = address
 
-# Find party
-index = vcon.find_party_index("name", "John Doe")
+# Party history events
+party.add_event("join", "2025-08-15T10:00:00Z")
+party.add_event("hold", "2025-08-15T10:05:00Z")
+party.add_event("unhold", "2025-08-15T10:07:00Z")
+events = party.get_events()
 ```
 
 ### Dialog
@@ -61,8 +79,19 @@ index = vcon.find_party_index("name", "John Doe")
 #### Supported MIME Types
 
 * Text: `text/plain`
-* Audio: `audio/x-wav`, `audio/wav`, `audio/mpeg`, `audio/mp3`, `audio/ogg`, `audio/webm`
-* Video: `video/x-mp4`, `video/ogg`
+* Audio: 
+    * `audio/x-wav`, `audio/wav`
+    * `audio/mpeg`, `audio/mp3`, `audio/x-mp3`
+    * `audio/ogg`, `audio/webm`, `audio/x-mp4`
+    * `audio/aac`
+* Video: 
+    * `video/mp4`, `video/webm`
+    * `video/x-avi`, `video/x-matroska`
+    * `video/quicktime`, `video/x-flv`
+    * `video/3gpp`
+* Images: `image/jpeg`, `image/tiff`
+* Documents: `application/pdf`
+
 
 #### Adding Dialog
 
@@ -197,28 +226,66 @@ uuid = Vcon.uuid8_time(custom_bits)
 ### Properties Reference
 
 #### Vcon Properties
-
 * `uuid`: Unique identifier
-* `vcon`: Version number
+* `vcon`: Version number (0.3.0)
+* `extensions`: Extension capabilities
+* `must_support`: Required extensions
 * `created_at`: Creation timestamp
 * `updated_at`: Last update timestamp
-* `parties`: List of participants
-* `dialog`: List of dialog entries
-* `attachments`: List of attachments
-* `analysis`: List of analysis entries
-* `redacted`: Redaction information
-* `group`: Group information
-* `meta`: Metadata
+// ...existing code...
 
 #### Party Properties
-
 * `tel`: Telephone number
-* `stir`: STIR verification
+* `sip`: SIP URI
+* `did`: Decentralized Identifier
+* `jCard`: vCard format contact
+* `timezone`: Timezone
 * `mailto`: Email address
 * `name`: Party name
 * `validation`: Validation status
-* `gmlpos`: Geographic position
-* `civicaddress`: Civic address
+* `civicaddress`: GEOPRIV compliant address
 * `uuid`: Unique identifier
 * `role`: Party role
 * `meta`: Additional metadata
+
+#### Dialog Properties
+* `type`: Dialog type
+* `start`: Start timestamp
+* `parties`: Participant indices
+* `session_id`: Session tracking
+* `content_hash`: Content integrity
+* `application`: Application ID
+* `message_id`: Message tracking
+* `disposition`: Incomplete dialog status
+* `transfer_target`: Transfer destination
+* `target_dialog`: Target dialog reference
+
+### Extensions & Features
+
+```python
+# Add extension capability
+vcon.add_extension("com.example.feature")
+vcon.remove_extension("com.example.feature")
+extensions = vcon.get_extensions()
+
+# Required extensions
+vcon.add_must_support("com.example.required")
+vcon.remove_must_support("com.example.required")
+must_support = vcon.get_must_support()
+```
+
+### Dialog Disposition Values
+
+```python
+# Create dialog with disposition
+dialog = Dialog(
+    type="incomplete",
+    disposition="no-answer"  # Valid values:
+                            # - no-answer
+                            # - congestion
+                            # - failed
+                            # - busy
+                            # - hung-up
+                            # - voicemail-no-message
+)
+```
