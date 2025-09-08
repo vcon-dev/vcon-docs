@@ -3,6 +3,7 @@ description: >-
   A comprehensive guide for building adapters that convert conversation data
   from various systems into the standardized vCon format using the vCon Python
   library.
+icon: link-simple
 ---
 
 # vCon Adapter Development Guide

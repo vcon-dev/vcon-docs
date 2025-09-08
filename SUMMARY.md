@@ -13,6 +13,7 @@
   * [Cheat Sheet](vcon-library/cheat-sheet.md)
   * [GitHub Repo](http://github.com/vcon-dev/vcon-lib)
   * [vCon Adapter Development Guide](vcon-library/vcon-adapter-development-guide.md)
+  * [LLM Guide: Creating vCon Adapters](vcon-library/llm-guide-creating-vcon-adapters.md)
 * [Conserver](conserver/README.md)
   * [🚀 Conserver Introduction](conserver/conserver-introduction.md)
   * [🐰 Conserver Quick Start](conserver/conserver-quick-start.md)
