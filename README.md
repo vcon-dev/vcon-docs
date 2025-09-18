@@ -3,17 +3,6 @@ description: >-
   vCons safely and securely carry conversations from the network elements that
   create them to the applications that analyze them, enabling responsible
   management of the most personal of data.
-layout:
-  title:
-    visible: true
-  description:
-    visible: true
-  tableOfContents:
-    visible: true
-  outline:
-    visible: true
-  pagination:
-    visible: true
 ---
 
 # 👋 Welcome to the Home of the vCons

@@ -4,233 +4,448 @@ description: The Python vCon library
 
 # 🐰 Quickstart
 
-This tutorial will guide you through creating a vCon (Virtual Conversation) object using the vCon API. We'll cover creating a new vCon, adding parties and dialogs, attaching metadata and analysis, and finally signing and verifying the vCon.
 
-### Prerequisites
 
-Before you begin, make sure you have the vCon library installed in your Python environment.
+Get up and running with the vCon library in minutes! This guide will walk you through the essential features for working with Virtual Conversation objects.
+
+### What is vCon?
+
+vCon (Virtual Conversation) is a standardized format for representing conversations and related metadata. The vCon library provides a complete Python implementation of the vCon 0.3.0 specification, supporting:
+
+* **Conversation Management**: Parties, dialogs, attachments, and analysis
+* **Contact Information**: Multiple contact methods (tel, email, SIP, DID)
+* **Media Support**: Audio, video, text, and image formats
+* **Security**: Digital signatures and content hashing
+* **Extensibility**: Extensions and must\_support fields
+
+### Installation
+
+#### Option 1: Install from PyPI (Recommended)
 
 ```bash
-pip install vcon  
+pip install vcon
 ```
 
-### Step 1: Import Required Modules
+#### Option 2: Install from Source
 
-First, let's import the necessary modules:
+```bash
+git clone https://github.com/vcon-dev/vcon-lib.git
+cd vcon-lib
+pip install -e .
+```
+
+#### Option 3: Install with Optional Dependencies
+
+For image processing support (Pillow, PyPDF):
+
+```bash
+pip install vcon[image]
+```
+
+### Quick Start Examples
+
+#### 1. Create Your First vCon
 
 ```python
-import datetime
 from vcon import Vcon
 from vcon.party import Party
 from vcon.dialog import Dialog
-from vcon.party import PartyHistory
-```
+from datetime import datetime
 
-### Step 2: Create a New vCon Object
-
-To start, we'll create a new vCon object:
-
-```python
+# Create a new vCon object
 vcon = Vcon.build_new()
-```
 
-### Step 3: Add Parties
+# Add parties to the conversation
+caller = Party(
+    tel="+1234567890",
+    name="Alice",
+    role="caller"
+)
 
-Next, we'll add two parties to our vCon: a caller and an agent.
+agent = Party(
+    tel="+1987654321", 
+    name="Bob",
+    role="agent"
+)
 
-```python
-caller = Party(tel="+1234567890", name="Alice", role="caller")
-agent = Party(tel="+1987654321", name="Bob", role="agent")
 vcon.add_party(caller)
 vcon.add_party(agent)
-```
 
-### Step 4: Add Dialogs
-
-Now, let's add some dialog to our vCon.
-
-```python
-start_time = datetime.datetime.now(datetime.timezone.utc)
+# Add a text dialog
 dialog = Dialog(
     type="text",
-    start=start_time.isoformat(),
-    parties=[0, 1],  # Indices of the parties in the vCon
-    originator=0,  # The caller (Alice) is the originator
+    start=datetime.now().isoformat(),
+    parties=[0, 1],  # References to party indices
+    originator=0,    # Alice is the originator
     mimetype="text/plain",
     body="Hello, I need help with my account."
 )
+
 vcon.add_dialog(dialog)
+
+# Save to file
+vcon.save_to_file("my_conversation.vcon.json")
+print("vCon created successfully!")
 ```
 
-Note that we're using ISO format strings for the datetime values and including UTC timezone information.
-
-### Step 5: Add Metadata
-
-We can add metadata to our vCon using tags:
+#### 2. Load and Read a vCon
 
 ```python
-vcon.add_tag("customer_id", "12345")
-vcon.add_tag("interaction_id", "INT-001")
+from vcon import Vcon
+
+# Load from file
+vcon = Vcon.load("my_conversation.vcon.json")
+
+# Load from URL
+# vcon = Vcon.load("https://example.com/conversation.vcon.json")
+
+# Access conversation data
+print(f"vCon UUID: {vcon.uuid}")
+print(f"Created: {vcon.created_at}")
+print(f"Parties: {len(vcon.parties)}")
+print(f"Dialogs: {len(vcon.dialog)}")
+
+# Iterate through parties
+for i, party in enumerate(vcon.parties):
+    print(f"Party {i}: {party.name} ({party.tel})")
+
+# Iterate through dialogs
+for i, dialog in enumerate(vcon.dialog):
+    print(f"Dialog {i}: {dialog.type} - {dialog.body[:50]}...")
 ```
 
-### Step 6: Add an Attachment
-
-Let's add a transcript as an attachment:
+#### 3. Add Audio Content
 
 ```python
-transcript = "Alice: Hello, I need help with my account.\nBob: Certainly! I'd be happy to help. Can you please provide your account number?"
-vcon.add_attachment(body=transcript, type="transcript", encoding="none")
+import base64
+
+# Read audio file and encode as base64
+with open("recording.mp3", "rb") as audio_file:
+    audio_data = base64.b64encode(audio_file.read()).decode("utf-8")
+
+# Create audio dialog
+audio_dialog = Dialog(
+    type="recording",
+    start=datetime.now().isoformat(),
+    parties=[0, 1],
+    originator=0,
+    mimetype="audio/mp3",
+    body=audio_data,
+    encoding="base64",
+    filename="recording.mp3"
+)
+
+vcon.add_dialog(audio_dialog)
 ```
 
-### Step 7: Add Analysis
-
-We can also add analysis data to our vCon. Here's an example of adding sentiment analysis:
+#### 4. Add Analysis Data
 
 ```python
-sentiment_analysis = {
+# Add sentiment analysis
+sentiment_data = {
     "overall_sentiment": "positive",
-    "customer_sentiment": "neutral",
-    "agent_sentiment": "positive"
+    "confidence": 0.85,
+    "emotions": ["satisfied", "helpful"]
 }
+
 vcon.add_analysis(
     type="sentiment",
-    dialog=[0, 1],  # Indices of the dialogs analyzed
+    dialog=[0, 1],  # Analyze first two dialogs
     vendor="SentimentAnalyzer",
-    body=sentiment_analysis,
-    encoding="none"
+    body=sentiment_data,
+    encoding="json"
+)
+
+# Add transcription
+transcript_data = {
+    "text": "Hello, I need help with my account. Certainly! I'd be happy to help.",
+    "confidence": 0.92,
+    "language": "en-US"
+}
+
+vcon.add_analysis(
+    type="transcription",
+    dialog=[2],  # Analyze the audio dialog
+    vendor="SpeechToText",
+    body=transcript_data,
+    encoding="json"
 )
 ```
 
-### Step 8: Sign and Verify the vCon
-
-Finally, let's generate a key pair, sign the vCon, and verify the signature:
+#### 5. Add Attachments
 
 ```python
-# Generate a key pair for signing
+# Add a transcript as attachment
+transcript = """
+Alice: Hello, I need help with my account.
+Bob: Certainly! I'd be happy to help. Can you please provide your account number?
+[Audio conversation follows...]
+"""
+
+vcon.add_attachment(
+    body=transcript,
+    type="transcript",
+    encoding="none"
+)
+
+# Add metadata tags
+vcon.add_tag("customer_id", "12345")
+vcon.add_tag("interaction_type", "support_call")
+vcon.add_tag("priority", "high")
+```
+
+#### 6. Security Features
+
+```python
+# Generate key pair for digital signatures
 private_key, public_key = Vcon.generate_key_pair()
 
 # Sign the vCon
 vcon.sign(private_key)
 
-# Verify the signature
+# Verify signature
 is_valid = vcon.verify(public_key)
-print(f"Signature is valid: {is_valid}")
+print(f"Signature valid: {is_valid}")
+
+# Calculate content hash for integrity verification
+content_hash = vcon.calculate_content_hash("sha256")
+print(f"Content hash: {content_hash}")
 ```
 
-### Step 9: Serialize to JSON
+#### 7. Advanced Features
 
-To see the final result, we can serialize our vCon to JSON:
+**Extensions and Must-Support**
 
 ```python
-print(vcon.to_json())
+# Add extensions used in this vCon
+vcon.add_extension("video")
+vcon.add_extension("encryption")
+
+# Add extensions that must be supported
+vcon.add_must_support("encryption")
+
+print(f"Extensions: {vcon.get_extensions()}")
+print(f"Must support: {vcon.get_must_support()}")
+```
+
+**Civic Address Support**
+
+```python
+from vcon.civic_address import CivicAddress
+
+# Create civic address
+address = CivicAddress(
+    country="US",
+    a1="CA",
+    a3="San Francisco", 
+    sts="Market Street",
+    hno="123",
+    pc="94102"
+)
+
+# Add to party
+party_with_address = Party(
+    name="Jane",
+    tel="+1555123456",
+    civicaddress=address
+)
+```
+
+**Party History Events**
+
+```python
+from vcon.party import PartyHistory
+
+# Track party events
+history = [
+    PartyHistory(0, "join", datetime.now()),
+    PartyHistory(1, "join", datetime.now()),
+    PartyHistory(0, "hold", datetime.now()),
+    PartyHistory(0, "unhold", datetime.now()),
+    PartyHistory(1, "drop", datetime.now())
+]
+
+# Add to dialog
+dialog_with_history = Dialog(
+    type="recording",
+    start=datetime.now(),
+    parties=[0, 1],
+    party_history=history
+)
+```
+
+### Validation
+
+```python
+# Validate a vCon
+is_valid, errors = vcon.is_valid()
+
+if is_valid:
+    print("✅ vCon is valid")
+else:
+    print("❌ Validation errors:")
+    for error in errors:
+        print(f"  - {error}")
+
+# Validate from file
+is_valid, errors = Vcon.validate_file("my_conversation.vcon.json")
+```
+
+### Property Handling Modes
+
+```python
+# Strict mode - only allow standard properties
+vcon = Vcon.load("file.json", property_handling="strict")
+
+# Meta mode - move non-standard properties to meta object  
+vcon = Vcon.load("file.json", property_handling="meta")
+
+# Default mode - keep all properties
+vcon = Vcon.load("file.json", property_handling="default")
+```
+
+### HTTP Operations
+
+```python
+# Post vCon to a server
+response = vcon.post_to_url(
+    "https://api.example.com/vcon",
+    headers={
+        'Authorization': 'Bearer your-token',
+        'Content-Type': 'application/json'
+    }
+)
+
+if response.status_code == 200:
+    print("Successfully posted vCon")
+else:
+    print(f"Error: {response.status_code}")
 ```
 
 ### Complete Example
 
-Here's the complete example putting all these steps together:
+Here's a complete example that demonstrates most features:
 
 ```python
-import datetime
 from vcon import Vcon
 from vcon.party import Party
 from vcon.dialog import Dialog
-from vcon.party import PartyHistory
+from datetime import datetime
+import base64
 
-def main():
-    # Create a new vCon object
+def create_complete_vcon():
+    # Create vCon
     vcon = Vcon.build_new()
-
+    
     # Add parties
-    caller = Party(tel="+1234567890", name="Alice", role="caller")
-    agent = Party(tel="+1987654321", name="Bob", role="agent")
+    caller = Party(
+        tel="+1234567890",
+        name="Alice",
+        role="caller",
+        timezone="America/New_York"
+    )
+    
+    agent = Party(
+        tel="+1987654321",
+        name="Bob", 
+        role="agent",
+        timezone="America/New_York"
+    )
+    
     vcon.add_party(caller)
     vcon.add_party(agent)
-
-    # Add a dialog
-    start_time = datetime.datetime.now(datetime.timezone.utc)
-    dialog = Dialog(
+    
+    # Add text dialog
+    text_dialog = Dialog(
         type="text",
-        start=start_time.isoformat(),
-        parties=[0, 1],  # Indices of the parties in the vCon
-        originator=0,  # The caller (Alice) is the originator
+        start=datetime.now().isoformat(),
+        parties=[0, 1],
+        originator=0,
         mimetype="text/plain",
         body="Hello, I need help with my account."
     )
-    vcon.add_dialog(dialog)
-
-    # Add a response from the agent
-    response_time = start_time + datetime.timedelta(minutes=1)
-    response = Dialog(
-        type="text",
-        start=response_time.isoformat(),
+    vcon.add_dialog(text_dialog)
+    
+    # Add response
+    response_dialog = Dialog(
+        type="text", 
+        start=datetime.now().isoformat(),
         parties=[0, 1],
-        originator=1,  # The agent (Bob) is the originator
+        originator=1,
         mimetype="text/plain",
-        body="Certainly! I'd be happy to help. Can you please provide your account number?"
+        body="Certainly! I'd be happy to help. Can you provide your account number?"
     )
-    vcon.add_dialog(response)
-
-    # Add some metadata
+    vcon.add_dialog(response_dialog)
+    
+    # Add metadata
     vcon.add_tag("customer_id", "12345")
-    vcon.add_tag("interaction_id", "INT-001")
-
-    # Add an attachment (e.g., a transcript)
-    transcript = "Alice: Hello, I need help with my account.\nBob: Certainly! I'd be happy to help. Can you please provide your account number?"
-    vcon.add_attachment(body=transcript, type="transcript", encoding="none")
-
-    # Add some analysis (e.g., sentiment analysis)
-    sentiment_analysis = {
-        "overall_sentiment": "positive",
-        "customer_sentiment": "neutral",
-        "agent_sentiment": "positive"
-    }
+    vcon.add_tag("interaction_type", "support")
+    
+    # Add analysis
     vcon.add_analysis(
         type="sentiment",
-        dialog=[0, 1],  # Indices of the dialogs analyzed
-        vendor="SentimentAnalyzer",
-        body=sentiment_analysis,
+        dialog=[0, 1],
+        vendor="SentimentAnalyzer", 
+        body={"sentiment": "positive", "confidence": 0.85},
+        encoding="json"
+    )
+    
+    # Add attachment
+    vcon.add_attachment(
+        body="Full conversation transcript...",
+        type="transcript",
         encoding="none"
     )
-
-    # Generate a key pair for signing
-    private_key, public_key = Vcon.generate_key_pair()
-
+    
+    # Add extensions
+    vcon.add_extension("sentiment_analysis")
+    vcon.add_must_support("encryption")
+    
     # Sign the vCon
+    private_key, public_key = Vcon.generate_key_pair()
     vcon.sign(private_key)
-
-    # Verify the signature
+    
+    # Save to file
+    vcon.save_to_file("complete_example.vcon.json")
+    
+    # Verify signature
     is_valid = vcon.verify(public_key)
-    print(f"Signature is valid: {is_valid}")
+    print(f"vCon created and signed. Signature valid: {is_valid}")
+    
+    return vcon
 
-    # Print the vCon as JSON
-    print(vcon.to_json())
-
+# Run the example
 if __name__ == "__main__":
-    main()
+    vcon = create_complete_vcon()
+    print("Complete vCon example created successfully!")
 ```
 
-##
+### Next Steps
 
-### Contributing
+1. **Explore the API**: Check out the full API documentation
+2. **Run Tests**: `pytest tests/` to see all available functionality
+3. **Read the Specification**: Review the vCon 0.3.0 specification
+4. **Check Examples**: Look at the `samples/` directory for more examples
 
-Contributions to the vCon library are welcome! Please submit pull requests or open issues on the GitHub repository.
+### Common Use Cases
 
-### License
+* **Call Centers**: Store and analyze customer interactions
+* **Contact Centers**: Track agent performance and customer satisfaction
+* **Compliance**: Maintain records for regulatory requirements
+* **Analytics**: Extract insights from conversation data
+* **Integration**: Exchange conversation data between systems
 
-This project is licensed under the MIT License:
+### Getting Help
 
-MIT License
+* **Documentation**: Full documentation
+* **Issues**: [GitHub Issues](https://github.com/vcon-dev/vcon-lib/issues)
+* **Examples**: Check the `samples/` directory
+* **Tests**: Run `pytest tests/` to see usage examples
 
-Copyright (c) 2023 Thomas McCarthy-Howe
+### Requirements
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+* Python 3.12+
+* See `requirements.txt` for full dependency list
+* Optional: Pillow and PyPDF for image processing support
 
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-### Contact
-
-For questions or support, please contact:
-
-Thomas McCarthy-Howe Email: ghostofbasho@gmail.com
+Happy coding with vCon! ��
