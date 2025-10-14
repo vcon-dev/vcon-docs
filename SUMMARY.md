@@ -29,6 +29,7 @@
   * [🔌 Integrating Your App](conserver/integrating-your-app.md)
   * [GitHub Repo](https://github.com/vcon-dev/vcon-server)
   * [🩻 Conserver Tracers](conserver/conserver-tracers.md)
+* [VCON MCP Server](https://mcp.conserver.io/)
 * [Tools](tools/README.md)
   * [vCon Faker](https://vcon-faker.streamlit.app/)
   * [vCon Admin](https://github.com/vcon-dev/vcon-admin)
