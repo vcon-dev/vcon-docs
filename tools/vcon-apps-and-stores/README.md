@@ -40,11 +40,11 @@ The file-based nature of vCons means integration becomes as simple as "file URL 
 
 Modern application development relies heavily on the Model-View-Controller (MVC) architecture, which separates concerns into three distinct layers: the data model, the business logic controller, and the presentation view. This separation allows developers to create applications that work consistently across mobile, web, and messaging interfaces while maintaining a single source of truth for data and logic.
 
-<figure><img src="../.gitbook/assets/vCon Store (8).jpg" alt=""><figcaption></figcaption></figure>
+<figure><img src="../../.gitbook/assets/vCon Store (8).jpg" alt=""><figcaption></figcaption></figure>
 
 The vCon ecosystem maps naturally onto this proven architecture. Instead of traditional database models, conversations become the foundational data layer. The same controller patterns that manage business logic and access controls apply seamlessly to conversational data. Views can range from dashboards and reports to AI-powered interfaces, all drawing from the same conversational foundation.
 
-<figure><img src="../.gitbook/assets/vCon Store (9).jpg" alt=""><figcaption></figcaption></figure>
+<figure><img src="../../.gitbook/assets/vCon Store (9).jpg" alt=""><figcaption></figcaption></figure>
 
 This architectural alignment isn't coincidental—it represents a maturation of conversational technology that makes it compatible with standard development practices and tools.
 
@@ -54,7 +54,7 @@ The technical implementation of vCon hosting involves sophisticated architecture
 
 The Conserver architecture employs a processing pipeline with multiple specialized components. Incoming vCons flow through analysis, transcription, and large language model processing before being distributed to various storage systems. High-speed access through Redis enables real-time applications, while long-term storage in systems like S3 provides cost-effective archival. The system also supports webhook notifications for real-time application updates and integrates with various AI services through standardized interfaces.
 
-<figure><img src="../.gitbook/assets/vCon Store (11).jpg" alt=""><figcaption></figcaption></figure>
+<figure><img src="../../.gitbook/assets/vCon Store (11).jpg" alt=""><figcaption></figcaption></figure>
 
 **Model Control Protocol (MCP)** integration represents a particularly innovative aspect of the architecture. As MCP emerges as a standard for AI system integration, vCon hosters can provide MCP interfaces as a standard connection point for their customers' existing AI ecosystems. Whether integrating with OpenAI, Claude, Watson X, or other AI platforms, the MCP interface provides a consistent integration pattern that eliminates the need for custom API development.
 
@@ -64,7 +64,7 @@ For consent management, the architecture implements comprehensive privacy contro
 
 ### The vCon Store: A Four-Component Ecosystem
 
-<figure><img src="../.gitbook/assets/vCon Store (4).jpg" alt=""><figcaption></figcaption></figure>
+<figure><img src="../../.gitbook/assets/vCon Store (4).jpg" alt=""><figcaption></figcaption></figure>
 
 The proposed vCon store architecture consists of four essential components, each serving a distinct role while maintaining clear boundaries and responsibilities:
 
@@ -82,7 +82,7 @@ The hosting function includes sophisticated data management capabilities: enterp
 
 The current communications landscape suffers from what Mark Twain might recognize as history rhyming with itself. Just as AOL once controlled users' access to news, weather, and sports by being the single gateway to information, today's communication platforms often capture conversations, analyze them, and control application access within closed ecosystems.
 
-<figure><img src="../.gitbook/assets/vCon Store (5).jpg" alt=""><figcaption></figcaption></figure>
+<figure><img src="../../.gitbook/assets/vCon Store (5).jpg" alt=""><figcaption></figcaption></figure>
 
 The vCon store architecture offers an alternative path—one that separates concerns and prevents any single entity from controlling the entire value chain. In this open ecosystem, hosters can choose their level of openness, service providers can focus on core capabilities without managing hundreds of API integrations, and application developers can reach users through standardized interfaces rather than platform-specific implementations.
 
@@ -92,7 +92,7 @@ This separation creates a truly competitive marketplace where each component can
 
 Real-world implementations demonstrate the practical viability of this architecture, with applications being developed in remarkably short timeframes. Enterprise applications using vCons stored in Snowflake and accessed through Python Jupyter notebooks can be developed in minutes rather than months. The "vCon Quality Report" dashboard—complete with quality metrics, conversation analytics, and even a patron saint of quality data (Saint Vincenzo)—was actually created as a joke during a team standup meeting, yet provides genuine business value by tracking vCon creation rates, summarization progress, and system performance.
 
-<figure><img src="../.gitbook/assets/vCon Store (7).jpg" alt=""><figcaption></figcaption></figure>
+<figure><img src="../../.gitbook/assets/vCon Store (7).jpg" alt=""><figcaption></figcaption></figure>
 
 The quality report shows practical metrics like daily vCon generation (6,752 vCons on the day measured, down 20% because it was Sunday), summarization rates approaching 100%, and detailed analytics on conversation duration and patterns. This level of business intelligence, traditionally requiring extensive custom development, becomes straightforward when working with vCons as standardized data files.
 
@@ -104,7 +104,7 @@ The BMW dealership example showcases how conversational intelligence can transfo
 
 The vision for vCon stores extends beyond technical architecture to market strategy. By focusing on file-based standards rather than proprietary APIs, the ecosystem can support much wider participation and generate better results for all participants. Hosters can focus on their core competency of secure, compliant data management. Application developers can create innovative solutions without becoming integration specialists. End users benefit from choice, interoperability, and innovation.
 
-<figure><img src="../.gitbook/assets/vCon Store (6).jpg" alt=""><figcaption></figcaption></figure>
+<figure><img src="../../.gitbook/assets/vCon Store (6).jpg" alt=""><figcaption></figcaption></figure>
 
 This approach promises to unlock the same kind of explosive growth that occurred when the internet broke down AOL's walled garden, giving users access to unlimited sources of information and services rather than a single provider's curated selection.
 
