@@ -3,7 +3,7 @@ description: Different Roles, Working Together
 icon: handshake-simple
 ---
 
-# MCP Server and Conserver
+# MCP and Conserver Together
 
 &#x20;
 
