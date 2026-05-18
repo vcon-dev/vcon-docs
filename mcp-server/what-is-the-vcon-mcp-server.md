@@ -125,21 +125,26 @@ Using standards gives you options. If you build on top of the vCon MCP Server an
 
 ### Getting Started
 
-The vCon MCP Server is open source and free to use. You need:
+The vCon MCP Server is open source ([vcon-dev/vcon-mcp](https://github.com/vcon-dev/vcon-mcp), MIT licensed) and free to use. The repo ships a TypeScript implementation that targets Node.js 20+, with a published Docker image and an installable `vcon-mcp` npm package.
 
-* Node.js installed on your computer
-* A Supabase account for the database (free tier available)
-* An AI assistant that supports MCP, like Claude Desktop
+Minimum requirements:
 
-The server connects to your database and exposes tools that the AI assistant can use. You talk to the assistant in natural language, and it figures out which tools to use and how to use them.
+* A Supabase Postgres deployment for the database (free tier is fine to start)
+* An MCP-aware client — Claude Desktop, the MCP inspector CLI, or any custom client that speaks MCP
+* For semantic search: an OpenAI API key (or another embedding provider — the model is configurable)
+* For caching, observability, or HTTP transport: see [Transport and Deployment](transport-and-deployment.md)
+
+See [Transport and Deployment](transport-and-deployment.md) for the full environment-variable reference and three deployment recipes (local development, Docker, Claude Desktop).
 
 ### What's Next?
 
-This was a high-level overview. If you want to learn more, the next posts in this series cover:
+This was a high-level overview. The other pages in this section go deeper:
 
-* How MCP works with AI assistants in more detail
-* The complete scope of what the server can do
-* How the server is built and why it is designed that way
-* Real-world business cases and use cases
-
-Each post goes deeper into different aspects of the server. You can read them in order or jump to what interests you most.
+* [MCP and AI](mcp-and-ai.md) — how MCP works with AI assistants in more detail
+* [What the vCon MCP Server Can Do](what-the-vcon-mcp-server-can-do.md) — the complete scope of capabilities
+* [How the vCon MCP Server is Built](how-the-vcon-mcp-server-is-built.md) — internal architecture
+* [Tool Reference](tool-reference.md) — every tool, grouped by purpose
+* [Contract Tools](contract-tools.md) — the May 2026 LLM-facing surface
+* [Transport and Deployment](transport-and-deployment.md) — auth, transport modes, Docker, npm
+* [MCP and Conserver Together](mcp-and-conserver-together.md) — how the MCP server and conserver compose
+* [Business Cases](business-cases-for-mcp-servers-and-vcon.md) — when to reach for this

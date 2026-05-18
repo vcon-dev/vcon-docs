@@ -50,6 +50,7 @@
   * [How the vCon MCP Server is Built](mcp-server/how-the-vcon-mcp-server-is-built.md)
   * [🧰 Tool Reference](mcp-server/tool-reference.md)
   * [📜 Contract Tools](mcp-server/contract-tools.md)
+  * [🚀 Transport and Deployment](mcp-server/transport-and-deployment.md)
   * [🔁 Field-Name Migration](mcp-server/field-name-migration.md)
   * [MCP and Conserver Together](mcp-server/mcp-and-conserver-together.md)
   * [Technical Documentation](https://mcp.conserver.io/)

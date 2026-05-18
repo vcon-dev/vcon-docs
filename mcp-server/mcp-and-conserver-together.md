@@ -43,7 +43,7 @@ When you use an AI assistant with the MCP server, the assistant can:
 * Answer questions about conversations
 * Manage tags and organization
 
-The server exposes over 27 tools through the MCP protocol. AI assistants understand these tools and can use them to work with your conversation data. The server handles validation, database operations, and response formatting.
+The server exposes 37 tools through the MCP protocol. AI assistants understand these tools and can use them to work with your conversation data. The server handles validation, database operations, and response formatting. See [Tool Reference](tool-reference.md) for the full list.
 
 #### Architecture
 

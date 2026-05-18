@@ -102,14 +102,21 @@ The Database Layer stores conversation data in Supabase, which provides PostgreS
 
 The database uses a normalized schema, which means data is organized into separate tables with relationships between them. This is different from storing each conversation as a single JSON document.
 
-The main tables are:
+The eight core tables are:
 
-* `vcons` - Stores the main conversation record with metadata
-* `parties` - Stores participants, with a reference to the conversation
-* `dialog` - Stores conversation content, with references to the conversation and participants
-* `analysis` - Stores AI analysis results, with references to the conversation and dialog entries
-* `attachments` - Stores files and documents, with references to the conversation
-* `groups` - Stores group information for multi-party conversations
+* `vcons` — the conversation record itself: `uuid`, `subject`, `created_at`, `updated_at`, `extensions`, `critical` (was `must_support`), `amended` (was `appended`), `vcon_version`
+* `parties` — participants, foreign-keyed to `vcons`: `tel`, `sip`, `mailto`, `name`, `role`, `validation`, `jcard`, `timezone`
+* `dialog` — conversation content: `type` (`recording`, `text`, `transfer`, `incomplete`), `start`, `duration`, `parties[]`, `body`, `encoding`, `mediatype`, `session_id`, `disposition`
+* `analysis` — AI/ML results: `type`, `vendor` (REQUIRED), `product`, `schema` (was `schema_version`), `body`, `encoding`, `dialog_indices[]`
+* `attachments` — files and structured documents: `purpose` (spec field), `party`, `dialog`, `body`, `encoding`, `mediatype`, `filename`, `url`, `content_hash`
+* `groups` — multi-vCon aggregations
+* `party_history` — join / drop / hold / mute events
+* `vcon_embeddings` — semantic-search vectors (`embedding vector(384)`, `model`, with a queue table for asynchronous generation)
+
+Two views and one materialized view round out the data layer:
+
+* `vcons_legacy` — backward-compat view that exposes the old field names (`must_support`, `appended`, `schema_version`, `mimetype`) for clients that haven't migrated. See [Field-Name Migration](field-name-migration.md).
+* `vcon_tags_mv` — materialized view that parses the tags attachment (`purpose: "tags"`, `encoding: "json"`) into rows so tag filtering doesn't pay the JSON-parsing cost on every query.
 
 This design has several benefits:
 
@@ -128,7 +135,7 @@ The server supports four types of search, each using different database features
 
 **Keyword search** looks for words within conversation content. It uses GIN indexes with trigram matching, which allows it to find words even with minor typos. It searches through dialog text, analysis results, and participant information. This method typically takes a few hundred milliseconds.
 
-**Semantic search** finds conversations by meaning using AI embeddings. Conversations are converted into vectors, which are mathematical representations of their meaning. The search converts your query into a vector, then finds conversations with similar vectors. It uses an HNSW index, which is optimized for vector similarity searches. This method typically takes one to two seconds.
+**Semantic search** finds conversations by meaning using AI embeddings. Conversations are converted into 384-dimension vectors stored in the `vcon_embeddings` table (`pgvector` extension) and indexed with HNSW for fast similarity search. The default embedding provider is OpenAI; the model is configurable via the `EMBEDDING_MODEL` environment variable, and a queue-based async generator (`embedding_queue` table) handles backfilling new vCons without blocking writes. Semantic queries typically take one to two seconds.
 
 **Hybrid search** combines keyword and semantic search. It runs both searches and merges the results, ranking them based on a weighted combination of both scores. You can control how much weight each method has. This method provides the best of both approaches but takes longer, typically two to three seconds.
 
@@ -236,17 +243,28 @@ Plugins can be developed independently and loaded at runtime. They can add funct
 
 The plugin interface is well-defined, so plugins work reliably. As long as a plugin implements the interface correctly, it will work with the server regardless of when it was developed.
 
+### Transport
+
+The server runs in one of two transports, controlled by the `MCP_TRANSPORT` environment variable:
+
+* **stdio** (default) — for Claude Desktop, the MCP inspector CLI, and any client that launches the server as a subprocess.
+* **HTTP** (Streamable HTTP, spec 2025-03-26) — for remote agents and web clients. Supports stateful (`Mcp-Session-Id` header) or stateless mode, optional Server-Sent Events for notifications, configurable CORS and DNS-rebinding protection.
+
+See [Transport and Deployment](transport-and-deployment.md) for the full environment-variable reference and deployment recipes.
+
 ### Security Architecture
 
 Security is handled at multiple levels:
 
-**Authentication** ensures only authorized systems can access the server. Supabase provides Row Level Security policies that restrict access based on user identity. API keys validate that requests come from authorized sources.
+**Authentication** ensures only authorized clients can call the server. The MCP server validates a bearer token configured via the `API_KEYS` environment variable (a comma-separated list). The token is read by default from the `Authorization: Bearer <token>` header; override the header name with `API_KEY_HEADER`. If `API_AUTH_REQUIRED=true` (the default) and `API_KEYS` is unset, the server refuses to start — that's intentional, to prevent accidental unauthenticated deployments. See [Transport and Deployment](transport-and-deployment.md) for the full configuration surface.
 
-**Authorization** controls what authenticated users can do. Row Level Security policies define which records users can access. Plugins can add additional authorization checks.
+**Multi-tenancy.** When `TENANT_ISOLATION=true`, every request must supply a tenant identifier — either via the `x-tenant-id` header or the `TENANT_ID` env var as a default. The server passes the resolved tenant id into every database query, where Supabase Row Level Security policies enforce isolation between tenants.
 
-**Data protection** includes encryption at rest in the database and encryption in transit over the network. Plugins can add redaction to hide sensitive information before returning data.
+**Authorization** beyond authentication is delegated to Supabase RLS policies on the database tables. Plugins can add additional authorization checks at the tool layer.
 
-The server itself does not store sensitive authentication information. All authentication is handled by Supabase, which is designed for secure data storage.
+**Data protection** includes encryption at rest in Supabase and TLS in transit. Plugins can add redaction to hide sensitive information before returning data; the response shape stays the same so clients don't need to know whether redaction was applied.
+
+The server itself does not persist credentials — `API_KEYS` is read at startup, and the Supabase service-role or anon key is read per query. Rotate credentials by restarting the server with new values.
 
 ### Conclusion
 
