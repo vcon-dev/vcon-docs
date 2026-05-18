@@ -4,7 +4,7 @@ icon: toolbox
 
 # What the vCon MCP Server Can Do
 
-The vCon MCP Server provides over 27 tools that let AI assistants work with conversation data. This post gives you a complete overview of what the server can do, organized by category.
+The vCon MCP Server provides **37 tools** that let AI assistants work with conversation data. This page is the narrative overview; for the exhaustive list grouped by purpose see [Tool Reference](tool-reference.md), and for the contract / discovery surface added in May 2026 see [Contract Tools](contract-tools.md).
 
 ### Core Operations: Managing Conversations
 

@@ -4,7 +4,9 @@ icon: hammer-brush
 
 # How the vCon MCP Server is Built
 
-The vCon MCP Server is built in layers, with each layer handling a specific responsibility. This architecture makes the server reliable, performant, and extensible. This post explains how it works.
+The vCon MCP Server is built in layers, with each layer handling a specific responsibility. This architecture makes the server reliable, performant, and extensible. This page is the narrative architecture overview; for the per-tool surface see [Tool Reference](tool-reference.md).
+
+> **May 2026 redesign.** The server now exposes 37 tools, including a new contract / discovery family (`vcon_fetch`, `vcon_search`, `vcon_capabilities`, `vcon_taxonomy`, `describe_response_shape`) designed specifically for LLM clients that don't know the server's shape in advance. See [Contract Tools](contract-tools.md). The same release added a field-name migration handling `appended → amended` and `must_support → critical`; see [Field-Name Migration](field-name-migration.md).
 
 ### The Three-Layer Architecture
 

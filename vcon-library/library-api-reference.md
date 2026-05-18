@@ -1,7 +1,7 @@
 ---
 description: >-
-  Complete API documentation for the vCon library - a Python implementation of
-  the vCon 0.3.0 specification for Virtual Conversation objects.
+  Complete API documentation for the vCon Python library (v0.9.2), targeting
+  draft-ietf-vcon-vcon-core-02 with syntax parameter "0.4.0".
 icon: plug
 ---
 
@@ -9,7 +9,7 @@ icon: plug
 
 ## vCon Library API Reference
 
-Complete API documentation for the vCon library - a Python implementation of the latest vCon specification for Virtual Conversation objects.
+Complete API documentation for the vCon library (**v0.9.2**) — a Python implementation of [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) for Virtual Conversation objects. See the [Quickstart](quickstart.md) for the 0.9.2 quirks list and field-name migration guidance.
 
 ### Overview
 

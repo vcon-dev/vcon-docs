@@ -6,9 +6,24 @@ description: Learning More
 
 ## Official Documents
 
-Read the [IETF draft proposal](https://datatracker.ietf.org/doc/html/draft-petrie-vcon-01)
+Read the IETF working-group draft: [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) — the current spec target, with syntax parameter `"vcon": "0.4.0"`.
 
-Track our [group's progress at the IETF](https://datatracker.ietf.org/doc/charter-ietf-vcon/)
+Track our [group's progress at the IETF](https://datatracker.ietf.org/doc/charter-ietf-vcon/) (charter, meetings, and active drafts).
+
+### Extension drafts
+
+vCon's extension mechanism (`extensions[]` + `must_understand[]` / `critical`) is documented in the core draft. Active extension drafts:
+
+- [`draft-howe-vcon-lawful-basis`](https://datatracker.ietf.org/doc/draft-howe-vcon-lawful-basis/) — lawful basis for processing (GDPR / privacy compliance)
+- [`draft-howe-vcon-lifecycle`](https://datatracker.ietf.org/doc/draft-howe-vcon-lifecycle/) — SCITT-based lifecycle and audit trail
+- [`draft-howe-vcon-wtf`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf/) — World Transcription Format (multi-vendor transcription)
+- [`draft-howe-vcon-agent-session`](https://datatracker.ietf.org/doc/draft-howe-vcon-agent-session/) — verifiable agent-conversation session trace
+- [`draft-howe-vcon-sip-signaling`](https://datatracker.ietf.org/doc/draft-howe-vcon-sip-signaling/) — SIP telephony signaling metadata
+- [`draft-howe-vcon-mcp-session`](https://datatracker.ietf.org/doc/draft-howe-vcon-mcp-session/) — MCP / LLM session attachment
+
+See the **Extensions** section of this site for a per-extension overview.
+
+> **Historical note:** The pre-WG draft was `draft-petrie-vcon-01` with syntax `"0.0.2"`. Both have been superseded by the working-group draft above. If you find content elsewhere referencing the old draft or version string, treat it as historical.
 
 ## vCon Software and Implementations
 

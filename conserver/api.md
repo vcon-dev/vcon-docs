@@ -114,8 +114,8 @@ Retrieves multiple vCons by their UUIDs in a single request.
 **Response:** `200 OK`
 ```json
 [
-  { "uuid": "...", "vcon": "0.0.1", ... },
-  { "uuid": "...", "vcon": "0.0.1", ... }
+  { "uuid": "...", "vcon": "0.4.0", ... },
+  { "uuid": "...", "vcon": "0.4.0", ... }
 ]
 ```
 
@@ -151,7 +151,7 @@ curl -X POST "http://localhost:8000/api/vcon?ingress_lists=main_chain" \
   -H "x-conserver-api-token: $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "vcon": "0.0.1",
+    "vcon": "0.4.0",
     "uuid": "550e8400-e29b-41d4-a716-446655440000",
     "created_at": "2024-01-15T10:30:00Z",
     "parties": [],

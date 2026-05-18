@@ -7,9 +7,17 @@ icon: scroll
 
 This guide provides a comprehensive overview of the vCon (Virtual Conversation) Python library, designed specifically for Large Language Models (LLMs) that need to generate or modify code using this library.
 
+> **Spec target:** [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) · syntax parameter `"vcon": "0.4.0"` · library version `0.9.2`.
+>
+> **Critical for LLM-generated code:**
+> - Top-level field is `amended` (not `appended`); declared-critical extensions live in `must_understand[]` (not `must_support`).
+> - Attachments use `purpose` (REQUIRED), never `type` — except the `lawful_basis` extension, which uses `type: "lawful_basis"`.
+> - Analysis entries require `vendor`; use `schema` (never `schema_version`); `body` is always a JSON-encoded string.
+> - WTF transcripts go in `analysis[]`, not `attachments[]`. See [WTF Transcription extension](../extensions/wtf-transcription.md).
+
 ### Overview
 
-The vCon library is a Python implementation of the vCon 0.3.0 specification for structuring, managing, and manipulating conversation data in a standardized format. It enables the creation, validation, and manipulation of digital representations of conversations with rich metadata, supporting all modern conversation features including multimedia content, security, and extensibility.
+The vCon library is a Python implementation of [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) for structuring, managing, and manipulating conversation data in a standardized format. It enables the creation, validation, and manipulation of digital representations of conversations with rich metadata, supporting all modern conversation features including multimedia content, security, and extensibility.
 
 #### Key Concepts
 
@@ -1451,18 +1459,25 @@ def create_transcription_enabled_conversation():
         quality=quality
     )
     
-    # Add to vCon
-    vcon.vcon_dict["attachments"].append({
-        "type": "wtf_transcription",
+    # Add to vCon as an ANALYSIS entry (recommended location for transcripts per
+    # draft-howe-vcon-wtf). The core spec uses `purpose` on attachments, not `type`.
+    # The vcon Python library's add_wtf_transcription_attachment() helper emits
+    # `type: "wtf_transcription"` for legacy reasons — rename it to `purpose:` (or
+    # better, place the WTF document in analysis[] as shown below).
+    import json
+    vcon.vcon_dict["analysis"].append({
+        "type": "transcript",
+        "dialog": 0,
+        "vendor": "openai-whisper",
+        "product": "whisper-1",
         "encoding": "json",
-        "body": attachment.to_dict(),
-        "party": 0,
-        "dialog": 0
+        "schema": "https://datatracker.ietf.org/doc/draft-howe-vcon-wtf/",
+        "body": json.dumps(attachment.to_dict()),
     })
-    
-    # Add extension
-    vcon.add_extension("wtf_transcription")
-    
+
+    # Declare the extension
+    vcon.add_extension("wtf")
+
     return vcon
 ```
 

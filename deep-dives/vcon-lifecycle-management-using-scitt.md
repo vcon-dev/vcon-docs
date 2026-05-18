@@ -4,6 +4,8 @@ description: A Privacy-First Approach to Conversation Data Management
 
 # vCon Lifecycle Management using SCITT
 
+> **Spec note:** This whitepaper describes the rationale and operating model for SCITT-anchored vCon lifecycle management. The corresponding spec is [`draft-howe-vcon-lifecycle`](https://datatracker.ietf.org/doc/draft-howe-vcon-lifecycle/); for the spec-surface and event vocabulary, see [Lifecycle extension](../extensions/lifecycle.md).
+
 ## Executive Summary
 
 Organizations across industries are grappling with an unprecedented challenge: how to extract value from conversational data while maintaining strict privacy compliance and earning consumer trust. Every day, billions of conversations occur through phone calls, video conferences, chat systems, and email exchanges, generating valuable insights for customer service, artificial intelligence training, and business intelligence. However, this same data contains sensitive personal information subject to increasingly stringent privacy regulations worldwide.

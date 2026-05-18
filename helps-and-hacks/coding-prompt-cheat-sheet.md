@@ -4,6 +4,14 @@ description: For when you need to tell cursor or replit what a vCon is in a prom
 
 # Coding Prompt Cheat Sheet
 
+> **Spec target:** [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) · syntax parameter `"vcon": "0.4.0"`.
+>
+> **Field-name migration (read this first if you have pre-0.9.1 code):**
+> - `appended` → `amended`
+> - `must_support` → `critical`
+> - Attachment field is `purpose` (REQUIRED), never `type` (the one documented exception is the `lawful_basis` extension).
+> - Analysis field is `schema` (never `schema_version`); `vendor` is REQUIRED on every analysis entry.
+
 ## vCon (Virtual Conversation) Standard - LLM Context
 
 ### What is a vCon?
@@ -32,18 +40,20 @@ Every vCon has exactly 5 main sections:
 
 ```json
 {
-  "vcon": "0.0.2",                    // REQUIRED: syntax version
-  "uuid": "string",                   // REQUIRED: globally unique identifier 
+  "vcon": "0.4.0",                    // REQUIRED: syntax version
+  "uuid": "string",                   // REQUIRED: globally unique identifier
   "created_at": "Date",               // REQUIRED: creation timestamp (RFC3339)
   "updated_at": "Date",               // OPTIONAL: last modification timestamp
   "subject": "string",                // OPTIONAL: conversation topic/subject
+  "extensions": [],                   // OPTIONAL: array of extension names this vCon uses (e.g. "lawful_basis", "wtf")
+  "must_understand": [],              // OPTIONAL: subset of extensions[] that consumers MUST support to safely process this vCon
   "parties": [],                      // REQUIRED: array of Party objects
   "dialog": [],                       // OPTIONAL: array of Dialog objects
-  "analysis": [],                     // OPTIONAL: array of Analysis objects  
+  "analysis": [],                     // OPTIONAL: array of Analysis objects
   "attachments": [],                  // OPTIONAL: array of Attachment objects
-  "redacted": {},                     // OPTIONAL: Redacted object (mutually exclusive with appended/group)
-  "appended": {},                     // OPTIONAL: Appended object (mutually exclusive with redacted/group)
-  "group": []                         // OPTIONAL: array of Group objects (mutually exclusive with redacted/appended)
+  "redacted": {},                     // OPTIONAL: Redacted object (mutually exclusive with amended/group)
+  "amended": {}                       // OPTIONAL: Amended object (mutually exclusive with redacted/group)
+  // NOTE: `group` is reserved in draft-ietf-vcon-vcon-core-02; do not emit an empty `group: []`.
 }
 ```
 
@@ -146,13 +156,12 @@ Every vCon has exactly 5 main sections:
 
 ```json
 {
-  "type": "string",                   // OPTIONAL: semantic type of attachment
-  "purpose": "string",                // OPTIONAL: purpose of attachment
+  "purpose": "string",                // REQUIRED: purpose of the attachment (e.g. "contract", "screenshot", "synthetic_data_consent")
   "start": "Date",                    // REQUIRED: timestamp when attachment was exchanged
-  "party": "number",                  // REQUIRED: index of party who contributed attachment
+  "party": "number",                  // REQUIRED: index of party who contributed attachment (use 0 for vCon-level attachments)
+  "dialog": "number",                 // REQUIRED: index of related dialog (use 0 for vCon-level attachments)
   "mediatype": "string",              // OPTIONAL: MIME type
   "filename": "string",               // OPTIONAL: original filename
-  "dialog": "number",                 // REQUIRED: index of related dialog
   
   // Content
   "body": "string",                   // OPTIONAL: inline attachment data (mutually exclusive with url)
@@ -175,7 +184,9 @@ Every vCon has exactly 5 main sections:
 }
 ```
 
-#### Appended Object Properties
+#### Amended Object Properties
+
+> **Spec note:** This object was renamed from `appended` to `amended` in `draft-ietf-vcon-vcon-core-02`. If you are reading legacy code or vCons that use `appended`, treat the name as a synonym and migrate.
 
 ```json
 {
@@ -296,7 +307,7 @@ Every vCon has exactly 5 main sections:
 
 ### Key Considerations
 
-* vCons can reference previous versions (redaction/append history via uuid)
+* vCons can reference previous versions (redaction/amendment history via uuid)
 * Media content can be embedded (body + encoding) or referenced externally (url + content\_hash)
 * Privacy and compliance requirements vary by jurisdiction
 * Large media files should typically be stored as external references
@@ -307,7 +318,7 @@ Every vCon has exactly 5 main sections:
 
 ### Validation Rules
 
-* At most one of: redacted, appended, or group parameters in top-level object
+* At most one of: redacted, amended, or group parameters in top-level object
 * Dialog objects of type "incomplete" or "transfer" MUST NOT have body/url content
 * Dialog objects of other types SHOULD have body+encoding OR url+content\_hash
 * External references (url) MUST include content\_hash for integrity

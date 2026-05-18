@@ -4,11 +4,13 @@ description: A Technical Whitepaper on Standardized Consent in Virtualized Conve
 
 # Privacy-First Conversation Management
 
+> **Spec note:** This whitepaper was originally written against an early `draft-vcon-consent` document. That work has been superseded by [`draft-howe-vcon-lawful-basis`](https://datatracker.ietf.org/doc/draft-howe-vcon-lawful-basis/), which formalizes the consent / lawful-basis model described here. For the current spec-surface and JSON shapes, see [Lawful Basis](../extensions/lawful-basis.md). The rationale and patterns in this whitepaper remain valid.
+
 ### Executive Summary
 
 In our increasingly digital world, voice conversations generate valuable data for businesses while creating significant privacy obligations. The challenge isn't just collecting consent—it's managing that consent throughout the entire data lifecycle while ensuring compliance with evolving privacy regulations like GDPR, CCPA, and emerging AI governance frameworks.
 
-The vCon (Virtualized Conversation) consent attachment specification solves this challenge by embedding structured consent information directly within conversation containers. This approach ensures that consent travels with the data, enabling automated compliance checking, granular permission management, and transparent audit trails—all while supporting modern AI applications that depend on conversational data.
+The vCon [Lawful Basis extension](../extensions/lawful-basis.md) solves this challenge by embedding structured consent information directly within conversation containers. This approach ensures that consent travels with the data, enabling automated compliance checking, granular permission management, and transparent audit trails—all while supporting modern AI applications that depend on conversational data.
 
 **Key Benefits:**
 
