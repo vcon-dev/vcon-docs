@@ -15,6 +15,19 @@ This guide covers deploying the Conserver in production environments with consid
 - Domain name and TLS certificates
 - Monitoring infrastructure (optional but recommended)
 
+## Image strategy: two Dockerfiles
+
+As of the May 2026 image optimization (`docker/Dockerfile.api` and `docker/Dockerfile.conserver`), the conserver ships **two separate images**:
+
+| Image | What it contains | Use it for |
+|-------|------------------|------------|
+| **`Dockerfile.api`** | FastAPI app, storage backends, vCon library — no audio/ML stack | The API tier. Light, starts fast, scales horizontally. |
+| **`Dockerfile.conserver`** | Everything in the API image *plus* transformers, openai, deepgram, ffmpeg, pydub | The worker tier. Heavy but only needed where audio processing and LLM calls run. |
+
+Both images use [**uv**](https://github.com/astral-sh/uv) (Astral's Python package manager) for reproducible builds and place the virtualenv at `/opt/venv` so it survives volume mounts.
+
+In production, deploy the API image for the `conserver-api` service and the conserver image for the `conserver-worker` service. The example below does exactly that.
+
 ## Architecture Overview
 
 ```
@@ -53,7 +66,7 @@ version: '3.8'
 
 services:
   conserver-api:
-    image: your-registry/conserver:latest
+    image: your-registry/conserver-api:latest    # built from docker/Dockerfile.api
     command: uvicorn api:app --host 0.0.0.0 --port 8000
     deploy:
       replicas: 3
@@ -75,7 +88,7 @@ services:
     secrets:
       - api_tokens
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/config"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -85,7 +98,7 @@ services:
         condition: service_healthy
 
   conserver-worker:
-    image: your-registry/conserver:latest
+    image: your-registry/conserver:latest        # built from docker/Dockerfile.conserver
     command: python main.py
     deploy:
       replicas: 5
@@ -101,6 +114,8 @@ services:
       - CONSERVER_CONFIG_FILE=/app/config.yml
       - LOG_LEVEL=INFO
       - ENV=production
+      - CONSERVER_WORKERS=4              # forked worker processes per container
+      - CONSERVER_PARALLEL_STORAGE=true  # write to storages concurrently
       - OPENAI_API_KEY_FILE=/run/secrets/openai_key
       - DEEPGRAM_KEY_FILE=/run/secrets/deepgram_key
     volumes:
@@ -201,7 +216,7 @@ server {
 
     # Health check endpoint (no auth required)
     location /health {
-        proxy_pass http://conserver/api/config;
+        proxy_pass http://conserver/health;
         proxy_http_version 1.1;
     }
 }
@@ -328,25 +343,37 @@ Consider using:
 
 ### Health Checks
 
-The Conserver exposes health information via:
+The Conserver exposes three public system endpoints (no auth required) for monitoring:
 
 ```bash
-# Check API health
-curl -H "x-conserver-api-token: $TOKEN" http://localhost:8000/api/config
+# Health check — basic up/down + version
+curl http://localhost:8000/health
 
-# Check Redis connectivity
+# Build metadata — version, git commit, build time
+curl http://localhost:8000/version
+
+# Queue depth (point load balancers / autoscalers at this)
+curl "http://localhost:8000/stats/queue?list_name=incoming_calls"
+
+# Redis liveness
 redis-cli ping
 ```
 
+These endpoints intentionally live at the application root (not under `API_ROOT_PATH`), so they're stable regardless of how you've configured the API prefix.
+
 ### Metrics Integration
 
-The Conserver supports Datadog integration for metrics:
+Every standard link and storage emits OpenTelemetry spans and metrics (latency, errors, cache hits where applicable). Wire up an OTLP collector — see [vCon MCP Adapters](../tools/vcon-mcp-adapters.md) for a turnkey integration — and the conserver will populate your dashboards out of the box.
+
+Per-link metrics include:
 
 ```python
-# In your config, metrics are automatically sent for:
-# - Processing time per link
-# - Queue depths
-# - Error rates
+# Automatic OTEL attributes per link:
+# - link_name
+# - vcon_uuid (when relevant)
+# - status (ok | error | skipped)
+# - duration_ms
+# - cache_hit (for transcription links with caching)
 # - Storage operation latency
 ```
 

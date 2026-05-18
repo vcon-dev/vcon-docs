@@ -41,7 +41,71 @@ ingress_auth:
   customer_data: "single-customer-key"
 ```
 
-External partners can only use the `/vcon/external-ingress` endpoint with their scoped keys.
+External partners can only use the `/vcon/ingress` endpoint with their scoped keys (one ingress key per `ingress_list`).
+
+---
+
+## System Endpoints (no auth)
+
+A small set of system endpoints are mounted at the application root (not under `API_ROOT_PATH`) and require **no authentication**, so they can be used by monitoring tooling, load balancers, and autoscalers.
+
+### Version
+
+```
+GET /version
+```
+
+Returns build metadata.
+
+**Response:** `200 OK`
+```json
+{
+  "version": "2026.05.18",
+  "git_commit": "5bc6b6e2c5c3a577d8295c1cb88f83d989f5db58",
+  "build_time": "2026-05-18T10:00:00Z"
+}
+```
+
+The version follows CalVer (`YYYY.MM.DD`). `git_commit` is the source-of-truth commit deployed; useful for confirming what's running after a roll-out.
+
+---
+
+### Health
+
+```
+GET /health
+```
+
+Health-check endpoint.
+
+**Response:** `200 OK`
+```json
+{
+  "status": "healthy",
+  "version": { "version": "2026.05.18", "git_commit": "...", "build_time": "..." }
+}
+```
+
+---
+
+### Queue Depth
+
+```
+GET /stats/queue?list_name=<redis-list-name>
+```
+
+Returns the current depth of a Redis list (queue). Useful for backpressure-aware autoscaling and dashboards.
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `list_name` | str | Name of the Redis list to measure |
+
+**Response:** `200 OK`
+```json
+{ "list_name": "incoming_calls", "depth": 127 }
+```
 
 ---
 
@@ -208,46 +272,6 @@ curl -H "x-conserver-api-token: $TOKEN" \
 
 ---
 
-## External Partner API
-
-### Submit External vCon
-
-```
-POST /vcon/external-ingress
-```
-
-Endpoint for external partners to submit vCons with scoped API access. Each API key is restricted to specific ingress lists.
-
-**Authentication:** Uses ingress-specific API keys configured in `ingress_auth`
-
-**Query Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `ingress_list` | string | Target ingress queue (must match API key permissions) |
-
-**Request Body:** Full vCon JSON object
-
-**Response:** `204 No Content`
-
-**Response:** `403 Forbidden` - Invalid API key or unauthorized ingress list
-
-**Example:**
-```bash
-curl -X POST "http://localhost:8000/api/vcon/external-ingress?ingress_list=partner_data" \
-  -H "x-conserver-api-token: partner-specific-key" \
-  -H "Content-Type: application/json" \
-  -d @vcon.json
-```
-
-**Security Model:**
-- Each API key grants access only to predefined ingress list(s)
-- No access to other API endpoints or system resources
-- Multiple API keys can be configured per ingress list
-- Submitted vCons are automatically stored, indexed, and queued
-
----
-
 ## Chain Management
 
 ### Add to Ingress
@@ -256,7 +280,20 @@ curl -X POST "http://localhost:8000/api/vcon/external-ingress?ingress_list=partn
 POST /vcon/ingress
 ```
 
-Adds vCon UUIDs to a processing chain's ingress list.
+Adds vCon UUIDs to a processing chain's ingress list. This is the **only** ingress endpoint; external partners use the same path with a scoped key configured under `ingress_auth` in `config.yml`.
+
+**Authentication:**
+
+- **Internal use:** The main `x-conserver-api-token` grants access to any ingress list.
+- **External partners:** A scoped key configured under `ingress_auth` for a specific ingress list. The key only authorizes that list — attempts to write to other lists return `403 Forbidden`. Configure in `config.yml`:
+
+  ```yaml
+  ingress_auth:
+    partner_ingress:
+      - "partner-key-1"
+      - "partner-key-2"
+    customer_data: "single-customer-key"
+  ```
 
 **Query Parameters:**
 

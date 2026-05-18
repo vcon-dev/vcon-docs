@@ -367,6 +367,87 @@ Configuration is done via environment variables:
 
 ---
 
+### SCITT Transparency
+
+**Added May 2026 (SCITT v0.3.0).** Registers each finalized vCon on a [SCRAPI](https://datatracker.ietf.org/doc/draft-ietf-scitt-scrapi/)-compatible SCITT transparency service as a COSE-signed statement. Unlike most storages, the SCITT receipt is **not written back to the vCon** — the transparency service is the authoritative store. Use this when you need a post-chain immutable proof that a vCon existed in a given state at a given time.
+
+```yaml
+storages:
+  scitt_transparency:
+    module: storage.scitt
+    options:
+      scrapi_url: "http://scittles:8000"
+      signing_key_pem: "${SCITT_SIGNING_KEY_PEM}"  # base64-encoded PEM
+      # OR for local development:
+      # signing_key_path: "/etc/scitt/signing-key.pem"
+      issuer: "conserver"
+      key_id: "conserver-key-1"
+      operations:
+        - "vcon_enhanced"
+```
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `scrapi_url` | SCRAPI endpoint of the transparency service | `http://scittles:8000` |
+| `signing_key_pem` | Base64-encoded PEM (preferred for containers / k8s) | `None` |
+| `signing_key_path` | Filesystem path to the signing key (fallback) | `/etc/scitt/signing-key.pem` |
+| `issuer` | COSE issuer identifier | `conserver` |
+| `key_id` | Key identifier | `conserver-key-1` |
+| `operations` | List of lifecycle event types to register (e.g. `vcon_created`, `vcon_enhanced`) | `["vcon_enhanced"]` |
+
+For the in-chain version that *does* attach a receipt to the vCon, see the [`scitt` link](standard-links.md#scitt). The choice depends on whether you want the receipt to travel with the vCon (link) or live only on the transparency service (storage). Both compose with the [Lifecycle extension](../extensions/lifecycle.md).
+
+---
+
+### vCon MCP
+
+Proxies storage writes to a running [vCon MCP server](../mcp-server/README.md) via its REST API. Use this when you want vCons to land in an MCP-backed database (typically Supabase) so they're immediately queryable by LLM agents through the MCP contract tools.
+
+```yaml
+storages:
+  mcp_store:
+    module: storage.vcon_mcp
+    options:
+      base_url: "http://vcon-mcp:3000/api/v1"
+      api_key: "${VCON_MCP_API_KEY}"
+      timeout: 30
+```
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `base_url` | Root of the vCon MCP REST API | `http://127.0.0.1:3000/api/v1` |
+| `api_key` | Bearer token for the MCP server (optional, depending on deployment) | `None` |
+| `timeout` | HTTP timeout in seconds | `30` |
+
+Behavior: `save()` POSTs to `/vcons`, `get()` GETs from `/vcons/{uuid}`, `delete()` DELETEs `/vcons/{uuid}`. The MCP server is the source of truth — there's no local copy beyond the conserver's Redis hot cache.
+
+---
+
+### Webhook
+
+POSTs the finalized vCon JSON to one or more webhook URLs after the chain completes. Mirrors the [`webhook` link](standard-links.md#webhook) but runs in the storage phase (in parallel with other storages) rather than mid-chain.
+
+```yaml
+storages:
+  notify:
+    module: storage.webhook
+    options:
+      webhook-urls:
+        - "https://api.example.com/vcons"
+        - "https://archive.example.com/vcons"
+      headers:
+        Authorization: "Bearer your-token"
+```
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `webhook-urls` | List of URLs to POST the vCon to | `[]` |
+| `headers` | Headers attached to every call | `{}` |
+
+Use the storage form when the webhook is the durable destination (e.g. another system's ingestion endpoint); use the link form when the webhook is an interactive side-effect mid-chain (e.g. alerting). Per-call latency and status are emitted as OTEL metrics.
+
+---
+
 ## Using Multiple Storages
 
 You can configure multiple storage backends and assign them to different chains:

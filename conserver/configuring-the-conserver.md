@@ -37,11 +37,23 @@ Set these in your `.env` file or system environment.
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `VCON_REDIS_EXPIRY` | Cache TTL for vCons in Redis (seconds) | `3600` (1 hour) |
+| `VCON_REDIS_EXPIRY` | Cache TTL for vCons fetched from storage back into Redis (seconds) | `3600` (1 hour) |
 | `VCON_INDEX_EXPIRY` | Search index TTL (seconds) | `86400` (24 hours) |
+| `VCON_CONTEXT_EXPIRY` | Ingress context (OTEL trace context) TTL (seconds) | `86400` (24 hours) |
+| `VCON_DLQ_EXPIRY` | Dead-letter queue TTL (seconds). Set to `0` to keep DLQ entries indefinitely. | `604800` (7 days) |
 | `VCON_SORTED_SET_NAME` | Name of Redis sorted set for vCons | `vcons` |
 | `VCON_SORTED_FORCE_RESET` | Reset sorted set on startup | `true` |
 | `TICK_INTERVAL` | Processing loop interval (ms) | `5000` |
+
+### Worker & Parallelism
+
+These control how many worker processes the conserver runs and how storage writes are dispatched.
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `CONSERVER_WORKERS` | Number of worker processes to fork. Each worker independently pulls from configured ingress queues. Scale this with CPU cores and chain CPU-intensity. | `1` |
+| `CONSERVER_PARALLEL_STORAGE` | If `true`, storage writes for a single vCon run concurrently across the configured storages (ThreadPoolExecutor). If `false`, storages run serially. | `true` |
+| `CONSERVER_START_METHOD` | Multiprocessing start method: `fork`, `spawn`, or `forkserver`. Leave unset to use the platform default (typically `fork` on Linux, `spawn` on macOS). Use `spawn` if you hit fork-safety issues with native libraries. | unset |
 
 ### External Service API Keys
 

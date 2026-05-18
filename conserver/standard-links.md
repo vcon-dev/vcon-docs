@@ -2,6 +2,19 @@
 
 Links are the processing units of the Conserver. Each link performs a specific operation on a vCon as it flows through a chain. Links can analyze content, transform data, route vCons, integrate with external services, and more.
 
+The conserver currently ships **22 standard links**. They are organized in this page by what they do:
+
+| Category | Links |
+|----------|-------|
+| **Transcription** | `deepgram_link`, `groq_whisper`, `hugging_face_whisper`, `openai_transcribe`, `transcribe`, `wtf_transcribe` |
+| **Analysis** | `analyze`, `analyze_vcon`, `analyze_and_label`, `check_and_tag`, `detect_engagement`, `hugging_llm_link` |
+| **Routing & filtering** | `sampler`, `jq_link`, `tag_router` |
+| **Data management** | `tag`, `diet`, `expire_vcon` |
+| **Integration** | `webhook`, `post_analysis_to_slack` |
+| **Audit & compliance** | `scitt`, `datatrails` |
+
+All links emit OpenTelemetry metrics (latency, error counts, cache hits where applicable) and trace spans. If you've wired up the [`vcon-mcp-adapters`](../tools/vcon-mcp-adapters.md) OTEL collector, you'll see per-link spans automatically.
+
 ## Link Interface
 
 All links implement the same interface:
@@ -158,6 +171,36 @@ links:
 |--------|-------------|---------|
 | `transcribe_options.model_size` | Model size | `base` |
 | `transcribe_options.output_options` | Output format options | `["vendor"]` |
+
+---
+
+#### wtf_transcribe
+
+Transcribes dialog recordings via the `vfun` transcription service and writes a [WTF (World Transcription Format)](../extensions/wtf-transcription.md)-shaped analysis entry. Refactored in May 2026 to decompose `run()` and normalize timeout option names.
+
+```yaml
+links:
+  wtf:
+    module: links.wtf_transcribe
+    options:
+      vfun-server-url: "https://wtf.example.com/transcribe"
+      api-key: "your-vfun-key"
+      language: "en"
+      diarize: true
+      vfun-timeout: 300
+      url-timeout: 60
+```
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `vfun-server-url` | vfun transcription endpoint | (required) |
+| `api-key` | Service API key | `None` |
+| `language` | BCP-47 language hint | `None` (auto-detect) |
+| `diarize` | Emit speaker labels | `false` |
+| `vfun-timeout` | Transcription request timeout (s) | `300` |
+| `url-timeout` | Media-fetch timeout (s) | `60` |
+
+Writes an `analysis[]` entry with `type: "wtf_transcription"`, `vendor` inferred from the service response, `encoding: "json"`, and a WTF document in `body`. See [WTF Transcription extension](../extensions/wtf-transcription.md) for the body shape.
 
 ---
 
@@ -392,30 +435,26 @@ links:
 
 #### tag_router
 
-Routes vCons to different Redis lists based on their tags.
+Routes vCons to additional Redis lists based on tags attached to the vCon. The vCon is pushed onto every matching target list; processing in the current chain continues unless `forward_original` is set to `false`.
 
 ```yaml
 links:
   router:
     module: links.tag_router
     options:
-      routes:
-        - tag_name: "priority"
-          tag_value: "high"
-          destination: "priority_queue"
-        - tag_name: "department"
-          tag_value: "sales"
-          destination: "sales_queue"
-      default_destination: "general_queue"
+      tag_routes:
+        priority: "priority_queue"
+        urgent: "urgent_queue"
+        complaint: "complaint_review_queue"
+      forward_original: true
 ```
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `routes` | List of routing rules | `[]` |
-| `routes[].tag_name` | Tag name to match | (required) |
-| `routes[].tag_value` | Tag value to match | (required) |
-| `routes[].destination` | Destination Redis list | (required) |
-| `default_destination` | Fallback destination | (none) |
+| `tag_routes` | Dict mapping tag value → target Redis list name. The link checks tags in the vCon's `attachments[]` of type `tags` against the keys here. | `{}` |
+| `forward_original` | If `true`, continue the current chain after routing. If `false`, return `None` to stop the chain (vCon proceeds only on the routed queues). | `true` |
+
+Returns `vcon_uuid` (chain continues) or `None` (chain stops) per `forward_original`.
 
 ---
 
@@ -478,19 +517,19 @@ links:
 
 #### expire_vcon
 
-Sets an expiration time for vCons in Redis for automatic cleanup.
+Sets a Redis TTL on the vCon key so the working copy is cleaned up automatically. The vCon stays in any storage backends configured on the chain — this only affects the Redis hot cache.
 
 ```yaml
 links:
   set_expiry:
     module: links.expire_vcon
     options:
-      expire_seconds: 86400  # 24 hours
+      seconds: 86400  # 24 hours
 ```
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `expire_seconds` | TTL in seconds | (required) |
+| `seconds` | TTL in seconds applied via `EXPIRE vcon:{uuid}` | `86400` (24 hours) |
 
 ---
 
@@ -502,29 +541,27 @@ These links connect to external services.
 
 #### webhook
 
-Sends vCons to external webhook URLs.
+POSTs the current vCon as JSON to one or more webhook URLs. The same module is available as a [storage backend](storage.md#webhook) if you'd rather invoke webhooks after the chain rather than mid-chain.
 
 ```yaml
 links:
   notify:
     module: links.webhook
     options:
-      url: "https://api.example.com/vcon-webhook"
-      method: "POST"
+      webhook-urls:
+        - "https://api.example.com/vcon-webhook"
+        - "https://backup.example.com/vcon-webhook"
       headers:
         Authorization: "Bearer token123"
-        Content-Type: "application/json"
-      include_vcon: true
-      timeout: 30
+        x-conserver-api-token: "your-api-token"
 ```
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `url` | Webhook URL | (required) |
-| `method` | HTTP method | `POST` |
-| `headers` | HTTP headers | `{}` |
-| `include_vcon` | Include full vCon in payload | `true` |
-| `timeout` | Request timeout in seconds | `30` |
+| `webhook-urls` | List of URLs to POST the vCon JSON to | `[]` |
+| `headers` | Headers to attach to each request | `{}` |
+
+Each URL is called sequentially with a `POST` containing the full vCon JSON. Per-call latency and status codes are recorded as OTEL metrics.
 
 ---
 
@@ -564,49 +601,67 @@ These links provide integrity and audit trail capabilities.
 
 #### datatrails
 
-Creates verifiable audit trails using the DataTrails platform, mapping to SCITT envelopes.
+Creates [DataTrails](https://app.datatrails.ai) Events for each vCon, producing a tamper-evident audit trail via OIDC-authenticated calls. DataTrails statements map onto SCITT envelopes — if you want a vendor-neutral transparency service, prefer the [`scitt`](#scitt) link instead.
 
 ```yaml
 links:
   audit:
     module: links.datatrails
     options:
-      client_id: "your-client-id"
-      client_secret: "your-client-secret"
-      asset_id: "vcon-asset"
-      event_type: "vcon_processed"
-      include_hash: true
+      api_url: "https://app.datatrails.ai/archivist"
+      auth_url: "https://app.datatrails.ai/archivist/iam/v1/appidp/token"
+      client_id: "${DATATRAILS_CLIENT_ID}"
+      client_secret: "${DATATRAILS_CLIENT_SECRET}"
+      partner_id: "your-partner-id"
+      asset_attributes:
+        arc_display_type: "vcon_droid"
+        conserver_link_version: "auto"
 ```
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `client_id` | DataTrails client ID | (required) |
-| `client_secret` | DataTrails client secret | (required) |
-| `asset_id` | Asset identifier | (required) |
-| `event_type` | Event type label | `vcon_event` |
-| `include_hash` | Include content hash | `true` |
+| `api_url` | DataTrails Archivist API root | `https://app.datatrails.ai/archivist` |
+| `auth_url` | OIDC client-credentials token endpoint | `https://app.datatrails.ai/archivist/iam/v1/appidp/token` |
+| `client_id` / `client_secret` | OIDC client credentials | (required) |
+| `partner_id` | Partner identifier used in event attribution | `not-set` |
+| `asset_attributes` | Initial attributes for the DataTrails asset | DataTrails-recommended defaults |
+
+DataTrails is the durable store for the audit data — the vCon itself is not modified.
 
 ---
 
 #### scitt
 
-Creates and registers signed statements on a SCITT Transparency Service for verifiable integrity.
+Registers a COSE-signed statement about the current vCon on a [SCRAPI](https://datatracker.ietf.org/doc/draft-ietf-scitt-scrapi/)-compatible SCITT transparency service (such as [scittles](https://github.com/vcon-dev/scittles)), then verifies the returned COSE receipt and (optionally) stores it as an analysis entry on the vCon.
+
+Added in May 2026 (SCITT v0.3.0). The lifecycle event recorded is controlled by `vcon_operation`; combine multiple instances of this link in a chain to record `vcon_created` early and `vcon_enhanced` after transcription.
 
 ```yaml
 links:
-  scitt:
+  scitt_created:
     module: links.scitt
     options:
-      service_url: "https://scitt.example.com"
-      signing_key_path: "/path/to/key.pem"
-      include_receipt: true
+      scrapi_url: "http://scittles:8000"
+      signing_key_pem: "${SCITT_SIGNING_KEY_PEM}"   # base64-encoded PEM (preferred for k8s/containers)
+      # OR for local development:
+      # signing_key_path: "/etc/scitt/signing-key.pem"
+      issuer: "conserver"
+      key_id: "conserver-key-1"
+      vcon_operation: "vcon_created"
+      store_receipt: true
 ```
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `service_url` | SCITT service URL | (required) |
-| `signing_key_path` | Path to signing key | (required) |
-| `include_receipt` | Store receipt in vCon | `true` |
+| `scrapi_url` | SCRAPI endpoint for the SCITT transparency service | `http://scittles:8000` |
+| `signing_key_pem` | Base64-encoded PEM. Preferred for containers / k8s deployments. | `None` |
+| `signing_key_path` | Filesystem path to the signing key (fallback for local development) | `/etc/scitt/signing-key.pem` |
+| `issuer` | COSE issuer identifier | `conserver` |
+| `key_id` | Key identifier | `conserver-key-1` |
+| `vcon_operation` | Lifecycle event recorded (e.g. `vcon_created`, `vcon_enhanced`) | `vcon_created` |
+| `store_receipt` | Append the COSE receipt as an analysis entry on the vCon | `true` |
+
+Writes an `analysis[]` entry with `type: "scitt_receipt"`, `vendor: "scittles"`, and a body containing `entry_id`, `cose_receipt`, and `subject`. See [Lifecycle extension](../extensions/lifecycle.md) for how this composes with the vCon lifecycle audit story.
 
 ---
 
