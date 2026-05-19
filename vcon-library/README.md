@@ -6,6 +6,8 @@ icon: plug
 
 ## vCon Python Library
 
+> **Current version:** `vcon` **0.9.4** · Install with `pip install vcon` · [GitHub: vcon-dev/vcon-lib](https://github.com/vcon-dev/vcon-lib) · Targets [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), syntax `"0.4.0"`.
+
 ### About the Library
 
 The vCon (Virtual Conversation) library is a powerful Python tool designed to capture, structure, and manage conversation data in a standardized format. It provides a robust set of features for creating, manipulating, and analyzing digital representations of conversations, making it particularly useful for applications in customer service, call centers, chat systems, and any scenario where structured conversation data is valuable.
@@ -49,7 +51,7 @@ The vCon (Virtual Conversation) format is being developed as an open standard th
 1. **Join the Mailing List**: Subscribe to the vCon working group mailing list at [vcon@ietf.org](mailto:vcon@ietf.org)
 2. **Review Documents**:
    * Working group documents and drafts can be found at: https://datatracker.ietf.org/wg/vcon/documents/
-   * The current Internet-Draft can be found at: https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-container/
+   * The current Internet-Draft can be found at: https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/
 3. **Attend Meetings**:
    * The working group meets virtually during IETF meetings
    * Meeting schedules and connection details are announced on the mailing list

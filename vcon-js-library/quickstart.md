@@ -77,7 +77,7 @@ vcon.addAnalysis({
 
 ## Declaring an extension
 
-Extension declarations are generic in vcon-js — there are no per-extension builder helpers in 0.3.0. You add extension data to the right array yourself and declare the extension:
+Extension declarations are generic in vcon-js — there are no per-extension builder helpers in 0.4.0. You add extension data to the right array yourself and declare the extension:
 
 ```typescript
 vcon.addExtension('lawful_basis');           // declared but optional for consumers

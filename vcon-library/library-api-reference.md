@@ -1,6 +1,6 @@
 ---
 description: >-
-  Complete API documentation for the vCon Python library (v0.9.2), targeting
+  Complete API documentation for the vCon Python library (v0.9.4), targeting
   draft-ietf-vcon-vcon-core-02 with syntax parameter "0.4.0".
 icon: plug
 ---
@@ -9,7 +9,7 @@ icon: plug
 
 ## vCon Library API Reference
 
-Complete API documentation for the vCon library (**v0.9.2**) — a Python implementation of [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) for Virtual Conversation objects. See the [Quickstart](quickstart.md) for the 0.9.2 quirks list and field-name migration guidance.
+Complete API documentation for the vCon library (**v0.9.4**) — a Python implementation of [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) for Virtual Conversation objects. See the [Quickstart](quickstart.md) for recent-release notes and the remaining quirks list.
 
 ### Overview
 
@@ -315,13 +315,26 @@ vcon.add_lawful_basis_attachment(
 
 **`add_wtf_transcription_attachment(transcript: Dict[str, Any], segments: List[Dict[str, Any]], metadata: Dict[str, Any], party_index: Optional[int] = None, dialog_index: Optional[int] = None, **kwargs) -> None`**
 
-Add a WTF transcription attachment to the vCon.
+Add a WTF transcription as an attachment. The canonical placement is `analysis[]` — use `add_wtf_transcription_analysis()` (below) instead for new code. This helper remains for backwards compatibility.
 
 ```python
 vcon.add_wtf_transcription_attachment(
     transcript={"text": "Hello world", "language": "en", "duration": 2.0, "confidence": 0.95},
     segments=[{"id": 0, "start": 0.0, "end": 2.0, "text": "Hello world", "confidence": 0.95}],
     metadata={"created_at": "2025-01-01T00:00:00Z", "provider": "whisper", "model": "whisper-1"}
+)
+```
+
+**`add_wtf_transcription_analysis(transcript: Dict[str, Any], segments: List[Dict[str, Any]], metadata: Dict[str, Any], dialog_index: Optional[int] = None, **kwargs) -> None`** *(new in 0.9.2)*
+
+Add a WTF transcription as an `analysis[]` entry — the canonical placement per the [WTF Transcription extension](../extensions/wtf-transcription.md). Emits `type: "transcription"`, `vendor` and `product` derived from `metadata`, `schema` set to the WTF draft URL, `encoding: "json"`, with the JSON-stringified body. Prefer this over the `_attachment` form for new adapters.
+
+```python
+vcon.add_wtf_transcription_analysis(
+    transcript={"text": "Hello world", "language": "en", "duration": 2.0, "confidence": 0.95},
+    segments=[{"id": 0, "start": 0.0, "end": 2.0, "text": "Hello world", "confidence": 0.95}],
+    metadata={"created_at": "2025-01-01T00:00:00Z", "provider": "whisper", "model": "whisper-1"},
+    dialog_index=0,
 )
 ```
 
@@ -542,7 +555,7 @@ Party(
 * `contact_list` (str, optional): Contact list reference
 * `meta` (dict, optional): Additional metadata
 * `sip` (str, optional): SIP URI for VoIP communication
-* `did` (str, optional): Decentralized Identifier
+* `did` (str, optional, **deprecated in spec 0.4.0**): Decentralized Identifier. The field was removed from the core spec in `draft-ietf-vcon-vcon-core-02`; the library still accepts it for backwards compatibility with older vCons but new adapters should not emit it.
 * `jCard` (dict, optional): vCard format contact information
 * `timezone` (str, optional): Party's timezone
 

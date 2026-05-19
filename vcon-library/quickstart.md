@@ -8,16 +8,22 @@ description: The Python vCon library
 
 A Python library for working with vCon (Virtual Conversation) objects according to the vCon specification.
 
-> **Current version:** `vcon` **0.9.2** (May 2026). Install with `pip install vcon`.
+> **Current version:** `vcon` **0.9.4** (May 2026). Install with `pip install vcon`.
 >
 > **Spec target:** [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) · syntax parameter `"vcon": "0.4.0"`.
 
-### What's new in 0.9.2
+### Recent releases
 
-- **WTF transcription helper.** `add_wtf_transcription_attachment()` generates a World Transcription Format payload. See [WTF Transcription extension](../extensions/wtf-transcription.md) for placement guidance — the recommended location is `analysis[]`, not `attachments[]`.
-- **Spec-correct field names.** Pre-0.9.1 code used `appended` and `must_support`; the current spec uses `amended` and `critical` (the latter typically appears as `must_understand[]` at the top level). The library now uses the new names. If you have stored vCons using the old names, they remain parseable for compatibility, but new code should use the spec-correct names.
-- **Drops empty defaults.** Pre-0.9.1 vCons emitted empty `group: []` and `redacted: {}` blocks by default; 0.9.2 omits them, producing cleaner output.
-- **`vcon` syntax parameter.** The library now emits `"vcon": "0.4.0"` automatically on output. (Older versions required you to set it manually — see the quirks list at the bottom of this page.)
+**0.9.4** — Security: dependency bumps for `authlib`, `requests`, `pydash`, `python-dateutil`, `mutagen`, `pypdf`, `pillow`, `uuid6`.
+
+**0.9.3** — Fixed: `Vcon.add_tag()` now correctly includes `party: 0` and `dialog: 0` on the created `tags`-purpose attachment. Previously the attachment was missing these spec-required indices.
+
+**0.9.2** — Spec compliance pass:
+- **`build_new()` is now spec-correct out of the box.** Emits `"vcon": "0.4.0"` automatically and no longer initializes empty `group: []` / `redacted: {}` blocks. Older versions required manual fixups.
+- **`add_wtf_transcription_analysis()` added** — sibling to `add_wtf_transcription_attachment()` that places the WTF payload into `analysis[]` (the canonical location per the speckit) with `type: "transcription"`, `vendor`, `product`, `schema`, `encoding: "json"`, JSON-stringified body.
+- **`add_attachment(encoding="json", ...)` now works.** Earlier reports that JSON-bodied attachments were rejected are stale.
+- **`add_wtf_transcription_attachment()` helper** for the World Transcription Format payload. See [WTF Transcription extension](../extensions/wtf-transcription.md) for placement guidance — the recommended location is `analysis[]` (use `_analysis`), not `attachments[]`.
+- **Spec-correct field names.** Pre-0.9.1 code used `appended` and `must_support`; the current spec uses `amended` and `critical` (the latter typically appears as `must_understand[]` at the top level). The library now uses the new names. Stored vCons with old names remain parseable for compatibility; new code should use the spec-correct names.
 
 ### Overview
 
@@ -677,35 +683,17 @@ can_record = vcon.check_lawful_basis_permission("recording", party_index=0)
 attachments = vcon.find_wtf_attachments(party_index=0)
 ```
 
-### 0.9.2 quirks and post-processing steps
+### Remaining quirks (0.9.4)
 
-The library is broadly spec-compliant, but a handful of edges still need manual handling for full `draft-ietf-vcon-vcon-core-02` compliance. Apply these after building the vCon and before serializing:
+The library is broadly spec-compliant as of 0.9.4. Most historical quirks (manual syntax-param setting, empty `group`/`redacted` placeholders, `add_attachment` rejecting JSON, `add_tag` missing indices) were fixed across 0.9.2 and 0.9.3. Two edges still need attention:
 
-1. **Set the syntax parameter.** `Vcon.build_new()` does not set the `vcon` syntax param. Write it yourself:
-   ```python
-   v.vcon_dict["vcon"] = "0.4.0"
-   ```
-2. **JSON-bodied attachments.** `add_attachment()` rejects `encoding: "json"`. For JSON attachments, append directly to `vcon_dict["attachments"]`:
-   ```python
-   v.vcon_dict["attachments"].append({
-       "purpose": "ticket_metadata",
-       "encoding": "json",
-       "party": 0, "dialog": 0,
-       "body": {"ticket_id": "T-1234", "priority": "high"},
-   })
-   ```
-3. **`subject` has no setter.** Write via the dict:
+1. **`subject` has no setter.** Write via the dict:
    ```python
    v.vcon_dict["subject"] = "Refund request"
    ```
-4. **WTF helper field rename.** `add_wtf_transcription_attachment()` emits `type: "wtf_transcription"`. The spec uses `purpose:` on attachments (or `type: "transcript"` if placed in `analysis[]`, which is the recommended location). Rename or relocate before serializing — see [WTF Transcription extension](../extensions/wtf-transcription.md) for the recommended pattern.
-5. **Lawful Basis: easier to build by hand.** `add_lawful_basis_attachment()` requires model objects for `purpose_grants` and `proof_mechanisms`. Building the attachment dict directly per [`draft-howe-vcon-lawful-basis`](https://datatracker.ietf.org/doc/draft-howe-vcon-lawful-basis/) and appending to `vcon_dict["attachments"]` is usually simpler — then call `v.add_extension("lawful_basis")`. See [Lawful Basis extension](../extensions/lawful-basis.md).
-6. **Drop empty `group` and `redacted`.** `build_new()` may initialize empty `group: []` and `redacted: {}` blocks; the speckit treats `group` as reserved. Delete the empty entries:
-   ```python
-   v.vcon_dict.pop("group", None)
-   if v.vcon_dict.get("redacted") == {}:
-       v.vcon_dict.pop("redacted", None)
-   ```
+2. **Lawful Basis: easier to build by hand.** `add_lawful_basis_attachment()` requires model objects for `purpose_grants` and `proof_mechanisms`. Building the attachment dict directly per [`draft-howe-vcon-lawful-basis`](https://datatracker.ietf.org/doc/draft-howe-vcon-lawful-basis/) and appending to `vcon_dict["attachments"]` is usually simpler — then call `v.add_extension("lawful_basis")`. See [Lawful Basis extension](../extensions/lawful-basis.md).
+
+If you're scaffolding a new adapter, the [`vcon-adapter-template`](https://github.com/vcon-dev/vcon-adapter-template) repo wraps both of these (and the syntax-param default for older library versions) in a single `new_vcon()` helper. See the [adapter Quick Start](../vcon-adapters/quick-start-from-template.md).
 
 ### Field-name migration (pre-0.9.1 → 0.9.2)
 

@@ -5,9 +5,9 @@ icon: scroll
 
 # vCon-JS Library Guide for LLMs
 
-This guide gives a Large Language Model everything it needs to generate spec-compliant code against `vcon-js` 0.3.0.
+This guide gives a Large Language Model everything it needs to generate spec-compliant code against `vcon-js` 0.4.0.
 
-> **Spec target:** [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) · syntax parameter `"vcon": "0.4.0"` · library version `0.3.0`.
+> **Spec target:** [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) · syntax parameter `"vcon": "0.4.0"` · library version `0.4.0`.
 
 ## Non-negotiable rules
 
@@ -123,7 +123,7 @@ console.log(vcon.toJson());
 
 ## Where to find extension shapes
 
-The vcon-js library does not include per-extension helpers in 0.3.0. When asked to add extension data, refer to the corresponding page in the [Extensions section](../extensions/README.md) for the exact JSON shape, then construct an attachment or analysis entry matching that shape.
+The vcon-js library does not include per-extension helpers in 0.4.0. When asked to add extension data, refer to the corresponding page in the [Extensions section](../extensions/README.md) for the exact JSON shape, then construct an attachment or analysis entry matching that shape.
 
 ## See also
 

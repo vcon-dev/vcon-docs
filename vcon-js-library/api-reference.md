@@ -1,11 +1,11 @@
 ---
-description: Public API of vcon-js 0.3.0 — every exported class, method, and constant.
+description: Public API of vcon-js 0.4.0 — every exported class, method, and constant.
 icon: plug
 ---
 
 # vCon-JS API Reference
 
-Complete API reference for **`vcon-js` 0.3.0**, targeting [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) (syntax `"0.4.0"`).
+Complete API reference for **`vcon-js` 0.4.0**, targeting [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) (syntax `"0.4.0"`).
 
 See the [Quickstart](quickstart.md) for a code-walkthrough; this page is a reference.
 
