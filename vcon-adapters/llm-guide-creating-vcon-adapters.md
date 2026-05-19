@@ -1,472 +1,297 @@
 ---
 description: >-
-  This guide provides essential information for Large Language Models tasked
-  with generating vCon adapter code. Follow these patterns and requirements when
-  creating adapters that convert conversation da
+  Drop-into-context guide for LLMs generating vCon adapter code. Spec target:
+  draft-ietf-vcon-vcon-core-02, syntax 0.4.0. Pairs with the
+  vcon-adapter-template repo.
 icon: robot
 ---
 
-# LLM Guide: Creating vCon Adapters
+# 🤖 LLM Guide: Creating vCon Adapters
 
-## Core Requirements
+This page is designed to be pasted into a model's context window when you want it to generate adapter code. It encodes the spec target, the canonical scaffold, the library API, and the legacy-field-name traps in one place.
 
-#### Essential Imports
+## Ground truth
 
-Always include these imports in vCon adapter code:
+**Spec:** IETF [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/). The `vcon` syntax parameter is the string `"0.4.0"`. Any older value (`0.0.1`, `0.0.2`, `0.2.0`, `0.3.0`) is wrong.
+
+**Canonical scaffold:** [vcon-dev/vcon-adapter-template](https://github.com/vcon-dev/vcon-adapter-template). New adapters SHOULD start from this template — it ships a `vcon_builder.py` wrapper, HMAC webhook delivery, retries/DLQ, health + Prometheus endpoints, and 14 spec-compliance smoke tests.
+
+**Library:** [`vcon`](https://pypi.org/project/vcon/) ≥ 0.9.4. The lib's helpers are spec-correct out of the box — use them instead of writing to `vcon_dict[...]` directly.
+
+## The one rule
+
+> Always use the `vcon` library helpers (`add_party`, `add_dialog`, `add_attachment`, `add_analysis`, `add_tag`). Never write directly to `vcon_dict[...]` except for the four documented quirks below.
+
+## Imports
 
 ```python
-from abc import ABC, abstractmethod
-from typing import Dict, List, Any, Optional, Union
-from vcon import Vcon, Party, Dialog
-from datetime import datetime, timezone
+import hashlib
 import json
-import base64
 import logging
+from abc import ABC, abstractmethod
+from base64 import urlsafe_b64encode
+from datetime import datetime, timezone
+from typing import Any
+
+from vcon import Vcon
 ```
 
-#### Base Adapter Pattern
+`Party` and `Dialog` model classes are no longer commonly used — pass values as kwargs to `add_party()` / `add_dialog()` instead.
 
-Use this as the foundation for all adapters:
+## Create a vCon (handle the four quirks)
+
+`Vcon.build_new()` has four spec-incorrect behaviors that every adapter must paper over. The template's `new_vcon()` helper does it for you:
+
+```python
+def new_vcon(
+    *,
+    subject: str | None = None,
+    extensions: list[str] | None = None,
+) -> Vcon:
+    v = Vcon.build_new()
+    v.vcon_dict["vcon"] = "0.4.0"                # 1. Set the syntax parameter
+    if subject is not None:
+        v.vcon_dict["subject"] = subject         # 2. No setter on the class
+    v.vcon_dict.pop("group", None)               # 3. Drop empty placeholder
+    v.vcon_dict.pop("redacted", None)            # 4. Drop empty placeholder
+    if extensions:
+        v.vcon_dict["extensions"] = list(extensions)
+    return v
+```
+
+Always call this (or equivalent) instead of `Vcon.build_new()` directly.
+
+## Base adapter pattern
 
 ```python
 class BaseVconAdapter(ABC):
-    """Base class for all vCon adapters."""
-    
-    def __init__(self, config: Dict[str, Any]):
+    """Base class for vCon adapters."""
+
+    def __init__(self, config: dict[str, Any]):
         self.config = config
-        self.validation_errors = []
         self.logger = logging.getLogger(self.__class__.__name__)
-    
+
     @abstractmethod
-    def extract_data(self, source: Any) -> Dict[str, Any]:
-        """Extract raw data from the source system."""
-        pass
-    
+    def extract_data(self, source: Any) -> dict[str, Any]:
+        """Pull raw conversation data out of the source system."""
+
     @abstractmethod
-    def transform_to_vcon(self, raw_data: Dict[str, Any]) -> Vcon:
-        """Transform raw data into a vCon object."""
-        pass
-    
-    def validate_vcon(self, vcon: Vcon) -> bool:
-        """Validate the generated vCon."""
-        is_valid, errors = vcon.is_valid()
-        self.validation_errors = errors
-        return is_valid
-    
+    def transform_to_vcon(self, raw_data: dict[str, Any]) -> Vcon:
+        """Turn raw data into a vCon."""
+
+    def validate(self, v: Vcon) -> None:
+        is_valid, errors = v.is_valid()
+        if not is_valid:
+            raise ValueError(f"Invalid vCon: {errors}")
+
     def process(self, source: Any) -> Vcon:
-        """Main processing pipeline."""
-        raw_data = self.extract_data(source)
-        vcon = self.transform_to_vcon(raw_data)
-        
-        if not self.validate_vcon(vcon):
-            raise ValueError(f"Invalid vCon generated: {self.validation_errors}")
-        
-        return vcon
+        raw = self.extract_data(source)
+        v = self.transform_to_vcon(raw)
+        self.validate(v)
+        return v
 ```
 
-### Key Patterns to Follow
-
-#### 1. vCon Creation
-
-Always start with:
+## Parties
 
 ```python
-def transform_to_vcon(self, raw_data: Dict[str, Any]) -> Vcon:
-    vcon = Vcon.build_new()
-    
-    # Add metadata tags
-    vcon.add_tag("source", "your_system_name")
-    vcon.add_tag("adapter_version", "1.0")
-    
-    # Process data...
-    return vcon
-```
-
-#### 2. Party Processing
-
-Create a mapping between source participants and vCon parties:
-
-```python
-# Build participant mapping
-participant_map = {}
-for i, participant in enumerate(raw_data.get("participants", [])):
-    party = Party(
-        name=participant.get("name"),
-        tel=participant.get("phone"),
-        mailto=participant.get("email"),
-        role=participant.get("role", "participant"),
-        # Add new vCon 0.3.0 fields if available
-        sip=participant.get("sip_uri"),
-        did=participant.get("decentralized_id"),
-        timezone=participant.get("timezone")
+participant_map: dict[str, int] = {}
+for i, p in enumerate(raw_data.get("participants", [])):
+    v.add_party(
+        name=p.get("name"),
+        tel=p.get("phone"),
+        mailto=p.get("email"),
+        sip=p.get("sip_uri"),          # OK in 0.4.0
+        timezone=p.get("timezone"),    # OK in 0.4.0
+        role=p.get("role", "participant"),
     )
-    vcon.add_party(party)
-    participant_map[participant["id"]] = i
+    participant_map[p["id"]] = i
 ```
 
-#### 3. Dialog Processing
+Do NOT pass `did=` — the `did` field was removed in 0.4.0.
 
-Handle different dialog types:
+## Dialogs (text, recording, video)
 
 ```python
-for message in raw_data.get("messages", []):
-    dialog = Dialog(
-        type="text",  # or "recording", "video", "transfer", "incomplete"
-        start=self.parse_timestamp(message["timestamp"]),
-        parties=[participant_map[message["sender_id"]]],
-        originator=participant_map[message["sender_id"]],
-        mimetype="text/plain",
-        body=message["content"],
-        # Add new vCon 0.3.0 fields
-        session_id=message.get("session_id"),
-        application=message.get("app_name"),
-        message_id=message.get("message_id")
-    )
-    vcon.add_dialog(dialog)
+v.add_dialog(
+    type="text",                         # or "recording", "video", "transfer", "incomplete"
+    start=parse_timestamp(msg["timestamp"]),
+    parties=[participant_map[msg["sender_id"]]],
+    originator=participant_map[msg["sender_id"]],
+    mimetype="text/plain",
+    body=msg["content"],
+)
 ```
 
-#### 4. Timestamp Handling
-
-Always convert timestamps to ISO format:
+## External media (recordings)
 
 ```python
-def parse_timestamp(self, timestamp) -> str:
-    """Convert various timestamp formats to ISO 8601."""
-    if isinstance(timestamp, datetime):
-        return timestamp.isoformat()
-    elif isinstance(timestamp, str):
-        try:
-            # Try parsing common formats
-            from dateutil import parser
-            return parser.parse(timestamp).isoformat()
-        except:
-            return datetime.now(timezone.utc).isoformat()
-    elif isinstance(timestamp, (int, float)):
-        # Assume Unix timestamp
-        return datetime.fromtimestamp(timestamp, timezone.utc).isoformat()
-    else:
-        return datetime.now(timezone.utc).isoformat()
+def sha512_b64url(data: bytes) -> str:
+    return "sha512-" + urlsafe_b64encode(hashlib.sha512(data).digest()).rstrip(b"=").decode("ascii")
+
+v.add_dialog(
+    type="recording",
+    start=parse_timestamp(media["timestamp"]),
+    parties=parties,
+    mediatype="audio/wav",
+    url=media["url"],
+    content_hash=sha512_b64url(media["bytes"]),  # MUST be sha512-<base64url>
+    duration=media.get("duration"),
+)
 ```
 
-### Media Handling Patterns
+Do NOT emit a hex `content_hash`. Always `sha512-<base64url-of-digest>` (no `=` padding).
 
-#### Audio/Video Content
-
-Handle media files properly:
+## Analysis (transcripts, sentiment, summaries)
 
 ```python
-def add_media_dialog(self, media_data: Dict[str, Any], parties: List[int]) -> Dialog:
-    """Add audio or video dialog."""
-    if media_data.get("url"):
-        # External media reference
-        dialog = Dialog(
-            type="recording" if media_data["type"] == "audio" else "video",
-            start=self.parse_timestamp(media_data["timestamp"]),
-            parties=parties,
-            mimetype=media_data.get("mimetype", "audio/wav"),
-            url=media_data["url"],
-            duration=media_data.get("duration"),
-            content_hash=media_data.get("hash")  # New in vCon 0.3.0
-        )
-    else:
-        # Inline media (base64 encoded)
-        dialog = Dialog(
-            type="recording" if media_data["type"] == "audio" else "video",
-            start=self.parse_timestamp(media_data["timestamp"]),
-            parties=parties,
-            mimetype=media_data.get("mimetype", "audio/wav"),
-            body=media_data["base64_content"],
-            encoding="base64",
-            filename=media_data.get("filename")
-        )
-    
-    return dialog
+v.add_analysis(
+    type="transcript",
+    dialog=0,
+    vendor="openai-whisper",                                          # REQUIRED
+    product="whisper-large-v3",
+    body=json.dumps(wtf_document),
+    encoding="json",
+    schema="https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/",
+)
 ```
 
-#### Transfer Dialogs
+Field name is `schema`, NOT `schema_version`. `vendor` is REQUIRED — the lib raises `TypeError` if you omit it.
 
-Handle call transfers:
+## Attachments (metadata, signaling, consent)
+
+Standard core attachment — uses `purpose`:
 
 ```python
-def add_transfer_dialog(self, transfer_data: Dict[str, Any]) -> None:
-    """Add transfer dialog for call transfers."""
-    vcon.add_transfer_dialog(
-        start=self.parse_timestamp(transfer_data["timestamp"]),
-        transfer_data={
-            "reason": transfer_data.get("reason", "Call transferred"),
-            "from": transfer_data.get("from_number"),
-            "to": transfer_data.get("to_number"),
-            "transfer_target": transfer_data.get("target_party_index"),
-            "transferor": transfer_data.get("transferor_party_index"),
-            "transferee": transfer_data.get("transferee_party_index")
-        },
-        parties=transfer_data.get("involved_parties", [])
-    )
+v.add_attachment(
+    purpose="call_metadata",     # NEVER "type" for core attachments
+    body=json.dumps({"queue": "support", "skill": "billing"}),
+    encoding="json",
+    party=0,                     # REQUIRED — use 0 for vCon-level
+    dialog=0,                    # REQUIRED — use 0 for vCon-level
+)
 ```
 
-#### Incomplete Dialogs
+The lawful_basis extension is the **only** documented exception — it uses `type: "lawful_basis"`. See [Extensions Cookbook](extensions-cookbook.md).
 
-Handle failed conversations:
+## Tags
 
 ```python
-def add_incomplete_dialog(self, failed_call: Dict[str, Any]) -> None:
-    """Add incomplete dialog for failed calls."""
-    # Map common failure reasons to vCon dispositions
-    disposition_map = {
-        "no_answer": "no-answer",
-        "busy": "busy",
-        "failed": "failed",
-        "hung_up": "hung-up",
-        "voicemail": "voicemail-no-message",
-        "congestion": "congestion"
-    }
-    
-    disposition = disposition_map.get(
-        failed_call.get("reason", "failed").lower(), 
-        "failed"
-    )
-    
-    vcon.add_incomplete_dialog(
-        start=self.parse_timestamp(failed_call["timestamp"]),
-        disposition=disposition,
-        details=failed_call.get("details", {}),
-        parties=failed_call.get("involved_parties", [])
-    )
+v.add_tag("source", "your_platform")
+v.add_tag("call_id", raw_data["call_id"])
 ```
 
-### Error Handling Requirements
+Library ≥0.9.3 writes `party: 0, dialog: 0` on the tags attachment correctly.
 
-#### Robust Data Extraction
-
-Always handle missing or malformed data:
+## Extensions
 
 ```python
-def extract_data(self, source: Any) -> Dict[str, Any]:
-    """Extract data with error handling."""
-    try:
-        if isinstance(source, str):
-            # File path
-            with open(source, 'r') as f:
-                return json.load(f)
-        elif isinstance(source, dict):
-            # Direct data
-            return source
-        else:
-            raise ValueError(f"Unsupported source type: {type(source)}")
-    except Exception as e:
-        self.logger.error(f"Failed to extract data: {e}")
-        raise
+v = new_vcon(extensions=["sip-signaling", "wtf", "lawful_basis"])
 ```
 
-#### Validation and Fallbacks
+Every extension used MUST appear in top-level `extensions[]`. The template includes this in `new_vcon()`.
 
-Provide fallbacks for missing required data:
+## NEVER write these field names
+
+| ❌ Never | ✅ Always | Where |
+|---|---|---|
+| `appended` | `amended` | top-level metadata |
+| `must_support` | `critical` | top-level metadata |
+| `schema_version` | `schema` | analysis |
+| `type` | `purpose` | attachments (except `lawful_basis`) |
+| `did` | (removed) | party |
+| `0.2.0`, `0.3.0` | `"0.4.0"` | `vcon` syntax param |
+
+## Timestamps
+
+Always ISO-8601 with timezone:
 
 ```python
-def transform_to_vcon(self, raw_data: Dict[str, Any]) -> Vcon:
-    vcon = Vcon.build_new()
-    
-    # Ensure required fields exist
-    if not raw_data.get("participants"):
-        # Create a default participant if none exist
-        default_party = Party(name="Unknown", role="participant")
-        vcon.add_party(default_party)
-        participant_map = {"default": 0}
-    else:
-        participant_map = self.process_participants(raw_data, vcon)
-    
-    # Handle missing timestamps
-    default_timestamp = datetime.now(timezone.utc).isoformat()
-    
-    # Process messages with fallbacks
-    for message in raw_data.get("messages", []):
-        dialog = Dialog(
-            type="text",
-            start=self.parse_timestamp(message.get("timestamp", default_timestamp)),
-            parties=[participant_map.get(message.get("sender_id"), 0)],
-            originator=participant_map.get(message.get("sender_id"), 0),
-            mimetype="text/plain",
-            body=message.get("content", "")
-        )
-        vcon.add_dialog(dialog)
-    
-    return vcon
+def parse_timestamp(ts: Any) -> str:
+    if isinstance(ts, datetime):
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        return ts.isoformat()
+    if isinstance(ts, str):
+        from dateutil import parser
+        return parser.parse(ts).isoformat()
+    if isinstance(ts, (int, float)):
+        return datetime.fromtimestamp(ts, timezone.utc).isoformat()
+    raise ValueError(f"Unparseable timestamp: {ts!r}")
 ```
 
-### Common Adapter Templates
+Never emit naive datetimes.
 
-#### Chat System Adapter
+## Dialog types
 
-```python
-class ChatSystemAdapter(BaseVconAdapter):
-    """Template for chat/messaging systems."""
-    
-    def extract_data(self, chat_file: str) -> Dict[str, Any]:
-        with open(chat_file, 'r') as f:
-            return json.load(f)
-    
-    def transform_to_vcon(self, raw_data: Dict[str, Any]) -> Vcon:
-        vcon = Vcon.build_new()
-        vcon.add_tag("source", "chat_system")
-        
-        # Process participants
-        participant_map = {}
-        for i, user in enumerate(raw_data.get("users", [])):
-            party = Party(
-                name=user.get("display_name"),
-                mailto=user.get("email"),
-                role="participant"
-            )
-            vcon.add_party(party)
-            participant_map[user["id"]] = i
-        
-        # Process messages
-        for msg in raw_data.get("messages", []):
-            dialog = Dialog(
-                type="text",
-                start=self.parse_timestamp(msg["timestamp"]),
-                parties=[participant_map[msg["user_id"]]],
-                originator=participant_map[msg["user_id"]],
-                mimetype="text/plain",
-                body=msg["text"]
-            )
-            vcon.add_dialog(dialog)
-        
-        return vcon
-```
+| Type | Use for |
+|------|---------|
+| `"text"` | Messages, chat, IVR prompts, individual transcript turns |
+| `"recording"` | Audio recordings |
+| `"video"` | Video recordings / calls |
+| `"transfer"` | Call transfers — see `add_transfer_dialog` |
+| `"incomplete"` | Failed/abandoned calls — see `add_incomplete_dialog` |
 
-#### Call Center Adapter
+## MIME types (mediatype)
+
+- Text: `"text/plain"`, `"text/html"`
+- Audio: `"audio/wav"`, `"audio/mp3"`, `"audio/ogg"`, `"audio/x-wav"`
+- Video: `"video/mp4"`, `"video/webm"`
+- Email: `"message/rfc822"`
+
+The field name is `mediatype`, not `mimetype`, in the spec (the library accepts both as kwarg names).
+
+## Validation
+
+Always end `transform_to_vcon` with library validation:
 
 ```python
-class CallCenterAdapter(BaseVconAdapter):
-    """Template for call center systems."""
-    
-    def extract_data(self, call_record: Dict[str, Any]) -> Dict[str, Any]:
-        return call_record
-    
-    def transform_to_vcon(self, raw_data: Dict[str, Any]) -> Vcon:
-        vcon = Vcon.build_new()
-        vcon.add_tag("source", "call_center")
-        vcon.add_tag("call_id", raw_data.get("call_id"))
-        
-        # Add caller
-        caller = Party(
-            tel=raw_data.get("caller_number"),
-            name=raw_data.get("caller_name"),
-            role="caller"
-        )
-        vcon.add_party(caller)
-        
-        # Add agent
-        agent = Party(
-            tel=raw_data.get("agent_extension"),
-            name=raw_data.get("agent_name"),
-            role="agent"
-        )
-        vcon.add_party(agent)
-        
-        # Add call recording if available
-        if raw_data.get("recording_url"):
-            recording_dialog = Dialog(
-                type="recording",
-                start=self.parse_timestamp(raw_data["start_time"]),
-                parties=[0, 1],
-                mimetype="audio/wav",
-                url=raw_data["recording_url"],
-                duration=raw_data.get("duration")
-            )
-            vcon.add_dialog(recording_dialog)
-        
-        # Add transcript if available
-        if raw_data.get("transcript"):
-            for entry in raw_data["transcript"]:
-                dialog = Dialog(
-                    type="text",
-                    start=self.parse_timestamp(entry["timestamp"]),
-                    parties=[entry.get("speaker_id", 0)],
-                    originator=entry.get("speaker_id", 0),
-                    mimetype="text/plain",
-                    body=entry["text"]
-                )
-                vcon.add_dialog(dialog)
-        
-        return vcon
-```
-
-### Critical Requirements
-
-#### 1. Always Validate
-
-```python
-# At the end of transform_to_vcon
-is_valid, errors = vcon.is_valid()
+is_valid, errors = v.is_valid()
 if not is_valid:
-    self.logger.error(f"Generated invalid vCon: {errors}")
-    # Either fix the issues or raise an exception
+    raise ValueError(f"Invalid vCon: {errors}")
 ```
 
-#### 2. Handle All Dialog Types
+For stronger checking, copy the smoke tests from [`vcon-adapter-template/tests/test_vcon_builder.py`](https://github.com/vcon-dev/vcon-adapter-template/blob/main/tests/test_vcon_builder.py).
 
-Support these dialog types based on source data:
-
-* `"text"` - Text messages, chat, transcripts
-* `"recording"` - Audio recordings
-* `"video"` - Video calls/recordings
-* `"transfer"` - Call transfers
-* `"incomplete"` - Failed/incomplete calls
-
-#### 3. Use Proper MIME Types
-
-Use these MIME types:
-
-* Text: `"text/plain"`
-* Audio: `"audio/wav"`, `"audio/mp3"`, `"audio/x-wav"`, `"audio/x-mp3"`
-* Video: `"video/mp4"`, `"video/webm"`, `"video/x-mp4"`
-* Email: `"message/rfc822"`
-
-#### 4. Include Extensions and Must-Support (vCon 0.3.0)
+## Testing pattern
 
 ```python
-# Add extensions if using advanced features
-if using_video:
-    vcon.add_extension("video")
-if using_encryption:
-    vcon.add_extension("encryption")
-    vcon.add_must_support("encryption")
+def test_adapter_produces_compliant_vcon():
+    adapter = MyAdapter({})
+    v = adapter.process(sample_input)
+
+    # Library validation
+    is_valid, errors = v.is_valid()
+    assert is_valid, errors
+
+    # Spec compliance
+    assert v.vcon_dict["vcon"] == "0.4.0"
+    assert "group" not in v.vcon_dict
+    assert "redacted" not in v.vcon_dict
+    serialized = json.dumps(v.vcon_dict)
+    assert "appended" not in serialized        # legacy field name
+    assert "must_support" not in serialized    # legacy field name
+    assert "schema_version" not in serialized  # legacy field name
+
+    # Structural sanity
+    assert len(v.vcon_dict["parties"]) > 0
+    assert len(v.vcon_dict["dialog"]) > 0
 ```
 
-### Testing Pattern
+## Delivery (downstream)
 
-Always include this test structure:
+For HTTP webhook delivery, sign the body with HMAC-SHA256 (`X-Hub-Signature-256: sha256=<hex>`), key the request off the vCon `uuid` as `Idempotency-Key`, retry with exponential backoff, persist failures to a dead-letter queue. The template's [`webhook_delivery.py`](https://github.com/vcon-dev/vcon-adapter-template/blob/main/src/__ADAPTER_PACKAGE__/webhook_delivery.py) is the reference implementation. See [Operational Patterns](operational-patterns.md).
 
-```python
-def test_adapter():
-    """Test the adapter with sample data."""
-    adapter = YourAdapter({})
-    
-    sample_data = {
-        # Your test data structure
-    }
-    
-    vcon = adapter.process(sample_data)
-    is_valid, errors = vcon.is_valid()
-    
-    assert is_valid, f"Invalid vCon: {errors}"
-    assert len(vcon.parties) > 0, "No parties found"
-    assert len(vcon.dialog) > 0, "No dialog found"
-    
-    return vcon
-```
+## Key considerations
 
-### Key Considerations for LLMs
+1. Use the library helpers; never hand-roll `vcon_dict[...]` (except the four `new_vcon` quirks).
+2. Set `vcon` syntax to `"0.4.0"`.
+3. Drop empty `group: []` and `redacted: {}` from `build_new()`.
+4. Attachments use `purpose` — except `lawful_basis`, which uses `type`.
+5. Analysis uses `schema`, never `schema_version`. `vendor` is required.
+6. Transcripts live in `analysis[]`, not `attachments[]`.
+7. `content_hash` is `sha512-<base64url>`, never hex.
+8. List every extension you use in top-level `extensions[]`.
+9. Timestamps are ISO-8601 with timezone.
+10. Validate before returning.
 
-1. **Always use the base adapter pattern** - don't create adapters from scratch
-2. **Handle missing data gracefully** - provide defaults and fallbacks
-3. **Validate all timestamps** - convert to ISO 8601 format
-4. **Map participant IDs correctly** - maintain consistent party references
-5. **Include proper error handling** - log errors and provide meaningful messages
-6. **Use appropriate dialog types** - match the source content type
-7. **Add relevant metadata** - use tags and extensions appropriately
-8. **Test the generated vCon** - always validate before returning
-
-When generating adapter code, focus on the specific source system requirements while following these patterns and ensuring compliance with the vCon specification.
+When generating adapter code, ground every decision on the [Spec Compliance Checklist](spec-compliance-checklist.md) and the [Extensions Cookbook](extensions-cookbook.md). If you're unsure, prefer the shape used by [`vcon-adapter-template`](https://github.com/vcon-dev/vcon-adapter-template).
