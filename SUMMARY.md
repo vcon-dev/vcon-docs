@@ -6,6 +6,7 @@
   * [🌎 vCons are...](vcons/vcons-are....md)
   * [🧠 Why vCons?](vcons/why-vcons.md)
   * [💡 Concepts](vcons/concepts.md)
+  * [🔒 Privacy Primer](vcons/privacy-primer.md)
   * [✨ More Information](vcons/more-information.md)
 * [vCon Library (Python)](vcon-library/README.md)
   * [🐰 Quickstart](vcon-library/quickstart.md)

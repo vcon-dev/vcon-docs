@@ -4,6 +4,14 @@ description: Learning More
 
 # ✨ More Information
 
+## Read the current pitch
+
+These three pieces are the cleanest current articulations of what vCon is and why it matters now. Read one and you have the framing.
+
+* [vCon: The Power of a Definition](https://cpaasaa.com/vcon-the-power-of-a-definition/) — Thomas Howe, CPaaSAA, Aug 2025. The "magic of vCons", reality collapse, and SCITT as a global digital notary.
+* [The vCon Reality Check: Moving Beyond Generative Hype to Actual Conversational Architecture](https://aheadcrm.medium.com/the-vcon-reality-check-moving-beyond-generative-hype-to-actual-conversational-architecture-41197017fb9b) — Thomas Wieberneit, Medium, April 2026. Analyst framing for why enterprises should care.
+* [The Pulver vCon Report](https://thejeffpulver.substack.com/) — Jeff Pulver's ongoing Substack series. Best single subscription for tracking industry adoption.
+
 ## Official Documents
 
 Read the IETF working-group draft: [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) — the current spec target, with syntax parameter `"vcon": "0.4.0"`.
@@ -50,6 +58,20 @@ See the [key note proposal for vCons](https://blog.tadsummit.com/2021/12/08/stro
 ## White Papers
 
 Read the [white paper](https://docs.google.com/document/d/1TV8j29knVoOJcZvMHVFDaan0OVfraH\_-nrS5gW4-DEA/edit?usp=sharing)
+
+## Ecosystem
+
+A non-exhaustive set of companies, products, and communities building on vCon today. See [Talks, Articles & Press](../talks-articles-press/) for the full curated list of writing and recordings.
+
+* [Vconic](https://vconic.com) — Strolid's commercial vCon platform, real-time vCon processing and proof-of-value applications.
+* [Strolid: IETF for vCons](https://strolid.com/ietf-for-vcons/) and [Strolid AI Conserver](https://strolid.ai/vcon-conservers/) — the BPO that incubated vCon, running roughly a quarter million conversations per month through the format.
+* [MindMaking](https://mindmaking.com/) — vCon app store for service providers, turning calls into structured vCons with transcript, summary, action items, and sentiment.
+* [Nimble Ape](https://nimblea.pe/) — Dan Jenkins / CommCon, the open RTC community that hosts early implementer conversations.
+* [py-vcon](https://github.com/py-vcon/py-vcon) — Dan Petrie's reference Python implementation, including `py-vcon-server`.
+* [vCon Foundation](https://thejeffpulver.substack.com/) — Jeff Pulver's foundation and the rolling commentary on adoption.
+* [CPaaS Acceleration Alliance](https://cpaasaa.com/tag/vcon/) — the alliance's ongoing vCon coverage, including the CASA Amsterdam events.
+* [Cavell](https://www.cavell.com/a-comprehensive-guide-to-vcon-in-communications/) — analyst overview for the CX / CCaaS audience.
+* [Telecom Reseller podcasts](https://telecomreseller.com/category/podcasts/) — Doug Green's running podcast series, including the Pulver, CarrierX, and healthcare-AI episodes.
 
 
 

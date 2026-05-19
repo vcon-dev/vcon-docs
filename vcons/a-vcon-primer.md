@@ -10,7 +10,7 @@ description: Thomas McCarthy-Howe, CTO, Strolid.
 
 Responsible management of customer data was well understood, if not well distributed, before the AI revolution. Since the AI explosion set off by ChatGPT, the environment in which customer data must be protected is distinctly more hostile. Although difficult, you can change your name and your social security number. Changing the actual look of your face, or the actual sound of your voice, is near impossible. In a future filled with deep fakes, this is a problem demanding a solution for ethical system design, sound business operation and both commercial and civil governance.
 
-This primer explores the vCon, a groundbreaking technology designed to revolutionize the storage, analysis, and management of conversational data, of all kinds. This paper will provide a comprehensive overview of vCon, its structure, significance, and the stakeholders who should be interested in its implementation. For an current technical definition of a vCon, please visit the [working group’s page](https://datatracker.ietf.org/group/vcon/about/) at the IETF (1).
+This primer explores the vCon, a groundbreaking technology designed to revolutionize the storage, analysis, and management of conversational data, of all kinds. This paper will provide a comprehensive overview of vCon, its structure, significance, and the stakeholders who should be interested in its implementation. For the current technical definition of a vCon, see the [VCON working group](https://datatracker.ietf.org/group/vcon/about/) at the IETF; the spec target is [`draft-ietf-vcon-vcon-core`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) with syntax parameter `"vcon": "0.4.0"`.
 
 #### What is vCon?
 
@@ -23,6 +23,16 @@ Think of a vCon as a document format for conversations, ensuring that data is se
 vCons, like other data formats such as Word and PDF, are open standards. By open, we mean they are publicly available and designed for use and implementation by anyone, facilitating transparency and compatibility across different systems. Like most patent offices, the United States Patent Office does not allow patents on data formats. The vCon is truly without any intellectual property encumbrances.
 
 This matches well with today’s data privacy challenges. Among the insidious threats of large language models is their opaque nature: unless revealed, the training data of an LLM is unknowable, thus the biases and intents of them are as well. vCons promote transparency by supporting an ecosystem of tools, applications and providers that exchange very sensitive data in a well known, and testable, format. vCons enables confident answers to “Is there personal data in this conversation?” and “Who created this vCon?”. This capability enables tools that can redact personal information, but also tools that can validate the same, each provided by otherwise independent developers.
+
+### Stakes in the Agentic AI Era
+
+vCon was originally pitched against a contact-center recording problem. Since 2024 the stakes have widened. Three forces are colliding at once.
+
+Agentic AI is moving from demo to production. Agents are starting to talk to customers and to each other, and there is currently no shared way to record what an agent said, under what authority, and on whose behalf.
+
+The line between authentic and synthetic media is collapsing. A deepfake injected into an AI pipeline is the conversational analog of malware injected into a software supply chain. Conversations need provenance the same way software supply chains need provenance, which is why vCon and SCITT (Supply Chain Integrity, Transparency and Trust) are designed to work together: vCon defines the conversation object, SCITT records its lifecycle in an append-only ledger.
+
+The proprietary silo model is doubling down rather than loosening. Vendors are extending deeper into the call center and the agent stack, on architectures that do not interoperate. Without an open container, every enterprise rebuilds the same data prison in a new color every five years. vCon is the open alternative; the IETF working group has included Ofcom, Cisco, Microsoft, British Telecom, and Human Rights Watch among its participants.
 
 ### Why vCon Matters
 
@@ -84,6 +94,18 @@ The analysis component involves commentary and insights derived from the dialogu
 
 Attachments provide context to the conversation. For example, a sales lead from Ford that prompted a call can be included as an attachment, enriching the context for future reference and analysis. This ensures that all relevant data is captured and can be used effectively by both humans and automated systems.
 
+### Who Is Using vCon Today
+
+vCon is past the pilot stage.
+
+The BPO that incubated the technology runs roughly a quarter million vCon-formatted conversations per month through its production pipeline, and that volume has roughly doubled over the past year.
+
+A large financial institution is live with millions of vCon productions per day on a path to a million per hour. That deployment is also the first production instance of real-time vCons, where applications follow a conversation as it happens rather than waiting for the recording.
+
+A prototype is running at a United Way 211 center where the system listens for context that should change routing. A food-banking question and a sexual-abuse disclosure should not sit in the same queue, and they should not have to wait for tomorrow's manager review to be distinguished.
+
+Roughly thirty to forty companies are actively building with vCons today. Telecom, contact center, and CPaaS vendors are leaning in first, which is the usual pattern for an open standard: SIP gave service providers recording, and vCon gives them a portable answer for what to do with the recording next.
+
 ### Future Outlook
 
 The adoption of vCons is expected to grow as data privacy regulations become more stringent and the need for responsible data management increases. Companies will likely integrate vCons into their data engineering frameworks, ensuring that they can manage customer data effectively and comply with regulatory requirements.
@@ -96,6 +118,6 @@ For more information, you can refer to the draft in the IETF, a white paper co-a
 
 ## Foot Notes
 
-1. [https://datatracker.ietf.org/group/vcon/about/](https://datatracker.ietf.org/group/vcon/about/)
+1. [https://datatracker.ietf.org/group/vcon/about/](https://datatracker.ietf.org/group/vcon/about/) and the core spec target [`draft-ietf-vcon-vcon-core`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) with syntax `"vcon": "0.4.0"`.
 2. In the terminology of the GDPR, a natural person is an individual human being as opposed to a legal person such as a corporation.
 

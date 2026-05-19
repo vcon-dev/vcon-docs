@@ -9,23 +9,23 @@ description: >-
 
 {% tabs %}
 {% tab title="What is a vCon?" %}
-<figure><img src=".gitbook/assets/Conserver Pictures (8).jpg" alt=""><figcaption><p>vCons are the file format for recording conversations with a "natural person".  As a ground truth, vCons enable responsible management of the most sensitive of customer data: the sounds of our voice and the appearance of our face.  </p></figcaption></figure>
+<figure><img src=".gitbook/assets/Conserver Pictures (8).jpg" alt=""><figcaption><p>A vCon is a portable, verifiable container for a conversation. Parties, dialog, recording or transcript, consent, and analysis travel together in one signed JSON object. Consent travels inside the file, which is the difference between reporting on a policy and enforcing it.</p></figcaption></figure>
+{% endtab %}
+
+{% tab title="Why now?" %}
+<figure><img src=".gitbook/assets/Conserver Pictures (8).jpg" alt=""><figcaption><p>Agentic AI is moving into production, and there is no shared way to record what an agent said, on whose behalf, or under what authority. Deepfakes blur the line between authentic and synthetic. vCon is the open answer: a conversation object that is portable, signed, consent aware, and verifiable.</p></figcaption></figure>
 {% endtab %}
 
 {% tab title="How does it enable governance?" %}
-<figure><img src=".gitbook/assets/SCITT and vCon (3).jpg" alt=""><figcaption><p>The IETF SCITT WG defines a set of interoperable building blocks that will allow implementers to build integrity and accountability into software supply chain systems to help assure trustworthy operation. <br><br>vCons ❤️ SCITT</p></figcaption></figure>
+<figure><img src=".gitbook/assets/SCITT and vCon (3).jpg" alt=""><figcaption><p>vCon pairs with SCITT, an IETF effort for Supply Chain Integrity, Transparency and Trust. SCITT acts as a global digital notary for vCon lifecycle events, producing an append-only record of creation, sharing, analysis, and deletion that cannot be altered after the fact.</p></figcaption></figure>
 {% endtab %}
 
 {% tab title="What is the Conserver?" %}
-<figure><img src=".gitbook/assets/Conserver Internals (5).jpg" alt=""><figcaption><p>The Conserver creates, processes and manages the lifecycle of vCons at scale.</p></figcaption></figure>
-{% endtab %}
-
-{% tab title="How does a link work?" %}
-<figure><img src=".gitbook/assets/Conserver Internals (1).jpg" alt=""><figcaption><p>A depiction of an analysis link, a fundamental component of the conserver.  Links contain the processing of a vCon.  Chains are composed of links, representing workflow in the Conserver. In this example, the Analysis link accepts a vCon as an input, then using an LLM or other AI system, adds a new item to the vCon analysis array to track the interaction. </p></figcaption></figure>
+<figure><img src=".gitbook/assets/Conserver Internals (5).jpg" alt=""><figcaption><p>The Conserver creates, processes and manages the lifecycle of vCons at scale. It captures conversations from business systems, runs them through pipelines of links, and emits both archive copies and projections into the tools the business already uses.</p></figcaption></figure>
 {% endtab %}
 
 {% tab title="How can I write my vCon application?" %}
-<figure><img src=".gitbook/assets/App Integration (1).jpg" alt=""><figcaption></figcaption></figure>
+<figure><img src=".gitbook/assets/App Integration (1).jpg" alt=""><figcaption><p>Applications consume vCons through the Conserver API, the MCP server, or the language libraries. The same vCon can be read by a contact-center analytics tool, a compliance audit, and an AI agent without any of them needing to agree on a private format first.</p></figcaption></figure>
 {% endtab %}
 {% endtabs %}
 
@@ -39,16 +39,16 @@ The IETF vCon Group&#x20;
 
 ## Quick links
 
-{% content-ref url="vcons/vcons-are....md" %}
-[vcons-are....md](vcons/vcons-are....md)
-{% endcontent-ref %}
-
 {% content-ref url="vcons/a-vcon-primer.md" %}
 [a-vcon-primer.md](vcons/a-vcon-primer.md)
 {% endcontent-ref %}
 
-{% content-ref url="conserver/conserver-introduction.md" %}
-[conserver-introduction.md](conserver/conserver-introduction.md)
+{% content-ref url="vcons/why-vcons.md" %}
+[why-vcons.md](vcons/why-vcons.md)
+{% endcontent-ref %}
+
+{% content-ref url="vcons/vcons-are....md" %}
+[vcons-are....md](vcons/vcons-are....md)
 {% endcontent-ref %}
 
 {% content-ref url="vcons/concepts.md" %}

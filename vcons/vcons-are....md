@@ -16,14 +16,19 @@ By defining the contents and participants of a conversation, vCons enable softwa
 
 vCons are both an open source project, it is also an open standards effort supported by the IETF.   vCons enable the Internet to work better by defining the interchange standard for our most personal information: the sounds of of voice, and the images of our face.  vCons enable the responsible management of personal data, enabling true compliance to customer data protections such as "Right to Know".&#x20;
 
-## vCons are mostly After the Fact
+## vCons are After the Fact or Real Time
 
-Although you can build a vCon as a conversation happens, they are mostly understood to be an expression of a conversation that happened. vCons are primarily concerned with the responsible use of recorded conversations of all kinds.  vCons are intended to be an effective tool for companies seeking GDPR compliance while handling recorded business conversations, which often contain sensitive biometric data. &#x20;
+vCons started as an after-the-fact format: an expression of a conversation that already happened, packaged for storage, analysis, and compliance. That is still the most common shape. Increasingly, vCons are also produced and updated in real time, while a conversation is still in progress, so that applications can act on a call as it happens rather than waiting for the recording. A large financial-institution deployment is now running real-time vCons in production at millions per day; the format supports both modes without changing shape.
 
-## vCons are the CDR Format for the age of AI
+## vCons Carry Their Own Consent
 
-The conserver and vCons allows data controllers to be compliant  in the age of AI:
+Consent and lawful basis travel inside the vCon. Sometimes the basis is consent. Sometimes it is a regulatory requirement, such as a stockbroker being required to record a trade call. Either way, the basis is part of the conversation record. When a customer withdraws consent, every downstream copy of the vCon is governed by that withdrawal. This is the difference between a consent management system that reports on policy and one that enforces it.
 
-* vCons track the external systems, including AI, transcribers, redactors and analysis, enabling an authoritative answer to "What systems have seen my personal data?"
-* vCons and the conserver enable compliance to GDPR requirements, including "Right to Know", "Right to be Forgotten" and for responding to regulator audits for sensitive biometric information
-* vCons and the conserver allow you to share conversations across security boundaries, tracking shared data and requesting remote deletion.&#x20;
+## vCons are the Trust Layer for AI Conversations
+
+When a conversation feeds an AI pipeline, the pipeline is only as trustworthy as the conversation. A deepfake injected into an AI pipeline is the conversational analog of malware injected into a software supply chain. vCons answer that with signatures and lifecycle:
+
+* vCons can be signed and encrypted, so a recipient can cryptographically verify the sender and detect tampering.
+* vCons track external processing, including AI, transcription, redaction, and analysis, supporting an authoritative answer to "what systems have seen this conversation?"
+* Combined with [SCITT](../deep-dives/scitt-supply-chain-integrity-transparency-and-trust.md), vCons get an append-only lifecycle record: every creation, share, analysis, and deletion event is recorded in a way that cannot be quietly altered later.
+* vCons and the conserver allow conversations to move across security boundaries while tracking shared data and supporting remote deletion, which lines up with "Right to Know" and "Right to be Forgotten" under GDPR and CCPA.
