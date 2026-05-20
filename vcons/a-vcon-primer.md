@@ -4,120 +4,93 @@ description: Thomas McCarthy-Howe, CTO, Strolid.
 
 # 💬 A vCon Primer
 
+A vCon is a portable, verifiable container for a conversation. This page explains what one is, why the idea matters now, where vCons are already in production, what they look like inside, and what they let you do that other formats do not. If you read one piece of vCon documentation, read this.
 
+## What a vCon is
 
-## Introduction
+A vCon (virtual conversation) is to a conversation what a PDF is to a document, or a vCard is to a business card. Think of it as a sealed folder for a conversation, carrying who was on the call (parties), what was said (the dialog, as recording or transcript), what they agreed to (consent), the notes added since (analysis), and a stamped record of every set of hands it has passed through (a tamper evident history). Inside the cover it is a signed JSON object. The same shape works for a phone call, a chat session, a video meeting, or a human to agent conversation.
 
-Responsible management of customer data was well understood, if not well distributed, before the AI revolution. Since the AI explosion set off by ChatGPT, the environment in which customer data must be protected is distinctly more hostile. Although difficult, you can change your name and your social security number. Changing the actual look of your face, or the actual sound of your voice, is near impossible. In a future filled with deep fakes, this is a problem demanding a solution for ethical system design, sound business operation and both commercial and civil governance.
+The name traces to a casual remark by Brian Galvin, past CTO of both Genesys and Nuance, asking why there was no vCard equivalent for conversations. vCon is the answer. The technical definition lives in the IETF VCON working group, with the spec target [`draft-ietf-vcon-vcon-core`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) and syntax parameter `"vcon": "0.4.0"` (1).
 
-This primer explores the vCon, a groundbreaking technology designed to revolutionize the storage, analysis, and management of conversational data, of all kinds. This paper will provide a comprehensive overview of vCon, its structure, significance, and the stakeholders who should be interested in its implementation. For the current technical definition of a vCon, see the [VCON working group](https://datatracker.ietf.org/group/vcon/about/) at the IETF; the spec target is [`draft-ietf-vcon-vcon-core`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) with syntax parameter `"vcon": "0.4.0"`.
+Like PDF and vCard, vCon is open and carries no intellectual property encumbrance. Data formats cannot be patented in most jurisdictions, and vCon was designed that way on purpose.
 
-#### What is vCon?
+## Why this matters now
 
-A vCon (virtual conversation) is akin to a PDF, but instead of holding a readable document, it holds a recording of a conversation involving a “natural person” (2). It serves as a standardized format to document, store, and analyze conversations. The concept of vCon originated from a casual remark by Brian Galvin, a former CTO at Genesys, who mused about the lack of a vCard equivalent for conversations. Thus, the term vCon was coined: virtual conversations.
+The original use case was contact center recording. Since 2024 the stakes have widened. Four forces are pushing the same direction at once.
 
-Think of a vCon as a document format for conversations, ensuring that data is secure and authentic. The primary goal of a vCon is to enable a system of open tools to empower customer privacy and facilitate the management of personal information in conversations.
+**Agentic AI is moving into production.** Agents are starting to talk to customers and to each other. There is no shared record of what an agent said, on whose behalf, or under what authority. Without that record, there is nothing for a regulator, a customer, or a downstream system to verify against.
 
-#### Open Standard
+**Authentic and synthetic are getting harder to tell apart.** A deepfake injected into an AI pipeline is the conversational analog of malware injected into a software supply chain. vCon pairs with SCITT, the IETF effort for Supply Chain Integrity, Transparency and Trust, so creation, sharing, analysis, and deletion are recorded in an append only ledger that cannot be altered after the fact.
 
-vCons, like other data formats such as Word and PDF, are open standards. By open, we mean they are publicly available and designed for use and implementation by anyone, facilitating transparency and compatibility across different systems. Like most patent offices, the United States Patent Office does not allow patents on data formats. The vCon is truly without any intellectual property encumbrances.
+**Consent does not travel today.** Consent typically lives in a privacy policy, a recording disclosure, or a screenshot, separate from the conversation it covers. vCon carries consent inside the file itself, scoped by purpose and time. That is the difference between reporting on a privacy policy and enforcing one.
 
-This matches well with today’s data privacy challenges. Among the insidious threats of large language models is their opaque nature: unless revealed, the training data of an LLM is unknowable, thus the biases and intents of them are as well. vCons promote transparency by supporting an ecosystem of tools, applications and providers that exchange very sensitive data in a well known, and testable, format. vCons enables confident answers to “Is there personal data in this conversation?” and “Who created this vCon?”. This capability enables tools that can redact personal information, but also tools that can validate the same, each provided by otherwise independent developers.
+**The silo model is doubling down.** Proprietary contact center, recording, and AI stacks are extending deeper, on architectures that do not interoperate. Without an open container, every enterprise rebuilds the same data prison in a new color every five years.
 
-### Stakes in the Agentic AI Era
+vCon is built in the open at the IETF, the standards body responsible for TCP/IP, DNS, HTTP, TLS, and SIP. The process is rough consensus, running code, and a public record. Anyone can read the drafts, join the mailing list, and challenge a design decision in writing.
 
-vCon was originally pitched against a contact-center recording problem. Since 2024 the stakes have widened. Three forces are colliding at once.
-
-Agentic AI is moving from demo to production. Agents are starting to talk to customers and to each other, and there is currently no shared way to record what an agent said, under what authority, and on whose behalf.
-
-The line between authentic and synthetic media is collapsing. A deepfake injected into an AI pipeline is the conversational analog of malware injected into a software supply chain. Conversations need provenance the same way software supply chains need provenance, which is why vCon and SCITT (Supply Chain Integrity, Transparency and Trust) are designed to work together: vCon defines the conversation object, SCITT records its lifecycle in an append-only ledger.
-
-The proprietary silo model is doubling down rather than loosening. Vendors are extending deeper into the call center and the agent stack, on architectures that do not interoperate. Without an open container, every enterprise rebuilds the same data prison in a new color every five years. vCon is the open alternative; the IETF working group has included Ofcom, Cisco, Microsoft, British Telecom, and Human Rights Watch among its participants.
-
-### Why vCon Matters
-
-#### Privacy and Data Management
-
-Companies recording customer conversations inherently capture personal information, such as voices and faces, which are more sensitive than traditional identifiers like names. vCons help in managing and safeguarding this data, ensuring that companies can track, store, and delete data as required by regulations like GDPR.
-
-#### Compliance with Regulations
-
-vCons are designed to assist companies in complying with customer data regulations. For example, under GDPR, customers have the right to request deletion of their data. vCons provide a structured way to know what data was captured and ensure that it can be deleted or anonymized as required.
-
-#### Efficiency in Machine Learning
-
-Companies using customer data for machine learning need to manage this data responsibly. If a customer requests their data to be deleted, the company must retrain models without that data. vCons make it possible to track which models used which data, optimizing the retraining process and minimizing costs.
-
-### Stakeholders Who Should Care
-
-#### Companies Recording Conversations
-
-Any company that records customer conversations needs to manage personal information responsibly. vCons provide a way to capture, store, and analyze this data while ensuring compliance with privacy regulations.
-
-#### Regulators Governing Personal Data Protection
-
-Companies that share customer data with other entities, such as automotive dealerships and manufacturers, need a reliable way to track and manage this information. vCons ensure that data can be traced and managed throughout its lifecycle.
-
-#### Companies Subject to Data Privacy Regulations
-
-Organizations operating in regions with strict data privacy laws, such as the EU under GDPR, must ensure that they can track and manage all captured data. vCons provide a structured way to meet these regulatory requirements.
-
-#### Companies Using Machine Learning
-
-Businesses leveraging machine learning models that use customer data need to be able to track and manage this data efficiently. vCons facilitate this by providing a clear record of what data was used, ensuring that models can be retrained as needed without excessive costs.
-
-#### Companies Managing Customer Consent
-
-Consent is hardly a static, nor boundless, idea. Consent is given for a purpose, with a time limit, and must be withdrawn upon request.
-
-## Core Components of a vCon
-
-<div align="right">
-
-<figure><img src="../.gitbook/assets/Conserver Pictures (8).jpg" alt=""><figcaption><p>The Insides of a vCon</p></figcaption></figure>
-
-</div>
-
-#### Dialogues
-
-Dialogues form the heart of a vCon, encompassing all recorded media types, including text, messaging, video, and audio. vCons can be "packed" or "unpacked." A packed vCon includes media within the JSON package, making it suitable for scenarios where all parts need to be sent together, such as in an email. Unpacked vCons, on the other hand, are useful when large media files need to be managed separately from the core data package. Each dialog identifies a list of the parties in each dialog, directly enabling a customer’s “right to know”, as described in the GDPR and the CCPA.
-
-#### Parties
-
-Parties in a vCon identify conversation participants. It is crucial to note not only who was involved in the conversation but also who verified their identities.
-
-#### Analysis
-
-The analysis component involves commentary and insights derived from the dialogues. This can range from detecting emotions, recognizing significant events like birthdays, to identifying potential deceit in conversations. The analysis is stored as JSON arrays, making it easy to attach and manage various types of analytical data.
-
-#### Attachments
-
-Attachments provide context to the conversation. For example, a sales lead from Ford that prompted a call can be included as an attachment, enriching the context for future reference and analysis. This ensures that all relevant data is captured and can be used effectively by both humans and automated systems.
-
-### Who Is Using vCon Today
+## Where vCon is running today
 
 vCon is past the pilot stage.
 
-The BPO that incubated the technology runs roughly a quarter million vCon-formatted conversations per month through its production pipeline, and that volume has roughly doubled over the past year.
+The BPO that incubated the technology runs roughly a quarter million vCon formatted conversations per month through its production pipeline, and that volume has roughly doubled over the past year.
 
 A large financial institution is live with millions of vCon productions per day on a path to a million per hour. That deployment is also the first production instance of real-time vCons, where applications follow a conversation as it happens rather than waiting for the recording.
 
 A prototype is running at a United Way 211 center where the system listens for context that should change routing. A food-banking question and a sexual-abuse disclosure should not sit in the same queue, and they should not have to wait for tomorrow's manager review to be distinguished.
 
-Roughly thirty to forty companies are actively building with vCons today. Telecom, contact center, and CPaaS vendors are leaning in first, which is the usual pattern for an open standard: SIP gave service providers recording, and vCon gives them a portable answer for what to do with the recording next.
+Roughly thirty to forty companies are actively building with vCons today. Telecom, contact center, and CPaaS vendors are leaning in first, which is the usual pattern for an open standard. SIP gave service providers recording. vCon gives them a portable answer for what to do with the recording next.
 
-### Future Outlook
+## Inside a vCon
 
-The adoption of vCons is expected to grow as data privacy regulations become more stringent and the need for responsible data management increases. Companies will likely integrate vCons into their data engineering frameworks, ensuring that they can manage customer data effectively and comply with regulatory requirements.
+<div align="right">
 
-### Conclusion
+<figure><img src="../.gitbook/assets/Conserver Pictures (8).jpg" alt=""><figcaption><p>The insides of a vCon</p></figcaption></figure>
 
-vCon represents a significant advancement in the management of conversational data, offering a secure, standardized way to capture, store, and analyze conversations. By enabling better data management, vCons help companies comply with privacy regulations and optimize their use of customer data in machine learning applications. As the need for responsible data management grows, vCon is poised to become an essential tool for businesses worldwide.
+</div>
 
-For more information, you can refer to the draft in the IETF, a white paper co-authored with Dan Petrie, and the working implementation of vCons in Python available on GitHub.
+A vCon has five things inside it.
+
+**Dialogues** are the recorded media: audio, video, text, messaging. A vCon can be packed (media inline) for emailing or shipping as one file, or unpacked (media by reference) when the recordings are large enough to live on their own storage.
+
+**Parties** identify who was in the conversation, and who verified their identity. Identity verification is a first class concept, not an afterthought.
+
+**Consent** is carried inside the file, scoped by purpose and duration. When consent is withdrawn or expires, the systems holding the vCon can act on it without consulting an external policy.
+
+**Analysis** holds commentary derived from the dialog: transcription, sentiment, redaction, summarization, model outputs. It is stored as JSON, attachable in layers, and tied to the dialog it refers to.
+
+**Attachments** carry the context the conversation depended on. A sales lead, a CRM record, an inbound form, an authentication challenge, anything that explains why the conversation happened in the first place.
+
+## The hard part
+
+Conversations are simultaneously the most valuable and the most sensitive data a business holds. The value is obvious: every renewal, complaint, sales objection, support edge case, agent error, and customer insight lives in conversation long before it shows up in structured data. Modern ML, agentic AI, compliance audits, and revenue operations all want this material in volume. The sensitivity is just as obvious. Voices and faces are biometric identifiers a customer cannot change. The disclosures inside a conversation routinely include health, finances, family circumstances, and named third parties who never consented to be in the room at all. Treating one side without the other is the trap. Lock the conversations down and the business loses the most important signal it produces. Open them up and the next breach is catastrophic and unrecoverable.
+
+vCon is built to hold both sides at once. **Consent** rides inside the file, scoped by purpose and duration, so each downstream system can see what it is allowed to do and refuse to act outside that scope. **Redaction** is a first class operation, recorded in the analysis layer, so a redacted projection can be produced for one audience while the unredacted original remains controlled and inspectable for another. **Provenance and integrity** are cryptographic, not procedural, so any version of a vCon can be traced back to who signed it, what was changed, and when. **SCITT**, the IETF Supply Chain Integrity, Transparency and Trust ledger, records every lifecycle event (creation, sharing, analysis, deletion) in an append only log that downstream auditors can verify on their own without trusting the operator. None of these mechanisms eliminate the tension. They make it manageable, auditable, and verifiable in software, which is the difference between a privacy policy and a privacy posture.
+
+## What it gets you
+
+**Privacy and deletion you can actually execute.** vCons make "what data did we capture, and where is it" answerable in a structured way. GDPR style deletion stops being a project and starts being an API call.
+
+**Audit and provenance.** Every lifecycle event (creation, sharing, analysis, deletion) can be recorded in a SCITT ledger that downstream auditors can verify on their own. The conversation, and what was done to it, are inspectable separately.
+
+**ML lifecycle hygiene.** When a customer revokes consent or asks for deletion, you need to know which models trained on which conversations. vCons make that traceable, which makes the retraining cost bounded.
+
+**Consent that travels.** Consent moves with the file. Any system that opens a vCon can see the scope and the expiry, and refuse to act outside them, without phoning home.
+
+**An interoperable ecosystem.** Because the format is open, independent vendors can supply redaction, validation, transcription, and analytics tools that all read and write the same object. The buyer is not locked into a single stack.
+
+## GDPR, in practice
+
+Every data subject right GDPR grants becomes operable rather than aspirational when conversations live in vCons. The right to be informed is met by the disclosure stored at capture. The right of access becomes a query against a structured object instead of a hunt across systems. Rectification lands as an additional analysis entry with provenance rather than an overwrite. Erasure can be issued by the Conserver across every storage location holding the vCon, with the deletion event recorded in SCITT. Restriction of processing follows the consent scope inside the file, which downstream systems can read directly and refuse to act outside of. Portability is the format's defining trait, so a subject access request can return the conversations themselves rather than a flat export. The right to object travels with the file, since revocation of consent propagates rather than waiting on a separate policy. And for the rights around automated decision making, the analysis layer records every model that touched the conversation, so the subject can be told which decisions used their data.
+
+## What to read next
+
+* [vCons are...](vcons-are....md) for the one paragraph mental model
+* [Concepts](concepts.md) for the deeper vocabulary
+* [Privacy Primer](privacy-primer.md) for the lawful basis and PII story
+* [Conserver Quick Start](../conserver/conserver-quick-start.md) to run a vCon pipeline on your machine
+* [IETF VCON working group](https://datatracker.ietf.org/group/vcon/about/) for the primary spec record
 
 ## Foot Notes
 
-1. [https://datatracker.ietf.org/group/vcon/about/](https://datatracker.ietf.org/group/vcon/about/) and the core spec target [`draft-ietf-vcon-vcon-core`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) with syntax `"vcon": "0.4.0"`.
-2. In the terminology of the GDPR, a natural person is an individual human being as opposed to a legal person such as a corporation.
-
+1. The IETF VCON working group page is at [datatracker.ietf.org/group/vcon/about/](https://datatracker.ietf.org/group/vcon/about/). The core spec target is [`draft-ietf-vcon-vcon-core`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) with syntax parameter `"vcon": "0.4.0"`.
+2. In GDPR terminology, a "natural person" is an individual human being, as opposed to a legal person such as a corporation.
