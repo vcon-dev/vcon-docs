@@ -50,7 +50,7 @@ If you read one page, read this:
 You want to know where vCon fits in your stack and whether it is real.
 
 * [vCons are...](vcons/vcons-are....md) — the one paragraph mental model
-* [Why vCons?](vcons/why-vcons.md) — vCon as the data layer CPaaS was missing
+* [Why vCons need a file](vcons/why-vcons.md) — conversations as durable digital artifacts in the AI era
 * [Conserver Introduction](conserver/conserver-introduction.md) — the reference platform that produces and processes vCons
 * [Day in the Life of a vCon](conserver/day-in-the-life-of-a-vcon.md) — end to end flow
 {% endtab %}

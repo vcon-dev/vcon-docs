@@ -17,7 +17,7 @@ vCon is past the pilot stage. Implementations are running at hundreds of thousan
 ## Start here
 
 * [💬 A vCon Primer](a-vcon-primer.md) — the longer-form introduction
-* [🧠 Why vCons?](why-vcons.md) — the open-standard and CPaaS case
+* [🧠 Why vCons need a file](why-vcons.md) — conversations as durable digital artifacts in the AI era
 * [🌎 vCons are...](vcons-are....md) — six short framings
 * [💡 Concepts](concepts.md) — the vocabulary you will see in the spec
 * [🔒 Privacy primer](privacy-primer.md) — GDPR, CCPA, consent vocabulary

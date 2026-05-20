@@ -4,7 +4,7 @@
 * [vCons](vcons/README.md)
   * [💬 A vCon Primer](vcons/a-vcon-primer.md)
   * [🌎 vCons are...](vcons/vcons-are....md)
-  * [🧠 Why vCons?](vcons/why-vcons.md)
+  * [🧠 Why vCons need a file](vcons/why-vcons.md)
   * [💡 Concepts](vcons/concepts.md)
   * [🔒 Privacy Primer](vcons/privacy-primer.md)
   * [✨ More Information](vcons/more-information.md)
