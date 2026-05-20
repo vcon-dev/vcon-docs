@@ -76,6 +76,7 @@
   * [vCon IETF Working Group](https://datatracker.ietf.org/group/vcon/about/)
   * [vCon Lifecycle Management using SCITT](deep-dives/vcon-lifecycle-management-using-scitt.md)
   * [Privacy-First Conversation Management](deep-dives/privacy-first-conversation-management.md)
+  * [vCons and Increasing End User Agency](deep-dives/vcons-and-increasing-end-user-agency.md)
   * [SCITT: Supply Chain Integrity, Transparency and Trust](deep-dives/scitt-supply-chain-integrity-transparency-and-trust.md)
 * [HELPS and HACKS](helps-and-hacks/README.md)
   * [Coding Prompt Cheat Sheet](helps-and-hacks/coding-prompt-cheat-sheet.md)
