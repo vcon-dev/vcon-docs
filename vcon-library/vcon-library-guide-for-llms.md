@@ -1,19 +1,19 @@
 ---
 description: Stick this in your robot's context window.
-icon: scroll
 ---
 
-# vCon Library Guide for LLMs
+# 📜 vCon Library Guide for LLMs
 
 This guide provides a comprehensive overview of the vCon (Virtual Conversation) Python library, designed specifically for Large Language Models (LLMs) that need to generate or modify code using this library.
 
 > **Spec target:** [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) · syntax parameter `"vcon": "0.4.0"` · library version `0.9.2`.
 >
 > **Critical for LLM-generated code:**
-> - Top-level field is `amended` (not `appended`); declared-critical extensions live in `must_understand[]` (not `must_support`).
-> - Attachments use `purpose` (REQUIRED), never `type` — except the `lawful_basis` extension, which uses `type: "lawful_basis"`.
-> - Analysis entries require `vendor`; use `schema` (never `schema_version`); `body` is always a JSON-encoded string.
-> - WTF transcripts go in `analysis[]`, not `attachments[]`. See [WTF Transcription extension](../extensions/wtf-transcription.md).
+>
+> * Top-level field is `amended` (not `appended`); declared-critical extensions live in `must_understand[]` (not `must_support`).
+> * Attachments use `purpose` (REQUIRED), never `type` — except the `lawful_basis` extension, which uses `type: "lawful_basis"`.
+> * Analysis entries require `vendor`; use `schema` (never `schema_version`); `body` is always a JSON-encoded string.
+> * WTF transcripts go in `analysis[]`, not `attachments[]`. See [WTF Transcription extension](../extensions/wtf-transcription.md).
 
 ### Overview
 
@@ -807,8 +807,6 @@ incomplete_dialog = Dialog(
     disposition="no-answer"  # Valid: no-answer, congestion, failed, busy, hung-up, voicemail-no-message
 )
 ```
-
-
 
 #### Signing and Verification
 

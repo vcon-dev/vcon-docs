@@ -3,7 +3,6 @@ description: >-
   Drop-into-context guide for LLMs generating vCon adapter code. Spec target:
   draft-ietf-vcon-vcon-core-02, syntax 0.4.0. Pairs with the
   vcon-adapter-template repo.
-icon: robot
 ---
 
 # 🤖 LLM Guide: Creating vCon Adapters
@@ -171,7 +170,7 @@ v.add_attachment(
 )
 ```
 
-The lawful_basis extension is the **only** documented exception — it uses `type: "lawful_basis"`. See [Extensions Cookbook](extensions-cookbook.md).
+The lawful\_basis extension is the **only** documented exception — it uses `type: "lawful_basis"`. See [Extensions Cookbook](extensions-cookbook.md).
 
 ## Tags
 
@@ -192,14 +191,14 @@ Every extension used MUST appear in top-level `extensions[]`. The template inclu
 
 ## NEVER write these field names
 
-| ❌ Never | ✅ Always | Where |
-|---|---|---|
-| `appended` | `amended` | top-level metadata |
-| `must_support` | `critical` | top-level metadata |
-| `schema_version` | `schema` | analysis |
-| `type` | `purpose` | attachments (except `lawful_basis`) |
-| `did` | (removed) | party |
-| `0.2.0`, `0.3.0` | `"0.4.0"` | `vcon` syntax param |
+| ❌ Never          | ✅ Always   | Where                               |
+| ---------------- | ---------- | ----------------------------------- |
+| `appended`       | `amended`  | top-level metadata                  |
+| `must_support`   | `critical` | top-level metadata                  |
+| `schema_version` | `schema`   | analysis                            |
+| `type`           | `purpose`  | attachments (except `lawful_basis`) |
+| `did`            | (removed)  | party                               |
+| `0.2.0`, `0.3.0` | `"0.4.0"`  | `vcon` syntax param                 |
 
 ## Timestamps
 
@@ -223,20 +222,20 @@ Never emit naive datetimes.
 
 ## Dialog types
 
-| Type | Use for |
-|------|---------|
-| `"text"` | Messages, chat, IVR prompts, individual transcript turns |
-| `"recording"` | Audio recordings |
-| `"video"` | Video recordings / calls |
-| `"transfer"` | Call transfers — see `add_transfer_dialog` |
-| `"incomplete"` | Failed/abandoned calls — see `add_incomplete_dialog` |
+| Type           | Use for                                                  |
+| -------------- | -------------------------------------------------------- |
+| `"text"`       | Messages, chat, IVR prompts, individual transcript turns |
+| `"recording"`  | Audio recordings                                         |
+| `"video"`      | Video recordings / calls                                 |
+| `"transfer"`   | Call transfers — see `add_transfer_dialog`               |
+| `"incomplete"` | Failed/abandoned calls — see `add_incomplete_dialog`     |
 
 ## MIME types (mediatype)
 
-- Text: `"text/plain"`, `"text/html"`
-- Audio: `"audio/wav"`, `"audio/mp3"`, `"audio/ogg"`, `"audio/x-wav"`
-- Video: `"video/mp4"`, `"video/webm"`
-- Email: `"message/rfc822"`
+* Text: `"text/plain"`, `"text/html"`
+* Audio: `"audio/wav"`, `"audio/mp3"`, `"audio/ogg"`, `"audio/x-wav"`
+* Video: `"video/mp4"`, `"video/webm"`
+* Email: `"message/rfc822"`
 
 The field name is `mediatype`, not `mimetype`, in the spec (the library accepts both as kwarg names).
 

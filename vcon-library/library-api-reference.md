@@ -2,10 +2,9 @@
 description: >-
   Complete API documentation for the vCon Python library (v0.9.4), targeting
   draft-ietf-vcon-vcon-core-02 with syntax parameter "0.4.0".
-icon: plug
 ---
 
-# Library API Reference
+# 🔌 Library API Reference
 
 ## vCon Library API Reference
 
@@ -325,7 +324,7 @@ vcon.add_wtf_transcription_attachment(
 )
 ```
 
-**`add_wtf_transcription_analysis(transcript: Dict[str, Any], segments: List[Dict[str, Any]], metadata: Dict[str, Any], dialog_index: Optional[int] = None, **kwargs) -> None`** *(new in 0.9.2)*
+**`add_wtf_transcription_analysis(transcript: Dict[str, Any], segments: List[Dict[str, Any]], metadata: Dict[str, Any], dialog_index: Optional[int] = None, **kwargs) -> None`** _(new in 0.9.2)_
 
 Add a WTF transcription as an `analysis[]` entry — the canonical placement per the [WTF Transcription extension](../extensions/wtf-transcription.md). Emits `type: "transcription"`, `vendor` and `product` derived from `metadata`, `schema` set to the WTF draft URL, `encoding: "json"`, with the JSON-stringified body. Prefer this over the `_attachment` form for new adapters.
 

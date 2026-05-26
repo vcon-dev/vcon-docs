@@ -1,9 +1,8 @@
 ---
 description: Public API of vcon-js 0.4.0 — every exported class, method, and constant.
-icon: plug
 ---
 
-# vCon-JS API Reference
+# 🔌 API Reference
 
 Complete API reference for **`vcon-js` 0.4.0**, targeting [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) (syntax `"0.4.0"`).
 
@@ -27,10 +26,10 @@ Main container class.
 
 ### Static methods
 
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `Vcon.buildNew()` | `Vcon` | Create an empty vCon. Sets `uuid`, `created_at`, and `vcon: "0.4.0"`. |
-| `Vcon.buildFromJson(json: string)` | `Vcon` | Parse a vCon from JSON. |
+| Method                             | Returns | Description                                                           |
+| ---------------------------------- | ------- | --------------------------------------------------------------------- |
+| `Vcon.buildNew()`                  | `Vcon`  | Create an empty vCon. Sets `uuid`, `created_at`, and `vcon: "0.4.0"`. |
+| `Vcon.buildFromJson(json: string)` | `Vcon`  | Parse a vCon from JSON.                                               |
 
 ### Instance properties
 
@@ -40,40 +39,40 @@ Note: `amended` is the spec-correct name (was `appended` pre-spec-02). A depreca
 
 ### Adding content
 
-| Method | Description |
-|--------|-------------|
-| `addParty(party: Party)` | Append a party. The returned index is `parties.length - 1`. |
-| `addDialog(dialog: Dialog)` | Append a dialog entry. |
-| `addAttachment(attachment)` | Append an attachment. See the [Extensions section](../extensions/README.md) for shapes. |
-| `addAnalysis(analysis)` | Append an analysis entry. `vendor` is REQUIRED. |
-| `addTag(key: string, value: string)` | Add a tag (surfaces in conserver / MCP search). |
-| `addGroup(group: Group)` | Add a group reference (multi-vCon aggregation). |
+| Method                               | Description                                                                    |
+| ------------------------------------ | ------------------------------------------------------------------------------ |
+| `addParty(party: Party)`             | Append a party. The returned index is `parties.length - 1`.                    |
+| `addDialog(dialog: Dialog)`          | Append a dialog entry.                                                         |
+| `addAttachment(attachment)`          | Append an attachment. See the [Extensions section](../extensions/) for shapes. |
+| `addAnalysis(analysis)`              | Append an analysis entry. `vendor` is REQUIRED.                                |
+| `addTag(key: string, value: string)` | Add a tag (surfaces in conserver / MCP search).                                |
+| `addGroup(group: Group)`             | Add a group reference (multi-vCon aggregation).                                |
 
 ### Extensions
 
-| Method | Description |
-|--------|-------------|
-| `addExtension(name: string)` | Add to `extensions[]`. Consumers MAY understand it. |
-| `addCriticalExtension(name: string)` | Add to both `extensions[]` and `critical[]` / `must_understand[]`. Consumers MUST understand it or refuse the vCon. |
-| `hasExtension(name: string): boolean` | Check whether an extension is declared. |
-| `isCriticalExtension(name: string): boolean` | Check whether an extension is in `critical[]`. |
+| Method                                       | Description                                                                                                         |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `addExtension(name: string)`                 | Add to `extensions[]`. Consumers MAY understand it.                                                                 |
+| `addCriticalExtension(name: string)`         | Add to both `extensions[]` and `critical[]` / `must_understand[]`. Consumers MUST understand it or refuse the vCon. |
+| `hasExtension(name: string): boolean`        | Check whether an extension is declared.                                                                             |
+| `isCriticalExtension(name: string): boolean` | Check whether an extension is in `critical[]`.                                                                      |
 
 ### Search helpers
 
-| Method | Description |
-|--------|-------------|
-| `findPartyByIdentifier(...)` | Locate a party by tel / mailto / sip / etc. |
-| `findDialogByType(type)` | All dialogs of a given type. |
-| `findAttachmentByPurpose(purpose)` | Attachments with a given purpose. |
-| `findAnalysisByType(type)` | Analyses of a given type. |
-| `findAnalysisByVendor(vendor)` | Analyses produced by a vendor. |
+| Method                             | Description                                 |
+| ---------------------------------- | ------------------------------------------- |
+| `findPartyByIdentifier(...)`       | Locate a party by tel / mailto / sip / etc. |
+| `findDialogByType(type)`           | All dialogs of a given type.                |
+| `findAttachmentByPurpose(purpose)` | Attachments with a given purpose.           |
+| `findAnalysisByType(type)`         | Analyses of a given type.                   |
+| `findAnalysisByVendor(vendor)`     | Analyses produced by a vendor.              |
 
 ### Serialization
 
-| Method | Returns | Description |
-|--------|---------|-------------|
+| Method     | Returns  | Description                                    |
+| ---------- | -------- | ---------------------------------------------- |
 | `toJson()` | `string` | JSON string ready to sign, store, or transmit. |
-| `toDict()` | `object` | Plain JS object. |
+| `toDict()` | `object` | Plain JS object.                               |
 
 ## `Party`
 
@@ -185,14 +184,14 @@ Methods: `toDict()`, `PartyHistory.fromDict(obj)`, `validate()`.
 
 ## Types
 
-- **`SessionId`** — `{ local: string; remote: string }` per RFC 7989.
-- **`CivicAddress`** — GEOPRIV-style address (country, a1–a6, sts, hno, lmk, pc, …).
-- **`Group`** — `{ uuid: string; body?: string; encoding?: Encoding; url?: string; content_hash?: string | string[] }`.
-- **`Redacted`** / **`Amended`** — top-level reference objects to a related vCon UUID.
-- **`Encoding`** — `'base64url' | 'json' | 'none'`.
+* **`SessionId`** — `{ local: string; remote: string }` per RFC 7989.
+* **`CivicAddress`** — GEOPRIV-style address (country, a1–a6, sts, hno, lmk, pc, …).
+* **`Group`** — `{ uuid: string; body?: string; encoding?: Encoding; url?: string; content_hash?: string | string[] }`.
+* **`Redacted`** / **`Amended`** — top-level reference objects to a related vCon UUID.
+* **`Encoding`** — `'base64url' | 'json' | 'none'`.
 
 ## See also
 
-- [Quickstart](quickstart.md) — walking through the API in context
-- [LLM Guide](llm-guide.md) — same material formatted for model context
-- [Extensions section](../extensions/README.md) — the JSON shape you'll be passing into `addAttachment` / `addAnalysis` for each extension
+* [Quickstart](quickstart.md) — walking through the API in context
+* [LLM Guide](llm-guide.md) — same material formatted for model context
+* [Extensions section](../extensions/) — the JSON shape you'll be passing into `addAttachment` / `addAnalysis` for each extension

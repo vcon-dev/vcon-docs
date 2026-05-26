@@ -1,9 +1,8 @@
 ---
 description: A Complete Guide
-icon: wrench
 ---
 
-# Configuring the Conserver
+# 🔧 Configuring the Conserver
 
 The Conserver is configured through two mechanisms:
 
@@ -16,51 +15,51 @@ Set these in your `.env` file or system environment.
 
 ### Core Settings
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `REDIS_URL` | Redis connection URL | `redis://localhost` |
-| `CONSERVER_CONFIG_FILE` | Path to YAML config file | `./example_config.yml` |
-| `HOSTNAME` | Server hostname | `http://localhost:8000` |
-| `ENV` | Environment name (dev/staging/prod) | `dev` |
-| `LOG_LEVEL` | Logging level | `DEBUG` |
+| Variable                | Description                         | Default                 |
+| ----------------------- | ----------------------------------- | ----------------------- |
+| `REDIS_URL`             | Redis connection URL                | `redis://localhost`     |
+| `CONSERVER_CONFIG_FILE` | Path to YAML config file            | `./example_config.yml`  |
+| `HOSTNAME`              | Server hostname                     | `http://localhost:8000` |
+| `ENV`                   | Environment name (dev/staging/prod) | `dev`                   |
+| `LOG_LEVEL`             | Logging level                       | `DEBUG`                 |
 
 ### API Settings
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `CONSERVER_API_TOKEN` | Main API authentication token | (none) |
-| `CONSERVER_API_TOKEN_FILE` | Path to file with API tokens (one per line) | (none) |
-| `CONSERVER_HEADER_NAME` | HTTP header name for API token | `x-conserver-api-token` |
-| `API_ROOT_PATH` | API URL prefix | `/api` |
+| Variable                   | Description                                 | Default                 |
+| -------------------------- | ------------------------------------------- | ----------------------- |
+| `CONSERVER_API_TOKEN`      | Main API authentication token               | (none)                  |
+| `CONSERVER_API_TOKEN_FILE` | Path to file with API tokens (one per line) | (none)                  |
+| `CONSERVER_HEADER_NAME`    | HTTP header name for API token              | `x-conserver-api-token` |
+| `API_ROOT_PATH`            | API URL prefix                              | `/api`                  |
 
 ### Redis/Caching Settings
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `VCON_REDIS_EXPIRY` | Cache TTL for vCons fetched from storage back into Redis (seconds) | `3600` (1 hour) |
-| `VCON_INDEX_EXPIRY` | Search index TTL (seconds) | `86400` (24 hours) |
-| `VCON_CONTEXT_EXPIRY` | Ingress context (OTEL trace context) TTL (seconds) | `86400` (24 hours) |
-| `VCON_DLQ_EXPIRY` | Dead-letter queue TTL (seconds). Set to `0` to keep DLQ entries indefinitely. | `604800` (7 days) |
-| `VCON_SORTED_SET_NAME` | Name of Redis sorted set for vCons | `vcons` |
-| `VCON_SORTED_FORCE_RESET` | Reset sorted set on startup | `true` |
-| `TICK_INTERVAL` | Processing loop interval (ms) | `5000` |
+| Variable                  | Description                                                                   | Default            |
+| ------------------------- | ----------------------------------------------------------------------------- | ------------------ |
+| `VCON_REDIS_EXPIRY`       | Cache TTL for vCons fetched from storage back into Redis (seconds)            | `3600` (1 hour)    |
+| `VCON_INDEX_EXPIRY`       | Search index TTL (seconds)                                                    | `86400` (24 hours) |
+| `VCON_CONTEXT_EXPIRY`     | Ingress context (OTEL trace context) TTL (seconds)                            | `86400` (24 hours) |
+| `VCON_DLQ_EXPIRY`         | Dead-letter queue TTL (seconds). Set to `0` to keep DLQ entries indefinitely. | `604800` (7 days)  |
+| `VCON_SORTED_SET_NAME`    | Name of Redis sorted set for vCons                                            | `vcons`            |
+| `VCON_SORTED_FORCE_RESET` | Reset sorted set on startup                                                   | `true`             |
+| `TICK_INTERVAL`           | Processing loop interval (ms)                                                 | `5000`             |
 
 ### Worker & Parallelism
 
 These control how many worker processes the conserver runs and how storage writes are dispatched.
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `CONSERVER_WORKERS` | Number of worker processes to fork. Each worker independently pulls from configured ingress queues. Scale this with CPU cores and chain CPU-intensity. | `1` |
-| `CONSERVER_PARALLEL_STORAGE` | If `true`, storage writes for a single vCon run concurrently across the configured storages (ThreadPoolExecutor). If `false`, storages run serially. | `true` |
-| `CONSERVER_START_METHOD` | Multiprocessing start method: `fork`, `spawn`, or `forkserver`. Leave unset to use the platform default (typically `fork` on Linux, `spawn` on macOS). Use `spawn` if you hit fork-safety issues with native libraries. | unset |
+| Variable                     | Description                                                                                                                                                                                                             | Default |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `CONSERVER_WORKERS`          | Number of worker processes to fork. Each worker independently pulls from configured ingress queues. Scale this with CPU cores and chain CPU-intensity.                                                                  | `1`     |
+| `CONSERVER_PARALLEL_STORAGE` | If `true`, storage writes for a single vCon run concurrently across the configured storages (ThreadPoolExecutor). If `false`, storages run serially.                                                                    | `true`  |
+| `CONSERVER_START_METHOD`     | Multiprocessing start method: `fork`, `spawn`, or `forkserver`. Leave unset to use the platform default (typically `fork` on Linux, `spawn` on macOS). Use `spawn` if you hit fork-safety issues with native libraries. | unset   |
 
 ### External Service API Keys
 
-| Variable | Description |
-|----------|-------------|
-| `OPENAI_API_KEY` | OpenAI API key |
-| `DEEPGRAM_KEY` | Deepgram speech-to-text API key |
+| Variable         | Description                     |
+| ---------------- | ------------------------------- |
+| `OPENAI_API_KEY` | OpenAI API key                  |
+| `DEEPGRAM_KEY`   | Deepgram speech-to-text API key |
 
 ### Example .env File
 
@@ -84,7 +83,7 @@ OPENAI_API_KEY=sk-...
 DEEPGRAM_KEY=...
 ```
 
----
+***
 
 ## YAML Configuration File
 
@@ -139,11 +138,11 @@ followers:
     follower_ingress_list: target_queue
 ```
 
----
+***
 
 ## Section Reference
 
-### ingress_auth
+### ingress\_auth
 
 Configures API keys for external partner access to the `/vcon/external-ingress` endpoint.
 
@@ -161,14 +160,15 @@ ingress_auth:
 
 Each key grants access only to its designated ingress list. Partners cannot access other API endpoints.
 
----
+***
 
 ### imports
 
 Dynamically imports Python packages at runtime. Useful for:
-- Installing missing dependencies automatically
-- Using external link/storage packages
-- Managing version requirements
+
+* Installing missing dependencies automatically
+* Using external link/storage packages
+* Managing version requirements
 
 ```yaml
 imports:
@@ -195,7 +195,7 @@ imports:
 
 The Conserver will automatically install missing packages when first referenced.
 
----
+***
 
 ### links
 
@@ -243,7 +243,7 @@ Each link configuration needs:
 * The module path that implements the link functionality
 * An options dictionary containing the link's specific configuration
 
----
+***
 
 ### storages
 
@@ -282,7 +282,7 @@ Each storage needs:
 * The storage module implementation
 * Connection and authentication options specific to the storage type
 
----
+***
 
 ### tracers
 
@@ -302,7 +302,7 @@ tracers:
       dlq_vcon_on_error: true
 ```
 
----
+***
 
 ### chains
 
@@ -346,13 +346,14 @@ A chain configuration includes:
 * An enabled flag and optional timeout
 
 **Chain Processing Flow:**
+
 1. vCon UUID arrives in an ingress list
 2. Links execute sequentially (any can stop processing by returning `None`)
 3. vCon is stored in all configured storage backends
 4. UUID is added to egress lists
 5. If processing fails, UUID moves to DLQ (`{ingress_list}:dlq`)
 
----
+***
 
 ### followers
 
@@ -388,7 +389,7 @@ Each follower needs:
 * The local list to populate (follower\_ingress\_list)
 * Polling configuration (interval and batch size)
 
----
+***
 
 ## Complete Example
 
@@ -470,7 +471,7 @@ chains:
     timeout: 600
 ```
 
----
+***
 
 ## Environment Variable Substitution
 
@@ -486,23 +487,18 @@ links:
 
 This allows sensitive values to be kept in environment variables rather than the config file.
 
----
+***
 
 ## Configuration Best Practices
 
 1. **Use meaningful names** for your chains, links, and storage configurations to make the system easier to understand and maintain.
-
 2. **Organize links logically** - arrange links in order where each step builds on the previous ones.
-
 3. **Use multiple storage backends** when needed - for example, storing in both S3 for long-term storage and Postgres for quick querying.
-
 4. **Configure appropriate timeouts** for your chains based on the expected processing time of your links.
-
 5. **Use environment variables** for sensitive values like API keys and passwords.
-
 6. **Use the follower configuration** when you need to process vCons across multiple conserver instances.
 
----
+***
 
 ## Hot Reloading
 

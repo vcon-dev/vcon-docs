@@ -1,28 +1,27 @@
 ---
 description: Deploying the Conserver in Production
-icon: rocket
 ---
 
-# Production Deployment
+# 🏭 Production Deployment
 
 This guide covers deploying the Conserver in production environments with considerations for scalability, reliability, and security.
 
 ## Prerequisites
 
-- Docker and Docker Compose
-- Redis server (or Redis cluster for high availability)
-- Storage backends configured (PostgreSQL, S3, etc.)
-- Domain name and TLS certificates
-- Monitoring infrastructure (optional but recommended)
+* Docker and Docker Compose
+* Redis server (or Redis cluster for high availability)
+* Storage backends configured (PostgreSQL, S3, etc.)
+* Domain name and TLS certificates
+* Monitoring infrastructure (optional but recommended)
 
 ## Image strategy: two Dockerfiles
 
 As of the May 2026 image optimization (`docker/Dockerfile.api` and `docker/Dockerfile.conserver`), the conserver ships **two separate images**:
 
-| Image | What it contains | Use it for |
-|-------|------------------|------------|
-| **`Dockerfile.api`** | FastAPI app, storage backends, vCon library — no audio/ML stack | The API tier. Light, starts fast, scales horizontally. |
-| **`Dockerfile.conserver`** | Everything in the API image *plus* transformers, openai, deepgram, ffmpeg, pydub | The worker tier. Heavy but only needed where audio processing and LLM calls run. |
+| Image                      | What it contains                                                                 | Use it for                                                                       |
+| -------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| **`Dockerfile.api`**       | FastAPI app, storage backends, vCon library — no audio/ML stack                  | The API tier. Light, starts fast, scales horizontally.                           |
+| **`Dockerfile.conserver`** | Everything in the API image _plus_ transformers, openai, deepgram, ffmpeg, pydub | The worker tier. Heavy but only needed where audio processing and LLM calls run. |
 
 Both images use [**uv**](https://github.com/astral-sh/uv) (Astral's Python package manager) for reproducible builds and place the virtualenv at `/opt/venv` so it survives volume mounts.
 
@@ -222,18 +221,20 @@ server {
 }
 ```
 
----
+***
 
 ## Scaling Considerations
 
 ### Horizontal Scaling
 
 The Conserver supports horizontal scaling because:
-- All state is stored in Redis
-- Multiple instances can process from the same queues
-- API requests are stateless
+
+* All state is stored in Redis
+* Multiple instances can process from the same queues
+* API requests are stateless
 
 Scale workers based on queue depth:
+
 ```bash
 # Monitor queue depth
 redis-cli LLEN incoming_calls
@@ -277,67 +278,68 @@ dlq_length = r.llen('incoming_calls:dlq')
 print(f"DLQ depth: {dlq_length}")
 ```
 
----
+***
 
 ## Security Hardening
 
 ### API Token Management
 
-1. **Use token files instead of environment variables:**
-   ```yaml
-   environment:
-     - CONSERVER_API_TOKEN_FILE=/run/secrets/api_tokens
-   ```
+1.  **Use token files instead of environment variables:**
 
-2. **Rotate tokens regularly:**
-   ```bash
-   # Generate new token
-   openssl rand -hex 32 > secrets/api_tokens.txt
+    ```yaml
+    environment:
+      - CONSERVER_API_TOKEN_FILE=/run/secrets/api_tokens
+    ```
+2.  **Rotate tokens regularly:**
 
-   # Restart API containers
-   docker compose restart conserver-api
-   ```
+    ```bash
+    # Generate new token
+    openssl rand -hex 32 > secrets/api_tokens.txt
 
+    # Restart API containers
+    docker compose restart conserver-api
+    ```
 3. **Use separate tokens for different purposes:**
-   - Internal API token for system operations
-   - Partner-specific tokens via `ingress_auth`
+   * Internal API token for system operations
+   * Partner-specific tokens via `ingress_auth`
 
 ### Network Security
 
-1. **Isolate Redis:**
-   ```yaml
-   networks:
-     internal:
-       internal: true
-     external:
+1.  **Isolate Redis:**
 
-   services:
-     redis:
-       networks:
-         - internal
-     conserver-api:
-       networks:
-         - internal
-         - external
-   ```
+    ```yaml
+    networks:
+      internal:
+        internal: true
+      external:
 
-2. **Enable Redis AUTH:**
-   ```yaml
-   redis:
-     command: redis-server --requirepass ${REDIS_PASSWORD}
-   ```
+    services:
+      redis:
+        networks:
+          - internal
+      conserver-api:
+        networks:
+          - internal
+          - external
+    ```
+2.  **Enable Redis AUTH:**
 
+    ```yaml
+    redis:
+      command: redis-server --requirepass ${REDIS_PASSWORD}
+    ```
 3. **Use TLS for external connections**
 
 ### Secret Management
 
 Consider using:
-- Docker secrets (as shown above)
-- HashiCorp Vault
-- AWS Secrets Manager
-- Kubernetes secrets
 
----
+* Docker secrets (as shown above)
+* HashiCorp Vault
+* AWS Secrets Manager
+* Kubernetes secrets
+
+***
 
 ## Monitoring and Observability
 
@@ -388,23 +390,24 @@ environment:
 ```
 
 Logs include:
-- Request IDs for tracing
-- Processing times
-- Error details with stack traces
-- vCon UUIDs for correlation
+
+* Request IDs for tracing
+* Processing times
+* Error details with stack traces
+* vCon UUIDs for correlation
 
 ### Alerting
 
 Set up alerts for:
 
-| Metric | Threshold | Action |
-|--------|-----------|--------|
-| Queue depth > 1000 | Warning | Scale workers |
-| DLQ depth > 100 | Critical | Investigate failures |
-| API latency p99 > 5s | Warning | Check resources |
-| Error rate > 5% | Critical | Check logs |
+| Metric               | Threshold | Action               |
+| -------------------- | --------- | -------------------- |
+| Queue depth > 1000   | Warning   | Scale workers        |
+| DLQ depth > 100      | Critical  | Investigate failures |
+| API latency p99 > 5s | Warning   | Check resources      |
+| Error rate > 5%      | Critical  | Check logs           |
 
----
+***
 
 ## Graceful Shutdown
 
@@ -423,7 +426,7 @@ services:
     stop_grace_period: 5m  # Allow time for long transcriptions
 ```
 
----
+***
 
 ## Backup and Recovery
 
@@ -440,22 +443,22 @@ redis:
 
 ### Backup Strategy
 
-1. **Redis RDB snapshots:**
-   ```bash
-   redis-cli BGSAVE
-   ```
+1.  **Redis RDB snapshots:**
 
+    ```bash
+    redis-cli BGSAVE
+    ```
 2. **Storage backend backups:**
-   - PostgreSQL: pg_dump
-   - S3: Enable versioning
-   - Elasticsearch: Snapshot API
+   * PostgreSQL: pg\_dump
+   * S3: Enable versioning
+   * Elasticsearch: Snapshot API
+3.  **Configuration backup:**
 
-3. **Configuration backup:**
-   ```bash
-   # Backup config via API
-   curl -H "x-conserver-api-token: $TOKEN" \
-     http://localhost:8000/api/config > config_backup.json
-   ```
+    ```bash
+    # Backup config via API
+    curl -H "x-conserver-api-token: $TOKEN" \
+      http://localhost:8000/api/config > config_backup.json
+    ```
 
 ### Disaster Recovery
 
@@ -464,42 +467,43 @@ redis:
 3. Keep configuration in version control
 4. Document recovery procedures
 
----
+***
 
 ## Deployment Checklist
 
 ### Pre-deployment
 
-- [ ] Configure TLS certificates
-- [ ] Set up API tokens securely
-- [ ] Configure storage backends
-- [ ] Test configuration locally
-- [ ] Set up monitoring/alerting
-- [ ] Document rollback procedures
+* [ ] Configure TLS certificates
+* [ ] Set up API tokens securely
+* [ ] Configure storage backends
+* [ ] Test configuration locally
+* [ ] Set up monitoring/alerting
+* [ ] Document rollback procedures
 
 ### Deployment
 
-- [ ] Deploy Redis first
-- [ ] Deploy workers
-- [ ] Deploy API servers
-- [ ] Verify health checks pass
-- [ ] Test sample vCon processing
+* [ ] Deploy Redis first
+* [ ] Deploy workers
+* [ ] Deploy API servers
+* [ ] Verify health checks pass
+* [ ] Test sample vCon processing
 
 ### Post-deployment
 
-- [ ] Monitor queue depths
-- [ ] Check error rates
-- [ ] Verify storage writes
-- [ ] Test API endpoints
-- [ ] Confirm metrics flowing
+* [ ] Monitor queue depths
+* [ ] Check error rates
+* [ ] Verify storage writes
+* [ ] Test API endpoints
+* [ ] Confirm metrics flowing
 
----
+***
 
 ## Troubleshooting
 
 ### Common Issues
 
 **Workers not processing:**
+
 ```bash
 # Check Redis connectivity
 docker exec conserver-worker redis-cli -h redis ping
@@ -509,6 +513,7 @@ docker exec conserver-worker redis-cli -h redis LRANGE incoming_calls 0 10
 ```
 
 **High DLQ count:**
+
 ```bash
 # Check DLQ contents
 curl -H "x-conserver-api-token: $TOKEN" \
@@ -520,6 +525,7 @@ curl -X POST -H "x-conserver-api-token: $TOKEN" \
 ```
 
 **Memory issues:**
+
 ```bash
 # Check Redis memory
 redis-cli INFO memory

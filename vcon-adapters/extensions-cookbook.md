@@ -1,9 +1,10 @@
 ---
-icon: book-open
-description: Worked examples for the extensions adapters use most — WTF transcription, lawful basis, SIP signaling, agent session.
+description: >-
+  Worked examples for the extensions adapters use most — WTF transcription,
+  lawful basis, SIP signaling, agent session.
 ---
 
-# 📖 Extensions Cookbook
+# 📚 Extensions Cookbook
 
 The vCon core spec is intentionally small. Most of what adapters actually care about — transcripts, recording consent, SIP signaling provenance, AI-agent session tracking — lives in **extensions**. This page is a recipe book for the four extensions adapters use in practice.
 
@@ -11,7 +12,7 @@ Each recipe shows the exact `vcon` library call, the resulting JSON shape, and l
 
 **Spec target:** [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), syntax `"0.4.0"`. Library: [`vcon`](https://pypi.org/project/vcon/) ≥0.9.4.
 
----
+***
 
 ## WTF Transcription
 
@@ -75,13 +76,13 @@ v.add_analysis(
 
 ### Common mistakes
 
-- ❌ Putting the transcript in `attachments[]` instead of `analysis[]`
-- ❌ Storing the WTF document as a Python dict in `body` — `body` is always a string, paired with `encoding="json"`
-- ❌ Adding a separate plain-text transcript analysis — the WTF document already carries `transcript.text`
-- ❌ Forgetting `vendor` (the library will raise `TypeError`)
-- ❌ Writing `schema_version` instead of `schema`
+* ❌ Putting the transcript in `attachments[]` instead of `analysis[]`
+* ❌ Storing the WTF document as a Python dict in `body` — `body` is always a string, paired with `encoding="json"`
+* ❌ Adding a separate plain-text transcript analysis — the WTF document already carries `transcript.text`
+* ❌ Forgetting `vendor` (the library will raise `TypeError`)
+* ❌ Writing `schema_version` instead of `schema`
 
----
+***
 
 ## Lawful Basis (recording consent)
 
@@ -89,7 +90,7 @@ v.add_analysis(
 
 Use this when your adapter handles conversations covered by GDPR, CCPA, HIPAA, TCPA, state-by-state recording consent laws, or when you're generating synthetic data for which you want auditable origin tracking.
 
-**Critical exception:** the lawful_basis attachment is the one place where attachments use `type` instead of `purpose`. This is documented in the spec.
+**Critical exception:** the lawful\_basis attachment is the one place where attachments use `type` instead of `purpose`. This is documented in the spec.
 
 ### Recipe — consent-based (GDPR Article 6(1)(a))
 
@@ -162,12 +163,12 @@ Also mark each synthetic party with `validation: "synthetic"`. See the [syntheti
 
 ### Common mistakes
 
-- ❌ Using `purpose: "lawful_basis"` instead of `type: "lawful_basis"` — this attachment is the *one* core spec exception
-- ❌ Inventing an ad-hoc `synthetic_data_consent` attachment shape instead of using lawful_basis with `legitimate_interests` + `external_system` proof
-- ❌ Omitting `"lawful_basis"` from top-level `extensions[]`
-- ❌ Treating `expiration` as optional for consent-based grounds — GDPR consent without an expiry is brittle
+* ❌ Using `purpose: "lawful_basis"` instead of `type: "lawful_basis"` — this attachment is the _one_ core spec exception
+* ❌ Inventing an ad-hoc `synthetic_data_consent` attachment shape instead of using lawful\_basis with `legitimate_interests` + `external_system` proof
+* ❌ Omitting `"lawful_basis"` from top-level `extensions[]`
+* ❌ Treating `expiration` as optional for consent-based grounds — GDPR consent without an expiry is brittle
 
----
+***
 
 ## SIP Signaling
 
@@ -213,7 +214,7 @@ v.add_attachment(
 
 Note this uses `purpose=`, not `type=` — SIP signaling follows the standard core attachment shape (only `lawful_basis` is the exception).
 
----
+***
 
 ## Agent Session
 
@@ -265,7 +266,7 @@ v.add_attachment(
 
 The [`vcon-anthropic-chats`](../tools/vcon-anthropic-chats.md) adapter is a reference implementation if you're building an LLM-export adapter.
 
----
+***
 
 ## Combining extensions
 
@@ -281,8 +282,8 @@ There's no ordering constraint and no limit. List them all, then add the corresp
 
 When you need authoritative answers, read the drafts — not this cookbook:
 
-- [WTF Transcription](../extensions/wtf-transcription.md) → [`draft-howe-vcon-wtf-extension`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf/)
-- [Lawful Basis](../extensions/lawful-basis.md) → [`draft-howe-vcon-lawful-basis`](https://datatracker.ietf.org/doc/draft-howe-vcon-lawful-basis/)
-- [SIP Signaling](../extensions/sip-signaling.md) → [`draft-howe-vcon-sip-signaling`](https://datatracker.ietf.org/doc/draft-howe-vcon-sip-signaling/)
-- [Agent Session](../extensions/agent-session.md) → [`draft-howe-vcon-agent-session`](https://datatracker.ietf.org/doc/draft-howe-vcon-agent-session/)
-- [Lifecycle (SCITT)](../extensions/lifecycle.md) → [`draft-howe-vcon-lifecycle`](https://datatracker.ietf.org/doc/draft-howe-vcon-lifecycle/)
+* [WTF Transcription](../extensions/wtf-transcription.md) → [`draft-howe-vcon-wtf-extension`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf/)
+* [Lawful Basis](../extensions/lawful-basis.md) → [`draft-howe-vcon-lawful-basis`](https://datatracker.ietf.org/doc/draft-howe-vcon-lawful-basis/)
+* [SIP Signaling](../extensions/sip-signaling.md) → [`draft-howe-vcon-sip-signaling`](https://datatracker.ietf.org/doc/draft-howe-vcon-sip-signaling/)
+* [Agent Session](../extensions/agent-session.md) → [`draft-howe-vcon-agent-session`](https://datatracker.ietf.org/doc/draft-howe-vcon-agent-session/)
+* [Lifecycle (SCITT)](../extensions/lifecycle.md) → [`draft-howe-vcon-lifecycle`](https://datatracker.ietf.org/doc/draft-howe-vcon-lifecycle/)

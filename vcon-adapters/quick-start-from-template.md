@@ -1,5 +1,4 @@
 ---
-icon: rocket
 description: Scaffold a new vCon adapter in five minutes from the official template repo.
 ---
 
@@ -11,20 +10,20 @@ Spec target: [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/d
 
 ## Prerequisites
 
-- Python 3.12+
-- [`uv`](https://docs.astral.sh/uv/) (recommended) or `pip`
-- `gh` CLI (or use the GitHub web UI for step 1)
-- A source platform that exposes conversation data — webhook events, an API to poll, files on a disk, an S3 bucket, anything
+* Python 3.12+
+* [`uv`](https://docs.astral.sh/uv/) (recommended) or `pip`
+* `gh` CLI (or use the GitHub web UI for step 1)
+* A source platform that exposes conversation data — webhook events, an API to poll, files on a disk, an S3 bucket, anything
 
 ## Step 1 — Create your repo from the template
 
 Pick three names up front, all referring to the same adapter:
 
-| Name | Form | Example |
-|------|------|---------|
-| **Adapter name** | kebab-case | `signalwire` |
-| **Python package** | snake_case | `signalwire_adapter` |
-| **Source platform** | human-readable | `SignalWire` |
+| Name                | Form           | Example              |
+| ------------------- | -------------- | -------------------- |
+| **Adapter name**    | kebab-case     | `signalwire`         |
+| **Python package**  | snake\_case    | `signalwire_adapter` |
+| **Source platform** | human-readable | `SignalWire`         |
 
 Then create the repo:
 
@@ -81,10 +80,10 @@ You should see all 14 spec-compliance smoke tests pass. If anything fails, you h
 
 Open `src/<your_package>/cli.py` and find the `# TODO: wire your source-platform listener` comment. Replace it with whatever fits your source:
 
-- **Webhook receiver:** add `aiohttp.web` routes that consume incoming events
-- **Polling job:** use `asyncio.create_task` to run a loop with `asyncio.sleep(interval)`
-- **File watcher:** import `watchdog` and observe a directory
-- **Batch CLI:** read input files, build vCons in a loop, deliver, exit
+* **Webhook receiver:** add `aiohttp.web` routes that consume incoming events
+* **Polling job:** use `asyncio.create_task` to run a loop with `asyncio.sleep(interval)`
+* **File watcher:** import `watchdog` and observe a directory
+* **Batch CLI:** read input files, build vCons in a loop, deliver, exit
 
 The shape of the per-event work is the same regardless:
 
@@ -112,11 +111,11 @@ async def handle_event(event: dict, delivery: WebhookDelivery) -> None:
 
 Copy `config.example.yaml` to `config.yaml` and set the values. Required env vars:
 
-| Env var | Purpose |
-|---------|---------|
-| `<PACKAGE>_API_KEY` | Credentials for your source platform |
-| `VCON_WEBHOOK_URL` | Where to POST vCons |
-| `VCON_WEBHOOK_HMAC_SECRET` | Shared secret for body signing |
+| Env var                    | Purpose                              |
+| -------------------------- | ------------------------------------ |
+| `<PACKAGE>_API_KEY`        | Credentials for your source platform |
+| `VCON_WEBHOOK_URL`         | Where to POST vCons                  |
+| `VCON_WEBHOOK_HMAC_SECRET` | Shared secret for body signing       |
 
 The config file uses `${ENV_VAR}` substitution at startup, so you never commit secrets.
 
@@ -143,10 +142,10 @@ curl localhost:8000/metrics   # → Prometheus exposition
 
 Trigger an event from your source platform (or simulate one) and watch:
 
-- Logs show `delivered url=... uuid=...` from `webhook_delivery.py`
-- The `vcons_delivered_total` Prometheus counter increments
-- The receiving end sees `Idempotency-Key: <uuid>` and `X-Hub-Signature-256: sha256=…` headers
-- If you forcibly take the receiver down, vCons should land in `dlq/` after retries exhaust
+* Logs show `delivered url=... uuid=...` from `webhook_delivery.py`
+* The `vcons_delivered_total` Prometheus counter increments
+* The receiving end sees `Idempotency-Key: <uuid>` and `X-Hub-Signature-256: sha256=…` headers
+* If you forcibly take the receiver down, vCons should land in `dlq/` after retries exhaust
 
 ## Step 8 — Publish
 
@@ -156,7 +155,7 @@ Trigger an event from your source platform (or simulate one) and watch:
 
 ## What to read next
 
-- [Spec Compliance Checklist](spec-compliance-checklist.md) — the must/never list every PR needs to pass
-- [Operational Patterns](operational-patterns.md) — what the template's delivery layer is actually doing under the hood
-- [Extensions Cookbook](extensions-cookbook.md) — attaching transcripts, consent records, and SIP signaling
-- [vCon Adapter Development Guide](vcon-adapter-development-guide.md) — when the template's shape isn't enough
+* [Spec Compliance Checklist](spec-compliance-checklist.md) — the must/never list every PR needs to pass
+* [Operational Patterns](operational-patterns.md) — what the template's delivery layer is actually doing under the hood
+* [Extensions Cookbook](extensions-cookbook.md) — attaching transcripts, consent records, and SIP signaling
+* [vCon Adapter Development Guide](vcon-adapter-development-guide.md) — when the template's shape isn't enough

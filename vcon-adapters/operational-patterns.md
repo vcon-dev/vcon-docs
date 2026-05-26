@@ -1,13 +1,14 @@
 ---
-icon: gear
-description: How to deliver vCons reliably in production — signing, idempotency, retries, dead-letter queues, health, metrics.
+description: >-
+  How to deliver vCons reliably in production — signing, idempotency, retries,
+  dead-letter queues, health, metrics.
 ---
 
 # ⚙️ Operational Patterns
 
-The vCon construction story is well-defined: use the [`vcon`](../vcon-library/README.md) library helpers and stay on the [Spec Compliance Checklist](spec-compliance-checklist.md). The *delivery* story — how a built vCon actually leaves your adapter and reaches a conserver, MCP server, archive, or downstream pipeline — is where most adapters historically went wrong. This page documents the patterns the [vcon-adapter-template](https://github.com/vcon-dev/vcon-adapter-template) ships with and that new adapters should adopt.
+The vCon construction story is well-defined: use the [`vcon`](../vcon-library/) library helpers and stay on the [Spec Compliance Checklist](spec-compliance-checklist.md). The _delivery_ story — how a built vCon actually leaves your adapter and reaches a conserver, MCP server, archive, or downstream pipeline — is where most adapters historically went wrong. This page documents the patterns the [vcon-adapter-template](https://github.com/vcon-dev/vcon-adapter-template) ships with and that new adapters should adopt.
 
-Every pattern below is implemented in code at [`webhook_delivery.py`](https://github.com/vcon-dev/vcon-adapter-template/blob/main/src/__ADAPTER_PACKAGE__/webhook_delivery.py) and [`health_server.py`](https://github.com/vcon-dev/vcon-adapter-template/blob/main/src/__ADAPTER_PACKAGE__/health_server.py). If you scaffolded from the template, you already have this — read this page to know *why* it works the way it does.
+Every pattern below is implemented in code at [`webhook_delivery.py`](https://github.com/vcon-dev/vcon-adapter-template/blob/main/src/__ADAPTER_PACKAGE__/webhook_delivery.py) and [`health_server.py`](https://github.com/vcon-dev/vcon-adapter-template/blob/main/src/__ADAPTER_PACKAGE__/health_server.py). If you scaffolded from the template, you already have this — read this page to know _why_ it works the way it does.
 
 ## The delivery contract
 
@@ -53,8 +54,8 @@ The shared secret lives in `VCON_WEBHOOK_HMAC_SECRET` (or per-endpoint in `confi
 
 Every webhook delivery MUST carry an `Idempotency-Key` header equal to the vCon's `uuid`. This serves two purposes:
 
-- **Retries are safe.** When the adapter retries after a 5xx response or a timeout, the receiver sees the same key and can skip work it has already done.
-- **Replay is detectable.** If an attacker captures and replays a signed payload, the receiver can spot the duplicate `uuid` and reject it.
+* **Retries are safe.** When the adapter retries after a 5xx response or a timeout, the receiver sees the same key and can skip work it has already done.
+* **Replay is detectable.** If an attacker captures and replays a signed payload, the receiver can spot the duplicate `uuid` and reject it.
 
 vCon UUIDs are v4 — sufficiently random that collisions are operationally impossible. The receiver can use them as primary keys directly.
 
@@ -63,12 +64,12 @@ vCon UUIDs are v4 — sufficiently random that collisions are operationally impo
 Networks fail. Downstream services are deployed, restart, get overloaded. The template's delivery layer retries up to `max_attempts` times (default 5) with exponential backoff:
 
 | Attempt | Wait before retry |
-|---------|-------------------|
-| 1 | — (immediate) |
-| 2 | 1 s |
-| 3 | 2 s |
-| 4 | 4 s |
-| 5 | 8 s |
+| ------- | ----------------- |
+| 1       | — (immediate)     |
+| 2       | 1 s               |
+| 3       | 2 s               |
+| 4       | 4 s               |
+| 5       | 8 s               |
 
 Backoff doubles each attempt, capped at `max_backoff_seconds` (default 60). Both knobs are configurable in `config.yaml`:
 
@@ -88,11 +89,11 @@ A response counts as success when the status code is `2xx`. Anything else — `4
 
 When all retry attempts are exhausted across all configured endpoints, the vCon is written to disk under `dead_letter_path` (default `./dlq`) as `<uuid>.vcon.json`. This guarantees that:
 
-- No vCon is ever silently lost
-- An operator can inspect, requeue, or hand-deliver failed messages
-- Audit trails survive receiver outages
+* No vCon is ever silently lost
+* An operator can inspect, requeue, or hand-deliver failed messages
+* Audit trails survive receiver outages
 
-The DLQ is a directory of JSON files, not a queue service. This keeps adapters small and stateless. Plug in your own re-injection cron, ops dashboard, or alerting on the directory's size — see the [Conserver](../conserver/README.md) docs for one way to wire DLQ replay into a broader pipeline.
+The DLQ is a directory of JSON files, not a queue service. This keeps adapters small and stateless. Plug in your own re-injection cron, ops dashboard, or alerting on the directory's size — see the [Conserver](../conserver/) docs for one way to wire DLQ replay into a broader pipeline.
 
 The `vcons_dlq_total` Prometheus counter (see below) tracks DLQ writes — alert on it.
 
@@ -125,11 +126,11 @@ Returns `200 OK` with `{"status": "ok"}` JSON. Designed for Kubernetes liveness/
 
 Returns Prometheus exposition format. Three counters out of the box:
 
-| Counter | Increments on | Labels |
-|---------|---------------|--------|
-| `vcons_built_total` | Every successful vCon construction | — |
+| Counter                 | Increments on                              | Labels     |
+| ----------------------- | ------------------------------------------ | ---------- |
+| `vcons_built_total`     | Every successful vCon construction         | —          |
 | `vcons_delivered_total` | Every 2xx response from a webhook endpoint | `endpoint` |
-| `vcons_dlq_total` | Every write to the dead-letter queue | — |
+| `vcons_dlq_total`       | Every write to the dead-letter queue       | —          |
 
 A reasonable alerting rule pair:
 
@@ -146,7 +147,7 @@ The first catches the failure mode where the receiver is broken; the second catc
 
 ## JWS signing of vCons (optional, content-level)
 
-HMAC webhook signing authenticates the *transport* — it tells the receiver "this body came from someone holding the shared secret." It does not travel with the vCon if the receiver later forwards it.
+HMAC webhook signing authenticates the _transport_ — it tells the receiver "this body came from someone holding the shared secret." It does not travel with the vCon if the receiver later forwards it.
 
 For end-to-end provenance, sign the vCon itself with JWS (JSON Web Signature, RS256). The template includes an optional signing path; enable it in config:
 
@@ -199,7 +200,7 @@ The template uses [`structlog`](https://www.structlog.org/) with JSON output by 
 {"event":"dlq_write","uuid":"6f1c...","path":"/app/vcons/dlq/6f1c.vcon.json","level":"error"}
 ```
 
-This is grep-friendly *and* fits cleanly into Loki/Datadog/Splunk pipelines. The `uuid` field is the join key for tracing a single vCon end-to-end.
+This is grep-friendly _and_ fits cleanly into Loki/Datadog/Splunk pipelines. The `uuid` field is the join key for tracing a single vCon end-to-end.
 
 ## What this page is not
 

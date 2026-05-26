@@ -1,9 +1,10 @@
 ---
-description: Drop this in an LLM's context window when you want it to generate vcon-js code.
-icon: scroll
+description: >-
+  Drop this in an LLM's context window when you want it to generate vcon-js
+  code.
 ---
 
-# vCon-JS Library Guide for LLMs
+# 📜 LLM Guide
 
 This guide gives a Large Language Model everything it needs to generate spec-compliant code against `vcon-js` 0.4.0.
 
@@ -15,8 +16,8 @@ If you violate any of these, the output is not a valid vCon. Apply them every ti
 
 1. **Syntax param.** Every vCon must have `vcon: "0.4.0"`. `Vcon.buildNew()` sets this automatically — do not override.
 2. **Field names.**
-   - Top-level: `amended` (NOT `appended`).
-   - Critical extensions: `addCriticalExtension(name)` writes to `critical[]` / `must_understand[]`. Do NOT emit `must_support`.
+   * Top-level: `amended` (NOT `appended`).
+   * Critical extensions: `addCriticalExtension(name)` writes to `critical[]` / `must_understand[]`. Do NOT emit `must_support`.
 3. **Attachments use `purpose`** (REQUIRED). The single exception is the Lawful Basis extension, which uses `type: "lawful_basis"`.
 4. **Analysis requires `vendor`.** Always set `vendor`. Use `schema` (URL or identifier) to declare the body format. Never write `schema_version`.
 5. **Bodies are strings.** When `encoding: 'json'`, the `body` value is a `JSON.stringify(...)` string, not a JS object.
@@ -114,19 +115,19 @@ console.log(vcon.toJson());
 
 ## Common bugs in generated code (avoid)
 
-- ❌ `vcon.addAttachment({ type: 'transcript', ... })` — wrong; transcripts live in `analysis[]`. Use `addAnalysis`.
-- ❌ `vcon.addAttachment({ purpose: 'lawful_basis', ... })` — wrong; lawful_basis uses `type`.
-- ❌ `body: { transcript: ... }` paired with `encoding: 'json'` — body must be a string. Use `JSON.stringify`.
-- ❌ Emitting `appended: { uuid: '...' }` or `must_support: [...]` — use `amended` and `critical[]` (via `addCriticalExtension`).
-- ❌ `start: '2026-05-18 14:00:00'` (no timezone) — use `.toISOString()`.
-- ❌ External media without `content_hash` — both `url` and `content_hash` are required for external media.
+* ❌ `vcon.addAttachment({ type: 'transcript', ... })` — wrong; transcripts live in `analysis[]`. Use `addAnalysis`.
+* ❌ `vcon.addAttachment({ purpose: 'lawful_basis', ... })` — wrong; lawful\_basis uses `type`.
+* ❌ `body: { transcript: ... }` paired with `encoding: 'json'` — body must be a string. Use `JSON.stringify`.
+* ❌ Emitting `appended: { uuid: '...' }` or `must_support: [...]` — use `amended` and `critical[]` (via `addCriticalExtension`).
+* ❌ `start: '2026-05-18 14:00:00'` (no timezone) — use `.toISOString()`.
+* ❌ External media without `content_hash` — both `url` and `content_hash` are required for external media.
 
 ## Where to find extension shapes
 
-The vcon-js library does not include per-extension helpers in 0.4.0. When asked to add extension data, refer to the corresponding page in the [Extensions section](../extensions/README.md) for the exact JSON shape, then construct an attachment or analysis entry matching that shape.
+The vcon-js library does not include per-extension helpers in 0.4.0. When asked to add extension data, refer to the corresponding page in the [Extensions section](../extensions/) for the exact JSON shape, then construct an attachment or analysis entry matching that shape.
 
 ## See also
 
-- [Quickstart](quickstart.md)
-- [API Reference](api-reference.md)
-- [Python Library Guide for LLMs](../vcon-library/vcon-library-guide-for-llms.md) — same material, Python edition
+* [Quickstart](quickstart.md)
+* [API Reference](api-reference.md)
+* [Python Library Guide for LLMs](../vcon-library/vcon-library-guide-for-llms.md) — same material, Python edition

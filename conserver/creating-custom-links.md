@@ -1,9 +1,8 @@
 ---
 description: How to create custom processing links
-icon: puzzle-piece
 ---
 
-# Creating Custom Links
+# 🧩 Creating Custom Links
 
 Links are the modular processing units of the Conserver. This guide explains how to create your own custom links to extend the system's functionality.
 
@@ -463,17 +462,10 @@ def test_link_filters_when_disabled():
 ## Best Practices
 
 1. **Always merge options with defaults** - Ensures your link works even with partial configuration
-
 2. **Check if processing already done** - Avoid reprocessing if analysis already exists
-
 3. **Use structured logging** - Include vCon UUID and link name in all log messages
-
 4. **Handle errors appropriately** - Raise exceptions to send vCons to DLQ, or return UUID to continue
-
 5. **Add metrics** - Track processing time, success/failure rates
-
 6. **Document your options** - Make it clear what configuration your link accepts
-
 7. **Test thoroughly** - Unit test your processing logic
-
 8. **Be idempotent** - Running twice should produce the same result
