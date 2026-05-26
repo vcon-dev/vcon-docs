@@ -8,6 +8,7 @@
   * [💡 Concepts](vcons/concepts.md)
   * [🔒 Privacy Primer](vcons/privacy-primer.md)
   * [✨ More Information](vcons/more-information.md)
+  * [The Journey of a vCon](https://fabulous-alfajores-082c9b.netlify.app/)
 * [vCon Library (Python)](vcon-library/README.md)
   * [🐰 Quickstart](vcon-library/quickstart.md)
   * [Library API Reference](vcon-library/library-api-reference.md)
