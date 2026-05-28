@@ -7,7 +7,7 @@
   * [🗄️ Why Conversations Need a File](vcons/why-vcons.md)
   * [💡 Concepts](vcons/concepts.md)
   * [🔒 Privacy Primer](vcons/privacy-primer.md)
-  * [👜 The Journey of a vCon](https://fabulous-alfajores-082c9b.netlify.app/)
+  * [👜 The Journey of a vCon](conserver/vcon-conveyor-infographic.md)
   * [✨ More Information](vcons/more-information.md)
 * [vCon Library (Python)](vcon-library/README.md)
   * [🐰 Quickstart](vcon-library/quickstart.md)
