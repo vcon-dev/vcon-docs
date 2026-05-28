@@ -42,6 +42,7 @@
   * [🔗 Standard Links](conserver/standard-links.md)
   * [🗄️ Storage](conserver/storage.md)
   * [📆 Day In the Life of a vCon](conserver/day-in-the-life-of-a-vcon.md)
+  * [🗺️ vCon Conveyor Infographic](conserver/vcon-conveyor-infographic.md)
   * [🧩 API](conserver/api.md)
   * [🔌 Integrating Your App](conserver/integrating-your-app.md)
   * [🩻 Conserver Tracers](conserver/conserver-tracers.md)
