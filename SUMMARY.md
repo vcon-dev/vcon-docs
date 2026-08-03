@@ -85,6 +85,7 @@
   * [Fake vCons](https://github.com/vcon-dev/tadhack-2025)
   * [VCONIC TADHack 2026: Hackathon Review](helps-and-hacks/vconic-tadhack-2026-hackathon-review.md)
 * [🎬 Thinking in vCon](thinking-in-vcon/README.md)
+  * [🎤 The Keynote](thinking-in-vcon/the-keynote.md)
   * [🔒 Privacy](thinking-in-vcon/thinking-in-vcon-privacy.md)
   * [🕸️ The Conversational Graph](thinking-in-vcon/the-conversational-graph.md)
   * [▶️ Watch the Playlist](https://www.youtube.com/playlist?list=PLaxNQ-GrpFLc)

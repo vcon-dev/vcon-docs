@@ -21,13 +21,17 @@ New here? Start with [A vCon Primer](../vcons/a-vcon-primer.md) for the written 
 
 ## Start with the keynote
 
-{% embed url="https://www.youtube.com/watch?v=EvKDS3HavXc" %}
-Thinking in vCon — the through-line of the series, in one sitting. 18:08.
+{% embed url="https://www.youtube.com/watch?v=YDh0phRx0bM" %}
+Thinking in vCon — the through-line of the series, in one sitting. 17:55.
 {% endembed %}
 
 Why conversations have never had a standard file format the way documents, images, and spreadsheets do, and why that gap matters now. Introduces vCon as a single trustworthy object carrying a conversation's recording, transcript, metadata, provenance, and rights.
 
 ## Episodes
+
+{% content-ref url="the-keynote.md" %}
+[the-keynote.md](the-keynote.md)
+{% endcontent-ref %}
 
 {% content-ref url="thinking-in-vcon-privacy.md" %}
 [thinking-in-vcon-privacy.md](thinking-in-vcon-privacy.md)
@@ -41,12 +45,11 @@ Why conversations have never had a standard file format the way documents, image
 
 Short cuts live on the [conserver channel](https://www.youtube.com/@conserverio) and are cross-posted to LinkedIn and Facebook. They stand alone: one idea, a couple of minutes.
 
-- [Thinking in vCon (short)](https://www.youtube.com/watch?v=beqmNDEgq_E) — 2:34 — the core idea, fast
-- [Privacy (short)](https://www.youtube.com/watch?v=XAAaSRiyBe4) — 4:52 — consent that travels with the recording
+* [Privacy (short)](https://www.youtube.com/watch?v=XAAaSRiyBe4) — 4:52 — consent that travels with the recording
 
 Everything in one place, in series order: the [Thinking in vCon playlist](https://www.youtube.com/playlist?list=PLaxNQ-GrpFLc) on YouTube.
 
 ## Related
 
-- [Talks, Articles & Press](../talks-articles-press/README.md) — conference keynotes, IETF sessions, and podcasts
-- [Why Conversations Need a File](../vcons/why-vcons.md) — the core written argument
+* [Talks, Articles & Press](../talks-articles-press/) — conference keynotes, IETF sessions, and podcasts
+* [Why Conversations Need a File](../vcons/why-vcons.md) — the core written argument
