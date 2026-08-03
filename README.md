@@ -25,7 +25,7 @@ If you read one page, read this:
 {% column %}
 If you watch one video, watch this:
 
-{% embed url="https://www.youtube.com/watch?v=beqmNDEgq_E" %}
+{% embed url="https://www.youtube.com/watch?v=YDh0phRx0bM" %}
 {% endcolumn %}
 {% endcolumns %}
 
