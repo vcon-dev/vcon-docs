@@ -7,9 +7,9 @@ icon: plug
 
 # vCon-JS Library
 
-`vcon-js` is the TypeScript / JavaScript implementation of the vCon specification. It is a peer to the [Python `vcon` library](../vcon-library/), targeting the same [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) spec.
+`vcon-js` is the TypeScript / JavaScript implementation of the vCon specification. It is a peer to the [Python `vcon` library](../vcon-library/), targeting the same [`draft-ietf-vcon-vcon-core`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) spec.
 
-> **Current version:** `vcon-js` **0.4.0** · Install with `npm install vcon-js` · [GitHub: vcon-dev/vcon-js](https://github.com/vcon-dev/vcon-js) · Targets [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/).
+> **Current version:** `vcon-js` **0.5.0** · Install with `npm install vcon-js` · [GitHub: vcon-dev/vcon-js](https://github.com/vcon-dev/vcon-js) · Targets [`draft-ietf-vcon-vcon-core`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/).
 
 ## When to use vcon-js vs the Python library
 
@@ -20,9 +20,10 @@ The two libraries produce byte-compatible vCons. You can build with one and cons
 
 ## Parity with the Python library
 
-What you get in 0.4.0:
+What you get in 0.5.0:
 
 * ✅ Full core spec coverage: `Vcon`, `Party`, `Dialog`, `Attachment`, `Analysis`, `PartyHistory`
+* ✅ Current core-draft surface: `recording-set` dialogs (`recordings` / `recording_set`), analysis `attachment` reference (with `dialog` optional), party `type` / `org` / `dept`
 * ✅ Spec-correct field names: `amended` (not `appended`), `purpose` on attachments, `vcon: "0.4.0"` syntax param set automatically
 * ✅ External and inline media (`body` + `encoding` or `url` + `content_hash`)
 * ✅ Content hash validation (enforces `sha512-<base64url>` format)
@@ -31,9 +32,9 @@ What you get in 0.4.0:
 * ✅ Tags via `addTag()`, with read-through `tags` property
 * ✅ Per-class validators: `Dialog.validate()`, `Attachment.validate()`, `Party.validate()`, `PartyHistory.validate()`
 
-What's not in 0.4.0 yet (vs. Python `vcon` 0.9.4):
+What's not in 0.5.0 yet (vs. Python `vcon`):
 
-* ❌ Per-extension helpers. The Python library has `add_lawful_basis_attachment()`, `add_wtf_transcription_attachment()`, and `add_wtf_transcription_analysis()`; vcon-js exposes the generic `addAttachment` / `addAnalysis` and you provide the extension shape yourself. The [Extensions section](../extensions/) shows what each one requires.
+* ❌ Per-extension helpers. The Python library has `add_lawful_basis_attachment()`, `add_wtf_transcription_attachment()`, and `add_wtf_transcription_analysis()`; vcon-js exposes the generic `addAttachment` / `addAnalysis` and you provide the extension shape yourself. Every extension parameter round-trips untyped; the one typed exception is `provenance` (draft-howe-vcon-provenance) on dialog and analysis. The [Extensions section](../extensions/) shows what each one requires.
 * ❌ Built-in signing/encryption convenience. The Python lib wraps JWS/JWE via `sign()`/`verify()` (RS256); in vcon-js the `signatures` and `payload` shapes are typed in `VconData` but you handle key management and signing through `jsonwebtoken` or a similar peer dependency.
 * ❌ Extension-specific search helpers (`findLawfulBasisAttachments`, `findWtfAttachments`). Filter the arrays manually for now.
 

@@ -12,7 +12,7 @@ This is the TypeScript counterpart to the [Python Quickstart](../vcon-library/qu
 npm install vcon-js
 ```
 
-vcon-js targets [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) and sets the `vcon: "0.4.0"` syntax parameter automatically.
+vcon-js targets [`draft-ietf-vcon-vcon-core`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) and sets the `vcon: "0.4.0"` syntax parameter automatically.
 
 ## Minimal example
 
@@ -77,7 +77,7 @@ vcon.addAnalysis({
 
 ## Declaring an extension
 
-Extension declarations are generic in vcon-js — there are no per-extension builder helpers in 0.4.0. You add extension data to the right array yourself and declare the extension:
+Extension declarations are generic in vcon-js — there are no per-extension builder helpers in 0.5.0. You add extension data to the right array yourself and declare the extension:
 
 ```typescript
 vcon.addExtension('lawful_basis');           // declared but optional for consumers
@@ -135,7 +135,7 @@ const restored = Vcon.buildFromJson(json);
 ## Common mistakes (caught in code review)
 
 - Using `appended` instead of `amended` — the library writes `amended`; if you carry data forward from older code, rename.
-- Using `must_support` — use `addCriticalExtension()` (writes to `critical[]` / `must_understand[]`).
+- Using `must_support` — use `addCriticalExtension()` (writes to `critical[]`).
 - Putting transcripts in `attachments[]` — transcripts belong in `analysis[]` (see [WTF Transcription](../extensions/wtf-transcription.md)).
 - Passing a JS object directly as `body` for JSON content — `body` must be a string. Use `JSON.stringify`.
 - Forgetting `vendor` on analysis entries — `vendor` is REQUIRED.

@@ -1,10 +1,10 @@
 ---
-description: Public API of vcon-js 0.4.0 — every exported class, method, and constant.
+description: Public API of vcon-js 0.5.0 — every exported class, method, and constant.
 ---
 
 # 🔌 API Reference
 
-Complete API reference for **`vcon-js` 0.4.0**, targeting [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) (syntax `"0.4.0"`).
+Complete API reference for **`vcon-js` 0.5.0**, targeting [`draft-ietf-vcon-vcon-core`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) (syntax `"0.4.0"`).
 
 See the [Quickstart](quickstart.md) for a code-walkthrough; this page is a reference.
 
@@ -14,9 +14,11 @@ See the [Quickstart](quickstart.md) for a code-walkthrough; this page is a refer
 import {
   Vcon, Party, Dialog, Attachment, PartyHistory,
   // Types:
-  VconData, Analysis, Encoding, CivicAddress, Group, Redacted, Amended,
+  VconData, Analysis, Encoding, CivicAddress, Redacted, Amended,
+  DialogType, DialogTypeEnum, DialogDisposition, SessionId, ContentHash,
+  AttachmentType, PartyType, PartyHistoryType,
   // Constants:
-  VCON_VERSION,  // '0.4.0'
+  VCON_VERSION,  // '0.4.0' (syntax parameter; unchanged as the draft advanced)
 } from 'vcon-js';
 ```
 
@@ -33,9 +35,9 @@ Main container class.
 
 ### Instance properties
 
-`uuid`, `vcon`, `created_at`, `updated_at`, `subject`, `parties`, `dialog`, `attachments`, `analysis`, `tags`, `extensions`, `critical`, `group`, `redacted`, `amended`, `meta`.
+`uuid`, `vcon`, `created_at`, `updated_at`, `subject`, `parties`, `dialog`, `attachments`, `analysis`, `tags`, `extensions`, `critical`, `redacted`, `amended`, `meta`.
 
-Note: `amended` is the spec-correct name (was `appended` pre-spec-02). A deprecated `appended` getter is retained for backward compatibility.
+Note: `amended` is the spec-correct name. `redacted` and `amended` are mutually exclusive — assigning one while the other is set throws. `group` is reserved by the spec and is not exposed.
 
 ### Adding content
 
@@ -46,26 +48,24 @@ Note: `amended` is the spec-correct name (was `appended` pre-spec-02). A depreca
 | `addAttachment(attachment)`          | Append an attachment. See the [Extensions section](../extensions/) for shapes. |
 | `addAnalysis(analysis)`              | Append an analysis entry. `vendor` is REQUIRED.                                |
 | `addTag(key: string, value: string)` | Add a tag (surfaces in conserver / MCP search).                                |
-| `addGroup(group: Group)`             | Add a group reference (multi-vCon aggregation).                                |
 
 ### Extensions
 
 | Method                                       | Description                                                                                                         |
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `addExtension(name: string)`                 | Add to `extensions[]`. Consumers MAY understand it.                                                                 |
-| `addCriticalExtension(name: string)`         | Add to both `extensions[]` and `critical[]` / `must_understand[]`. Consumers MUST understand it or refuse the vCon. |
+| `addCriticalExtension(name: string)`         | Add to both `extensions[]` and `critical[]`. Consumers MUST understand it or refuse the vCon. |
 | `hasExtension(name: string): boolean`        | Check whether an extension is declared.                                                                             |
 | `isCriticalExtension(name: string): boolean` | Check whether an extension is in `critical[]`.                                                                      |
 
 ### Search helpers
 
-| Method                             | Description                                 |
-| ---------------------------------- | ------------------------------------------- |
-| `findPartyByIdentifier(...)`       | Locate a party by tel / mailto / sip / etc. |
-| `findDialogByType(type)`           | All dialogs of a given type.                |
-| `findAttachmentByPurpose(purpose)` | Attachments with a given purpose.           |
-| `findAnalysisByType(type)`         | Analyses of a given type.                   |
-| `findAnalysisByVendor(vendor)`     | Analyses produced by a vendor.              |
+| Method                                | Returns              | Description                                                     |
+| ------------------------------------- | -------------------- | -------------------------------------------------------------- |
+| `findPartyIndex(by, val)`             | `number \| undefined` | Index of the first party whose `by` field equals `val`.        |
+| `findDialog(by, val)`                 | `Dialog \| undefined` | First dialog whose `by` field equals `val`.                    |
+| `findAttachmentByPurpose(purpose)`    | `Attachment \| undefined` | First attachment with a given purpose.                    |
+| `findAnalysisByType(type)`            | `Analysis \| undefined` | First analysis of a given type.                             |
 
 ### Serialization
 
@@ -85,6 +85,9 @@ new Party({
   did?: string,             // Decentralized Identifier
   name?: string,
   role?: string,            // 'customer', 'agent', 'supervisor', ...
+  type?: string,            // participant type (schema-defined token)
+  org?: string,             // organization the party belongs to
+  dept?: string,            // department the party belongs to
   validation?: string,      // 'verified', 'unverified', 'synthetic', ...
   gmlpos?: string,          // GML position (lat/long)
   civicaddress?: CivicAddress,
@@ -100,7 +103,7 @@ Methods: `toDict()`, `hasIdentifier()`, `getPrimaryIdentifier()`, `validate()`.
 
 ```typescript
 new Dialog({
-  type: 'recording' | 'text' | 'transfer' | 'incomplete',
+  type: 'recording' | 'text' | 'transfer' | 'incomplete' | 'recording-set',
   start: string,            // ISO 8601 with timezone
   parties: number[] | number[][],   // party indices, or [[primary], [secondary]] for multi-channel
   originator?: number,
@@ -117,14 +120,22 @@ new Dialog({
   disposition?: string,     // for type: 'incomplete'
   party_history?: PartyHistory[],
   session_id?: SessionId,   // RFC 7989
-  // Transfer-specific:
+  // recording-set:
+  recordings?: number[],    // on a 'recording-set' dialog: member recording indices
+  recording_set?: number,   // on a recording: back-reference to its 'recording-set'
+  // Transfer-specific (index or array of indices):
   transferor?: number,
   transferee?: number,
-  transfer_target?: number,
+  transfer_target?: number | number[],
+  original?: number | number[],
+  consultation?: number | number[],
+  target_dialog?: number | number[],
+  // Extension parameter:
+  provenance?: object,      // draft-howe-vcon-provenance, for machine-generated dialog
 });
 ```
 
-Methods: `toDict()`, `addInlineData(body, encoding, mediatype?)`, `addExternalData(url, contentHash, mediatype?)`, `isText()`, `isRecording()`, `isTransfer()`, `isIncomplete()`, `validate()`.
+Methods: `toDict()`, `addInlineData(body, encoding, mediatype?)`, `addExternalData(url, contentHash, mediatype?)`, `isText()`, `isRecording()`, `isRecordingSet()`, `isTransfer()`, `isIncomplete()`, `validate()`.
 
 ## `Attachment`
 
@@ -156,7 +167,8 @@ Methods: `toDict()`, `addInlineData()`, `addExternalData()`, `isExternalData()`,
 ```typescript
 interface Analysis {
   type: string;             // 'transcript', 'summary', 'translation', 'sentiment', 'tts', ...
-  dialog?: number | number[];
+  dialog?: number | number[];    // optional: analysis may key off `attachment` instead
+  attachment?: number | number[]; // attachment index/indices the analysis is based on
   vendor: string;           // REQUIRED
   product?: string;
   schema?: string;          // URL or identifier of the body format
@@ -166,6 +178,7 @@ interface Analysis {
   encoding?: Encoding;      // 'json', 'base64url', 'none'
   url?: string;
   content_hash?: string | string[];
+  provenance?: object;      // draft-howe-vcon-provenance: model/provider/params for the analysis
 }
 ```
 
@@ -186,8 +199,7 @@ Methods: `toDict()`, `PartyHistory.fromDict(obj)`, `validate()`.
 
 * **`SessionId`** — `{ local: string; remote: string }` per RFC 7989.
 * **`CivicAddress`** — GEOPRIV-style address (country, a1–a6, sts, hno, lmk, pc, …).
-* **`Group`** — `{ uuid: string; body?: string; encoding?: Encoding; url?: string; content_hash?: string | string[] }`.
-* **`Redacted`** / **`Amended`** — top-level reference objects to a related vCon UUID.
+* **`Redacted`** / **`Amended`** — top-level reference objects to a related vCon UUID (mutually exclusive).
 * **`Encoding`** — `'base64url' | 'json' | 'none'`.
 
 ## See also

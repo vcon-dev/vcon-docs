@@ -6,9 +6,9 @@ description: >-
 
 # 📜 LLM Guide
 
-This guide gives a Large Language Model everything it needs to generate spec-compliant code against `vcon-js` 0.4.0.
+This guide gives a Large Language Model everything it needs to generate spec-compliant code against `vcon-js` 0.5.0.
 
-> **Spec target:** [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) · syntax parameter `"vcon": "0.4.0"` · library version `0.4.0`.
+> **Spec target:** [`draft-ietf-vcon-vcon-core`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) · syntax parameter `"vcon": "0.4.0"` · library version `0.5.0`.
 
 ## Non-negotiable rules
 
@@ -17,7 +17,7 @@ If you violate any of these, the output is not a valid vCon. Apply them every ti
 1. **Syntax param.** Every vCon must have `vcon: "0.4.0"`. `Vcon.buildNew()` sets this automatically — do not override.
 2. **Field names.**
    * Top-level: `amended` (NOT `appended`).
-   * Critical extensions: `addCriticalExtension(name)` writes to `critical[]` / `must_understand[]`. Do NOT emit `must_support`.
+   * Critical extensions: `addCriticalExtension(name)` writes to `critical[]`. Do NOT emit `must_support`.
 3. **Attachments use `purpose`** (REQUIRED). The single exception is the Lawful Basis extension, which uses `type: "lawful_basis"`.
 4. **Analysis requires `vendor`.** Always set `vendor`. Use `schema` (URL or identifier) to declare the body format. Never write `schema_version`.
 5. **Bodies are strings.** When `encoding: 'json'`, the `body` value is a `JSON.stringify(...)` string, not a JS object.
@@ -36,13 +36,15 @@ import {
 
 **`Vcon`** — `buildNew()`, `buildFromJson(json)`, `addParty()`, `addDialog()`, `addAttachment()`, `addAnalysis()`, `addTag(key, value)`, `addExtension(name)`, `addCriticalExtension(name)`, `toJson()`, `toDict()`.
 
-**`Party`** — identifiers: `tel`, `sip`, `mailto`, `stir`, `did`; descriptive: `name`, `role`, `validation`, `civicaddress`, `timezone`, `meta`.
+**`Party`** — identifiers: `tel`, `sip`, `mailto`, `stir`, `did`; descriptive: `name`, `role`, `type`, `org`, `dept`, `validation`, `civicaddress`, `timezone`, `meta`.
 
-**`Dialog`** — `type: 'recording' | 'text' | 'transfer' | 'incomplete'`; required `start`, `parties`; inline `body` + `encoding` OR external `url` + `content_hash`.
+**`Dialog`** — `type: 'recording' | 'text' | 'transfer' | 'incomplete' | 'recording-set'`; required `start`, `parties`; inline `body` + `encoding` OR external `url` + `content_hash`. A `recording-set` dialog carries `recordings: number[]`; member recordings may carry `recording_set: number`.
 
 **`Attachment`** — required `purpose`, `party`, `dialog`. Lawful Basis exception uses `type`.
 
-**`Analysis`** is a type, not a class — pass a plain object to `addAnalysis()`. Required: `type` and `vendor`.
+**`Analysis`** is a type, not a class — pass a plain object to `addAnalysis()`. Required: `type` and `vendor`. `dialog` is optional (an analysis may key off `attachment` instead).
+
+> **New in 0.5.0** (tracking the current core draft): the `recording-set` dialog type with `recordings`/`recording_set`, the analysis `attachment` reference, party `type`/`org`/`dept`, and a typed `provenance` parameter on dialog and analysis (draft-howe-vcon-provenance). All other extension parameters still round-trip untyped.
 
 ## Canonical end-to-end example
 
@@ -124,7 +126,7 @@ console.log(vcon.toJson());
 
 ## Where to find extension shapes
 
-The vcon-js library does not include per-extension helpers in 0.4.0. When asked to add extension data, refer to the corresponding page in the [Extensions section](../extensions/) for the exact JSON shape, then construct an attachment or analysis entry matching that shape.
+The vcon-js library does not include per-extension helpers in 0.5.0. When asked to add extension data, refer to the corresponding page in the [Extensions section](../extensions/) for the exact JSON shape, then construct an attachment or analysis entry matching that shape.
 
 ## See also
 
