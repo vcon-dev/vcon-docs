@@ -15,19 +15,13 @@ vCon (virtual conversation) is that container. It is an open IETF standard for p
 
 {% columns %}
 {% column %}
-<figure><img src=".gitbook/assets/Journey Badge 540 (1).png" alt=""><figcaption></figcaption></figure>
+[![](<.gitbook/assets/Journey Badge 540 (1).png>)](https://the-journey-of-a-vcon.netlify.app/)
 {% endcolumn %}
 
 {% column %}
-
-
 {% embed url="https://www.youtube.com/watch?v=YDh0phRx0bM" %}
-
-
 {% endcolumn %}
 {% endcolumns %}
-
-
 
 {% hint style="info" %}
 **Provenance over policy.** vCon does not ask you to trust a vendor that says the right things. It puts cryptographic provenance, parties, and consent inside the file itself, so the next system in line can verify them on its own.
