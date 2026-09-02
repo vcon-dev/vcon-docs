@@ -1,8 +1,10 @@
 ---
-description: The May 2026 discovery and contract surface — how LLM clients introspect the server before making expensive calls.
+description: >-
+  The May 2026 discovery and contract surface — how LLM clients introspect the
+  server before making expensive calls.
 ---
 
-# Contract Tools
+# 📜 Contract Tools
 
 In May 2026 the vCon MCP server added a family of six tools designed specifically for LLM clients that don't know what they're talking to in advance. They let a client ask "what do you support?", "what shape will you return?", and "what's your controlled vocabulary?" before making queries that might fail or return junk.
 
@@ -12,10 +14,10 @@ These are the **contract tools**: `vcon_fetch`, `vcon_search`, `vcon_capabilitie
 
 The pre-2026 MCP surface (and most MCP servers in general) assumes the client knows the server's shape ahead of time. That assumption breaks when an LLM is the client:
 
-- The model doesn't always know which extensions a particular server supports.
-- The model can't reliably guess how a server normalizes things like dealer IDs or campaign names.
-- Token-budget-aware clients need to know the response shape *before* receiving the response, or they'll overflow context windows.
-- LLMs are bad at offset-based pagination — they need cursor-based.
+* The model doesn't always know which extensions a particular server supports.
+* The model can't reliably guess how a server normalizes things like dealer IDs or campaign names.
+* Token-budget-aware clients need to know the response shape _before_ receiving the response, or they'll overflow context windows.
+* LLMs are bad at offset-based pagination — they need cursor-based.
 
 The contract tools fix this by exposing the server's contract explicitly. A well-behaved LLM client calls one or more of them once per session and caches the result.
 
@@ -65,11 +67,11 @@ If a client encounters `ok: false`, it can recover from a clean structured error
 
 Returns what this server supports:
 
-- `supported_includes` — the field groups `vcon_fetch` and `vcon_search` understand: `core`, `parties`, `summary`, `tags`, `dealer`, `counts`, `dialog`, `analysis`, `attachments`
-- `search_modes` — `metadata`, `keyword`, `semantic`, `hybrid`
-- `pagination_semantics` — confirms cursor-based pagination, names the cursor field
-- `byte_budgets` — the default and max values of `max_response_bytes`
-- `migration_hints` — notes about any active field-name migrations (see [Field-Name Migration](field-name-migration.md))
+* `supported_includes` — the field groups `vcon_fetch` and `vcon_search` understand: `core`, `parties`, `summary`, `tags`, `dealer`, `counts`, `dialog`, `analysis`, `attachments`
+* `search_modes` — `metadata`, `keyword`, `semantic`, `hybrid`
+* `pagination_semantics` — confirms cursor-based pagination, names the cursor field
+* `byte_budgets` — the default and max values of `max_response_bytes`
+* `migration_hints` — notes about any active field-name migrations (see [Field-Name Migration](field-name-migration.md))
 
 Call this first. Cache the result for the session.
 
@@ -77,10 +79,10 @@ Call this first. Cache the result for the session.
 
 Returns the controlled vocabulary the database actually uses:
 
-- `portal_taxonomy` — domain-specific enum values surfaced by this deployment (e.g. a portal with categories `complaint`, `inquiry`, `praise`)
-- `common_tag_keys` — the tag keys that appear in the corpus, with sample values
-- `attachment_types` — recognized attachment purposes, including extension-defined ones like `strolid_dealer`
-- `preferred_fields` — hints about which fields the deployment expects to be populated
+* `portal_taxonomy` — domain-specific enum values surfaced by this deployment (e.g. a portal with categories `complaint`, `inquiry`, `praise`)
+* `common_tag_keys` — the tag keys that appear in the corpus, with sample values
+* `attachment_types` — recognized attachment purposes, including extension-defined ones like `strolid_dealer`
+* `preferred_fields` — hints about which fields the deployment expects to be populated
 
 LLMs use this to write better filters. Without it, the model would guess values; with it, the model knows the real surface area.
 
@@ -110,9 +112,9 @@ The shape evolves with the deployment. Use it when an LLM needs to ground its as
 
 Given a tool name, returns the JSON Schema (or equivalent) of the response that tool will produce, plus a concrete example payload. Use this when:
 
-- Your client needs to parse the response into typed objects.
-- You're building a multi-step plan and need to know which fields will be available downstream.
-- You're operating under a token budget and need to limit what to ask for.
+* Your client needs to parse the response into typed objects.
+* You're building a multi-step plan and need to know which fields will be available downstream.
+* You're operating under a token budget and need to limit what to ask for.
 
 Calling without a `tool_name` returns the list of tools with published shapes.
 
@@ -120,9 +122,9 @@ Calling without a `tool_name` returns the list of tools with published shapes.
 
 The contract-aware fetch. Like `get_vcon` but:
 
-- Accepts an `include` array so you only pay for the parts you need. Valid values are the same `supported_includes` returned by `vcon_capabilities`.
-- Accepts a `max_response_bytes` budget (default 250 000). If the response would exceed the budget, the call returns `{ok: false, error: {code: "RESPONSE_TOO_LARGE"}}` rather than truncating silently.
-- Returns the response in the `{ok, item}` envelope so the schema matches `describe_response_shape("vcon_fetch")`.
+* Accepts an `include` array so you only pay for the parts you need. Valid values are the same `supported_includes` returned by `vcon_capabilities`.
+* Accepts a `max_response_bytes` budget (default 250 000). If the response would exceed the budget, the call returns `{ok: false, error: {code: "RESPONSE_TOO_LARGE"}}` rather than truncating silently.
+* Returns the response in the `{ok, item}` envelope so the schema matches `describe_response_shape("vcon_fetch")`.
 
 Prefer this over `get_vcon` from any LLM-driven workflow.
 
@@ -130,11 +132,11 @@ Prefer this over `get_vcon` from any LLM-driven workflow.
 
 The contract-aware search. Designed for LLM use:
 
-- **Modes:** `metadata`, `keyword`, `semantic`, `hybrid`. Hybrid takes a `semantic_weight` (0–1) blending the two scores.
-- **Cursor-based.** Returns `page.next_cursor`; the client passes the cursor back to get the next page. No offsets, no page numbers.
-- **Dealer filterable.** In multi-tenant deployments where Strolid-style dealer attachments are present, `filters.dealer_id` (exact match) or `filters.dealer_name` (substring) are first-class filters rather than free-form tags. Backed by the `aggregate_vcons_by_dealer_stats` RPC for fast top-of-funnel counts.
-- **Tag-first.** Tag filters are the cheapest dimension to filter on; the search pushes them first.
-- **LLM-hardened.** Rejects ambiguous queries with a structured error rather than returning bad results — the model can recover from a clean error, but can't recover from a wrong answer it doesn't realize is wrong.
+* **Modes:** `metadata`, `keyword`, `semantic`, `hybrid`. Hybrid takes a `semantic_weight` (0–1) blending the two scores.
+* **Cursor-based.** Returns `page.next_cursor`; the client passes the cursor back to get the next page. No offsets, no page numbers.
+* **Dealer filterable.** In multi-tenant deployments where Strolid-style dealer attachments are present, `filters.dealer_id` (exact match) or `filters.dealer_name` (substring) are first-class filters rather than free-form tags. Backed by the `aggregate_vcons_by_dealer_stats` RPC for fast top-of-funnel counts.
+* **Tag-first.** Tag filters are the cheapest dimension to filter on; the search pushes them first.
+* **LLM-hardened.** Rejects ambiguous queries with a structured error rather than returning bad results — the model can recover from a clean error, but can't recover from a wrong answer it doesn't realize is wrong.
 
 Same `include` and `max_response_bytes` controls as `vcon_fetch`. Same `{ok, items, page}` envelope.
 
@@ -158,7 +160,7 @@ In May 2026 the server also shipped database migration `20251120150100_field_ren
 
 ## See also
 
-- [Tool Reference](tool-reference.md) — the full tool list
-- [Field-Name Migration](field-name-migration.md) — back-compat behavior
-- [Transport and Deployment](transport-and-deployment.md) — how to actually run a server you can call these tools on
-- [What the vCon MCP Server Can Do](what-the-vcon-mcp-server-can-do.md) — narrative overview
+* [Tool Reference](tool-reference.md) — the full tool list
+* [Field-Name Migration](field-name-migration.md) — back-compat behavior
+* [Transport and Deployment](transport-and-deployment.md) — how to actually run a server you can call these tools on
+* [What the vCon MCP Server Can Do](what-the-vcon-mcp-server-can-do.md) — narrative overview

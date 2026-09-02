@@ -1,8 +1,10 @@
 ---
-description: How to run the vCon MCP server — transport modes, authentication, environment variables, Docker and npm.
+description: >-
+  How to run the vCon MCP server — transport modes, authentication, environment
+  variables, Docker and npm.
 ---
 
-# Transport and Deployment
+# 🚀 Transport and Deployment
 
 The vCon MCP server runs in one of two transport modes and authenticates clients via a configurable bearer-token scheme. This page is the reference for both.
 
@@ -10,10 +12,10 @@ The vCon MCP server runs in one of two transport modes and authenticates clients
 
 The server speaks the [Model Context Protocol](https://modelcontextprotocol.io) over **stdio** by default and **Streamable HTTP** when configured. Pick the transport based on how the client connects:
 
-| Transport | When to use | Configured via |
-|-----------|-------------|----------------|
-| **stdio** (default) | Claude Desktop, the MCP inspector CLI, any client that launches the server as a subprocess | `MCP_TRANSPORT=stdio` (or unset) |
-| **HTTP** (Streamable HTTP, spec 2025-03-26) | Web clients, remote LLM agents, anything that connects over the network | `MCP_TRANSPORT=http` |
+| Transport                                   | When to use                                                                                | Configured via                   |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------- |
+| **stdio** (default)                         | Claude Desktop, the MCP inspector CLI, any client that launches the server as a subprocess | `MCP_TRANSPORT=stdio` (or unset) |
+| **HTTP** (Streamable HTTP, spec 2025-03-26) | Web clients, remote LLM agents, anything that connects over the network                    | `MCP_TRANSPORT=http`             |
 
 ### stdio
 
@@ -23,15 +25,15 @@ The default. The server reads JSON-RPC from stdin and writes responses to stdout
 
 Streamable HTTP is the 2025-03-26 MCP HTTP transport. Configurable surface:
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `MCP_HTTP_HOST` | Bind address | `127.0.0.1` |
-| `MCP_HTTP_PORT` | Bind port | `3000` |
-| `MCP_HTTP_STATELESS` | If `true`, every request is independent — no `Mcp-Session-Id` header tracking | `false` |
-| `MCP_HTTP_JSON_ONLY` | If `true`, disable Server-Sent Events; responses are plain JSON | `false` |
-| `MCP_HTTP_CORS` | Enable CORS | `false` |
-| `MCP_HTTP_CORS_ORIGIN` | Allowed origin when CORS is enabled | (unset) |
-| `MCP_HTTP_DNS_PROTECTION` | Enable DNS rebinding protection | `false` |
+| Variable                  | Description                                                                   | Default     |
+| ------------------------- | ----------------------------------------------------------------------------- | ----------- |
+| `MCP_HTTP_HOST`           | Bind address                                                                  | `127.0.0.1` |
+| `MCP_HTTP_PORT`           | Bind port                                                                     | `3000`      |
+| `MCP_HTTP_STATELESS`      | If `true`, every request is independent — no `Mcp-Session-Id` header tracking | `false`     |
+| `MCP_HTTP_JSON_ONLY`      | If `true`, disable Server-Sent Events; responses are plain JSON               | `false`     |
+| `MCP_HTTP_CORS`           | Enable CORS                                                                   | `false`     |
+| `MCP_HTTP_CORS_ORIGIN`    | Allowed origin when CORS is enabled                                           | (unset)     |
+| `MCP_HTTP_DNS_PROTECTION` | Enable DNS rebinding protection                                               | `false`     |
 
 In stateful mode (the default for HTTP), the server returns an `Mcp-Session-Id` header on the first response. Clients include it on every subsequent request. In stateless mode, each request stands alone — useful behind load balancers or for serverless deployments where you can't pin requests to a single instance.
 
@@ -39,11 +41,11 @@ In stateful mode (the default for HTTP), the server returns an `Mcp-Session-Id` 
 
 Authentication is **bearer-token based** and **optional**. Configure via environment variables.
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `API_KEYS` | Comma-separated list of valid bearer tokens | (unset) |
-| `API_KEY_HEADER` | Header name to read | `authorization` |
-| `API_AUTH_REQUIRED` | If `false`, auth checks are skipped entirely | `true` |
+| Variable            | Description                                  | Default         |
+| ------------------- | -------------------------------------------- | --------------- |
+| `API_KEYS`          | Comma-separated list of valid bearer tokens  | (unset)         |
+| `API_KEY_HEADER`    | Header name to read                          | `authorization` |
+| `API_AUTH_REQUIRED` | If `false`, auth checks are skipped entirely | `true`          |
 
 By default the server reads `Authorization: Bearer <token>`. Override with `API_KEY_HEADER=x-mcp-token` (or similar) if your environment requires a different header.
 
@@ -55,11 +57,11 @@ Per-tool scoping is **not currently enforced** — every valid token can call ev
 
 For multi-tenant deployments, supply a tenant identifier per request:
 
-| Variable | Description |
-|----------|-------------|
-| `TENANT_ISOLATION` | When `true`, enables tenant filtering on all queries |
-| `TENANT_ID` | Default tenant id used when no per-request tenant is supplied |
-| `x-tenant-id` (header) | Per-request tenant override |
+| Variable               | Description                                                   |
+| ---------------------- | ------------------------------------------------------------- |
+| `TENANT_ISOLATION`     | When `true`, enables tenant filtering on all queries          |
+| `TENANT_ID`            | Default tenant id used when no per-request tenant is supplied |
+| `x-tenant-id` (header) | Per-request tenant override                                   |
 
 Tenant filtering is enforced by Postgres Row Level Security on the Supabase backend; the MCP server passes the resolved tenant id into every query. Make sure your RLS policies are configured before you turn this on.
 
@@ -67,12 +69,12 @@ Tenant filtering is enforced by Postgres Row Level Security on the Supabase back
 
 The server expects a Supabase Postgres deployment, configured by:
 
-| Variable | Description | Required? |
-|----------|-------------|-----------|
-| `SUPABASE_URL` | Project URL (e.g. `https://abc123.supabase.co`) | Yes |
+| Variable                    | Description                                             | Required?    |
+| --------------------------- | ------------------------------------------------------- | ------------ |
+| `SUPABASE_URL`              | Project URL (e.g. `https://abc123.supabase.co`)         | Yes          |
 | `SUPABASE_SERVICE_ROLE_KEY` | Service-role key — bypasses RLS for trusted server work | One of these |
-| `SUPABASE_ANON_KEY` | Anonymous key — relies on RLS for access control | One of these |
-| `DB_TYPE` | `supabase` (default) or `mongodb` (experimental) | No |
+| `SUPABASE_ANON_KEY`         | Anonymous key — relies on RLS for access control        | One of these |
+| `DB_TYPE`                   | `supabase` (default) or `mongodb` (experimental)        | No           |
 
 The database schema is managed by the migrations under `supabase/migrations/` in the [vcon-mcp repo](https://github.com/vcon-dev/vcon-mcp); apply them with `supabase db push` or the Supabase migration UI before pointing the server at a fresh project.
 
@@ -145,15 +147,15 @@ The server emits OpenTelemetry spans and metrics for every tool call. The [`vcon
 
 Per-tool span attributes include:
 
-- `tool_name`, `tool_category`
-- `status` (`ok` | `error` | `validation_failed`)
-- `duration_ms`
-- `response_bytes`, `truncated` (for byte-budgeted tools)
-- `cache_hit` (when Redis caching is enabled)
+* `tool_name`, `tool_category`
+* `status` (`ok` | `error` | `validation_failed`)
+* `duration_ms`
+* `response_bytes`, `truncated` (for byte-budgeted tools)
+* `cache_hit` (when Redis caching is enabled)
 
 ## See also
 
-- [Tool Reference](tool-reference.md) — every tool, grouped by purpose
-- [Contract Tools](contract-tools.md) — design and envelopes for the May 2026 LLM-facing surface
-- [How the vCon MCP Server is Built](how-the-vcon-mcp-server-is-built.md) — internal architecture
-- [Field-Name Migration](field-name-migration.md) — back-compat behavior
+* [Tool Reference](tool-reference.md) — every tool, grouped by purpose
+* [Contract Tools](contract-tools.md) — design and envelopes for the May 2026 LLM-facing surface
+* [How the vCon MCP Server is Built](how-the-vcon-mcp-server-is-built.md) — internal architecture
+* [Field-Name Migration](field-name-migration.md) — back-compat behavior

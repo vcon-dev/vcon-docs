@@ -15,17 +15,15 @@ vCon (virtual conversation) is that container. It is an open IETF standard for p
 
 {% columns %}
 {% column %}
-If you read one page, read this:
-
-{% content-ref url="vcons/a-vcon-primer.md" %}
-[a-vcon-primer.md](vcons/a-vcon-primer.md)
-{% endcontent-ref %}
+<figure><img src=".gitbook/assets/Journey Badge 540 (1).png" alt=""><figcaption></figcaption></figure>
 {% endcolumn %}
 
 {% column %}
-If you watch one video, watch this:
+
 
 {% embed url="https://www.youtube.com/watch?v=YDh0phRx0bM" %}
+
+
 {% endcolumn %}
 {% endcolumns %}
 

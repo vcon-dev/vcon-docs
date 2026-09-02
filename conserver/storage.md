@@ -2,7 +2,7 @@
 description: The standard storages supported by the conserver
 ---
 
-# Storage
+# 🗄️ Storage
 
 The Conserver supports multiple storage backends for persisting vCons after processing. Each storage backend can be configured in the `config.yml` file and assigned to one or more chains.
 
@@ -10,9 +10,9 @@ The Conserver supports multiple storage backends for persisting vCons after proc
 
 When a chain finishes processing a vCon, it stores the result in all configured storage backends for that chain. This allows you to:
 
-- Store vCons in multiple locations simultaneously (e.g., S3 for archival and PostgreSQL for querying)
-- Choose the right storage for your use case
-- Implement backup and redundancy strategies
+* Store vCons in multiple locations simultaneously (e.g., S3 for archival and PostgreSQL for querying)
+* Choose the right storage for your use case
+* Implement backup and redundancy strategies
 
 ## Storage Interface
 
@@ -40,13 +40,13 @@ storages:
       collection: "vcons"
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `url` | MongoDB connection URL | `mongodb://localhost:27017/` |
-| `database` | Database name | `conserver` |
-| `collection` | Collection name | `vcons` |
+| Option       | Description            | Default                      |
+| ------------ | ---------------------- | ---------------------------- |
+| `url`        | MongoDB connection URL | `mongodb://localhost:27017/` |
+| `database`   | Database name          | `conserver`                  |
+| `collection` | Collection name        | `vcons`                      |
 
----
+***
 
 ### PostgreSQL
 
@@ -65,25 +65,26 @@ storages:
       table_name: "vcons"
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `database` | Database name | `vcon_db` |
-| `user` | Database username | `postgres` |
-| `password` | Database password | (required) |
-| `host` | Database host | `localhost` |
-| `port` | Database port | `5432` |
-| `table_name` | Table name for vCons | `vcons` |
+| Option       | Description          | Default     |
+| ------------ | -------------------- | ----------- |
+| `database`   | Database name        | `vcon_db`   |
+| `user`       | Database username    | `postgres`  |
+| `password`   | Database password    | (required)  |
+| `host`       | Database host        | `localhost` |
+| `port`       | Database port        | `5432`      |
+| `table_name` | Table name for vCons | `vcons`     |
 
 The PostgreSQL storage automatically creates the table if it doesn't exist, with columns for:
-- `id` (UUID, primary key)
-- `vcon` (text)
-- `uuid` (UUID)
-- `created_at` (datetime)
-- `updated_at` (datetime)
-- `subject` (text)
-- `vcon_json` (JSONB for querying)
 
----
+* `id` (UUID, primary key)
+* `vcon` (text)
+* `uuid` (UUID)
+* `created_at` (datetime)
+* `updated_at` (datetime)
+* `subject` (text)
+* `vcon_json` (JSONB for querying)
+
+***
 
 ### Elasticsearch
 
@@ -107,23 +108,24 @@ storages:
       index_prefix: "myapp_"  # Optional prefix for index names
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `cloud_id` | Elastic Cloud deployment ID | (empty) |
-| `api_key` | Elastic Cloud API key | (empty) |
-| `url` | Self-hosted Elasticsearch URL | (none) |
-| `username` | Basic auth username | (none) |
-| `password` | Basic auth password | (none) |
-| `ca_certs` | Path to CA certificate | (none) |
-| `index_prefix` | Prefix for all index names | (empty) |
+| Option         | Description                   | Default |
+| -------------- | ----------------------------- | ------- |
+| `cloud_id`     | Elastic Cloud deployment ID   | (empty) |
+| `api_key`      | Elastic Cloud API key         | (empty) |
+| `url`          | Self-hosted Elasticsearch URL | (none)  |
+| `username`     | Basic auth username           | (none)  |
+| `password`     | Basic auth password           | (none)  |
+| `ca_certs`     | Path to CA certificate        | (none)  |
+| `index_prefix` | Prefix for all index names    | (empty) |
 
 Creates multiple indices:
-- `vcon_parties_{role}` - Party information by role
-- `vcon_attachments_{type}` - Attachments by type
-- `vcon_analysis_{type}` - Analysis results by type
-- `vcon_dialog` - Dialog entries
 
----
+* `vcon_parties_{role}` - Party information by role
+* `vcon_attachments_{type}` - Attachments by type
+* `vcon_analysis_{type}` - Analysis results by type
+* `vcon_dialog` - Dialog entries
+
+***
 
 ### Milvus
 
@@ -156,26 +158,26 @@ storages:
       ef_construction: 200    # For HNSW: construction candidate list size
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `host` | Milvus server hostname | `localhost` |
-| `port` | Milvus server port | `19530` |
-| `collection_name` | Collection name | `vcons` |
-| `api_key` | OpenAI API key for embeddings | (required) |
-| `organization` | OpenAI organization ID | (none) |
-| `embedding_model` | OpenAI embedding model | `text-embedding-3-small` |
-| `embedding_dim` | Embedding vector dimensions | `1536` |
-| `create_collection_if_missing` | Auto-create collection | `false` |
-| `skip_if_exists` | Skip storing existing vCons | `true` |
-| `index_type` | Vector index type | `IVF_FLAT` |
-| `metric_type` | Distance metric | `L2` |
-| `nlist` | IVF cluster count | `128` |
-| `m` | HNSW edges per node | `16` |
-| `ef_construction` | HNSW construction list size | `200` |
+| Option                         | Description                   | Default                  |
+| ------------------------------ | ----------------------------- | ------------------------ |
+| `host`                         | Milvus server hostname        | `localhost`              |
+| `port`                         | Milvus server port            | `19530`                  |
+| `collection_name`              | Collection name               | `vcons`                  |
+| `api_key`                      | OpenAI API key for embeddings | (required)               |
+| `organization`                 | OpenAI organization ID        | (none)                   |
+| `embedding_model`              | OpenAI embedding model        | `text-embedding-3-small` |
+| `embedding_dim`                | Embedding vector dimensions   | `1536`                   |
+| `create_collection_if_missing` | Auto-create collection        | `false`                  |
+| `skip_if_exists`               | Skip storing existing vCons   | `true`                   |
+| `index_type`                   | Vector index type             | `IVF_FLAT`               |
+| `metric_type`                  | Distance metric               | `L2`                     |
+| `nlist`                        | IVF cluster count             | `128`                    |
+| `m`                            | HNSW edges per node           | `16`                     |
+| `ef_construction`              | HNSW construction list size   | `200`                    |
 
 The Milvus storage extracts text from transcripts, summaries, party info, and dialog to create searchable embeddings.
 
----
+***
 
 ### Amazon S3
 
@@ -192,16 +194,16 @@ storages:
       s3_path: "vcons"  # Optional subdirectory
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `aws_access_key_id` | AWS access key ID | (required) |
-| `aws_secret_access_key` | AWS secret access key | (required) |
-| `aws_bucket` | S3 bucket name | (required) |
-| `s3_path` | Optional path prefix within bucket | (none) |
+| Option                  | Description                        | Default    |
+| ----------------------- | ---------------------------------- | ---------- |
+| `aws_access_key_id`     | AWS access key ID                  | (required) |
+| `aws_secret_access_key` | AWS secret access key              | (required) |
+| `aws_bucket`            | S3 bucket name                     | (required) |
+| `s3_path`               | Optional path prefix within bucket | (none)     |
 
 Files are stored as `{s3_path}/{YYYY/MM/DD}/{uuid}.vcon` based on the vCon's creation date.
 
----
+***
 
 ### SFTP
 
@@ -222,18 +224,18 @@ storages:
       add_timestamp_to_filename: true
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `url` | SFTP server hostname | `localhost` |
-| `port` | SFTP server port | `22` |
-| `username` | SFTP username | (required) |
-| `password` | SFTP password | (required) |
-| `path` | Remote directory path | `.` |
-| `filename` | Base filename | `vcon` |
-| `extension` | File extension | `json` |
-| `add_timestamp_to_filename` | Append timestamp to filename | `true` |
+| Option                      | Description                  | Default     |
+| --------------------------- | ---------------------------- | ----------- |
+| `url`                       | SFTP server hostname         | `localhost` |
+| `port`                      | SFTP server port             | `22`        |
+| `username`                  | SFTP username                | (required)  |
+| `password`                  | SFTP password                | (required)  |
+| `path`                      | Remote directory path        | `.`         |
+| `filename`                  | Base filename                | `vcon`      |
+| `extension`                 | File extension               | `json`      |
+| `add_timestamp_to_filename` | Append timestamp to filename | `true`      |
 
----
+***
 
 ### File System
 
@@ -250,14 +252,14 @@ storages:
       add_timestamp_to_filename: true
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `path` | Directory to store files | `.` |
-| `filename` | Base filename | `vcon` |
-| `extension` | File extension | `json` |
-| `add_timestamp_to_filename` | Append timestamp to filename | `true` |
+| Option                      | Description                  | Default |
+| --------------------------- | ---------------------------- | ------- |
+| `path`                      | Directory to store files     | `.`     |
+| `filename`                  | Base filename                | `vcon`  |
+| `extension`                 | File extension               | `json`  |
+| `add_timestamp_to_filename` | Append timestamp to filename | `true`  |
 
----
+***
 
 ### Redis Storage
 
@@ -273,13 +275,13 @@ storages:
       expires: 604800  # 7 days in seconds
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `redis_url` | Redis connection URL | `redis://localhost:6379` |
-| `prefix` | Key prefix for stored vCons | `vcon_storage` |
-| `expires` | TTL in seconds | `604800` (7 days) |
+| Option      | Description                 | Default                  |
+| ----------- | --------------------------- | ------------------------ |
+| `redis_url` | Redis connection URL        | `redis://localhost:6379` |
+| `prefix`    | Key prefix for stored vCons | `vcon_storage`           |
+| `expires`   | TTL in seconds              | `604800` (7 days)        |
 
----
+***
 
 ### ChatGPT Files
 
@@ -297,15 +299,15 @@ storages:
       purpose: "assistants"
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `organization_key` | OpenAI organization ID | (required) |
-| `project_key` | OpenAI project ID | (required) |
-| `api_key` | OpenAI API key | (required) |
-| `vector_store_id` | Vector store ID to add files to | (required) |
-| `purpose` | File purpose | `assistants` |
+| Option             | Description                     | Default      |
+| ------------------ | ------------------------------- | ------------ |
+| `organization_key` | OpenAI organization ID          | (required)   |
+| `project_key`      | OpenAI project ID               | (required)   |
+| `api_key`          | OpenAI API key                  | (required)   |
+| `vector_store_id`  | Vector store ID to add files to | (required)   |
+| `purpose`          | File purpose                    | `assistants` |
 
----
+***
 
 ### Microsoft Dataverse
 
@@ -328,22 +330,22 @@ storages:
       created_at_field: "vcon_created_at"
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `url` | Dataverse/Dynamics 365 URL | (required) |
-| `api_version` | Dataverse API version | `9.2` |
-| `tenant_id` | Azure AD tenant ID | (required) |
-| `client_id` | Azure AD application ID | (required) |
-| `client_secret` | Azure AD client secret | (required) |
-| `entity_name` | Custom entity name | `vcon_storage` |
-| `uuid_field` | Field for vCon UUID | `vcon_uuid` |
-| `data_field` | Field for vCon JSON data | `vcon_data` |
-| `subject_field` | Field for vCon subject | `vcon_subject` |
-| `created_at_field` | Field for creation date | `vcon_created_at` |
+| Option             | Description                | Default           |
+| ------------------ | -------------------------- | ----------------- |
+| `url`              | Dataverse/Dynamics 365 URL | (required)        |
+| `api_version`      | Dataverse API version      | `9.2`             |
+| `tenant_id`        | Azure AD tenant ID         | (required)        |
+| `client_id`        | Azure AD application ID    | (required)        |
+| `client_secret`    | Azure AD client secret     | (required)        |
+| `entity_name`      | Custom entity name         | `vcon_storage`    |
+| `uuid_field`       | Field for vCon UUID        | `vcon_uuid`       |
+| `data_field`       | Field for vCon JSON data   | `vcon_data`       |
+| `subject_field`    | Field for vCon subject     | `vcon_subject`    |
+| `created_at_field` | Field for creation date    | `vcon_created_at` |
 
 Requires a custom entity to be created in Dataverse with the specified fields.
 
----
+***
 
 ### Space and Time
 
@@ -359,13 +361,13 @@ storages:
 
 Configuration is done via environment variables:
 
-| Environment Variable | Description |
-|---------------------|-------------|
-| `SXT_API_KEY` | Space and Time API key |
-| `SXT_VCON_TABLENAME` | Table name (provided by SXT) |
+| Environment Variable           | Description                           |
+| ------------------------------ | ------------------------------------- |
+| `SXT_API_KEY`                  | Space and Time API key                |
+| `SXT_VCON_TABLENAME`           | Table name (provided by SXT)          |
 | `SXT_VCON_TABLE_WRITE_BISCUIT` | Write biscuit token (provided by SXT) |
 
----
+***
 
 ### SCITT Transparency
 
@@ -386,22 +388,22 @@ storages:
         - "vcon_enhanced"
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `scrapi_url` | SCRAPI endpoint of the transparency service | `http://scittles:8000` |
-| `signing_key_pem` | Base64-encoded PEM (preferred for containers / k8s) | `None` |
-| `signing_key_path` | Filesystem path to the signing key (fallback) | `/etc/scitt/signing-key.pem` |
-| `issuer` | COSE issuer identifier | `conserver` |
-| `key_id` | Key identifier | `conserver-key-1` |
-| `operations` | List of lifecycle event types to register (e.g. `vcon_created`, `vcon_enhanced`) | `["vcon_enhanced"]` |
+| Option             | Description                                                                      | Default                      |
+| ------------------ | -------------------------------------------------------------------------------- | ---------------------------- |
+| `scrapi_url`       | SCRAPI endpoint of the transparency service                                      | `http://scittles:8000`       |
+| `signing_key_pem`  | Base64-encoded PEM (preferred for containers / k8s)                              | `None`                       |
+| `signing_key_path` | Filesystem path to the signing key (fallback)                                    | `/etc/scitt/signing-key.pem` |
+| `issuer`           | COSE issuer identifier                                                           | `conserver`                  |
+| `key_id`           | Key identifier                                                                   | `conserver-key-1`            |
+| `operations`       | List of lifecycle event types to register (e.g. `vcon_created`, `vcon_enhanced`) | `["vcon_enhanced"]`          |
 
-For the in-chain version that *does* attach a receipt to the vCon, see the [`scitt` link](standard-links.md#scitt). The choice depends on whether you want the receipt to travel with the vCon (link) or live only on the transparency service (storage). Both compose with the [Lifecycle extension](../extensions/lifecycle.md).
+For the in-chain version that _does_ attach a receipt to the vCon, see the [`scitt` link](standard-links.md#scitt). The choice depends on whether you want the receipt to travel with the vCon (link) or live only on the transparency service (storage). Both compose with the [Lifecycle extension](../extensions/lifecycle.md).
 
----
+***
 
 ### vCon MCP
 
-Proxies storage writes to a running [vCon MCP server](../mcp-server/README.md) via its REST API. Use this when you want vCons to land in an MCP-backed database (typically Supabase) so they're immediately queryable by LLM agents through the MCP contract tools.
+Proxies storage writes to a running [vCon MCP server](../mcp-server/) via its REST API. Use this when you want vCons to land in an MCP-backed database (typically Supabase) so they're immediately queryable by LLM agents through the MCP contract tools.
 
 ```yaml
 storages:
@@ -413,15 +415,15 @@ storages:
       timeout: 30
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `base_url` | Root of the vCon MCP REST API | `http://127.0.0.1:3000/api/v1` |
-| `api_key` | Bearer token for the MCP server (optional, depending on deployment) | `None` |
-| `timeout` | HTTP timeout in seconds | `30` |
+| Option     | Description                                                         | Default                        |
+| ---------- | ------------------------------------------------------------------- | ------------------------------ |
+| `base_url` | Root of the vCon MCP REST API                                       | `http://127.0.0.1:3000/api/v1` |
+| `api_key`  | Bearer token for the MCP server (optional, depending on deployment) | `None`                         |
+| `timeout`  | HTTP timeout in seconds                                             | `30`                           |
 
 Behavior: `save()` POSTs to `/vcons`, `get()` GETs from `/vcons/{uuid}`, `delete()` DELETEs `/vcons/{uuid}`. The MCP server is the source of truth — there's no local copy beyond the conserver's Redis hot cache.
 
----
+***
 
 ### Webhook
 
@@ -439,14 +441,14 @@ storages:
         Authorization: "Bearer your-token"
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `webhook-urls` | List of URLs to POST the vCon to | `[]` |
-| `headers` | Headers attached to every call | `{}` |
+| Option         | Description                      | Default |
+| -------------- | -------------------------------- | ------- |
+| `webhook-urls` | List of URLs to POST the vCon to | `[]`    |
+| `headers`      | Headers attached to every call   | `{}`    |
 
 Use the storage form when the webhook is the durable destination (e.g. another system's ingestion endpoint); use the link form when the webhook is an interactive side-effect mid-chain (e.g. alerting). Per-call latency and status are emitted as OTEL metrics.
 
----
+***
 
 ## Using Multiple Storages
 

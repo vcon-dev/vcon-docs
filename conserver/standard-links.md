@@ -1,17 +1,17 @@
-# Standard Links
+# 🔗 Standard Links
 
 Links are the processing units of the Conserver. Each link performs a specific operation on a vCon as it flows through a chain. Links can analyze content, transform data, route vCons, integrate with external services, and more.
 
 The conserver currently ships **22 standard links**. They are organized in this page by what they do:
 
-| Category | Links |
-|----------|-------|
-| **Transcription** | `deepgram_link`, `groq_whisper`, `hugging_face_whisper`, `openai_transcribe`, `transcribe`, `wtf_transcribe` |
-| **Analysis** | `analyze`, `analyze_vcon`, `analyze_and_label`, `check_and_tag`, `detect_engagement`, `hugging_llm_link` |
-| **Routing & filtering** | `sampler`, `jq_link`, `tag_router` |
-| **Data management** | `tag`, `diet`, `expire_vcon` |
-| **Integration** | `webhook`, `post_analysis_to_slack` |
-| **Audit & compliance** | `scitt`, `datatrails` |
+| Category                | Links                                                                                                        |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **Transcription**       | `deepgram_link`, `groq_whisper`, `hugging_face_whisper`, `openai_transcribe`, `transcribe`, `wtf_transcribe` |
+| **Analysis**            | `analyze`, `analyze_vcon`, `analyze_and_label`, `check_and_tag`, `detect_engagement`, `hugging_llm_link`     |
+| **Routing & filtering** | `sampler`, `jq_link`, `tag_router`                                                                           |
+| **Data management**     | `tag`, `diet`, `expire_vcon`                                                                                 |
+| **Integration**         | `webhook`, `post_analysis_to_slack`                                                                          |
+| **Audit & compliance**  | `scitt`, `datatrails`                                                                                        |
 
 All links emit OpenTelemetry metrics (latency, error counts, cache hits where applicable) and trace spans. If you've wired up the [`vcon-mcp-adapters`](../tools/vcon-mcp-adapters.md) OTEL collector, you'll see per-link spans automatically.
 
@@ -41,9 +41,9 @@ def run(vcon_uuid: str, link_name: str, opts: dict = default_options) -> str | N
 
 These links convert audio recordings in vCon dialogs to text transcripts.
 
----
+***
 
-#### deepgram_link
+#### deepgram\_link
 
 Speech-to-text transcription using the Deepgram API with automatic language detection and confidence scoring.
 
@@ -60,17 +60,17 @@ links:
         detect_language: true
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `DEEPGRAM_KEY` | Deepgram API key | (required) |
-| `minimum_duration` | Minimum audio duration in seconds to transcribe | `30` |
-| `api.model` | Deepgram model to use | `nova-2` |
-| `api.smart_format` | Enable smart formatting | `true` |
-| `api.detect_language` | Enable automatic language detection | `true` |
+| Option                | Description                                     | Default    |
+| --------------------- | ----------------------------------------------- | ---------- |
+| `DEEPGRAM_KEY`        | Deepgram API key                                | (required) |
+| `minimum_duration`    | Minimum audio duration in seconds to transcribe | `30`       |
+| `api.model`           | Deepgram model to use                           | `nova-2`   |
+| `api.smart_format`    | Enable smart formatting                         | `true`     |
+| `api.detect_language` | Enable automatic language detection             | `true`     |
 
----
+***
 
-#### groq_whisper
+#### groq\_whisper
 
 Speech-to-text transcription using Groq's implementation of the Whisper ASR model.
 
@@ -84,15 +84,15 @@ links:
       minimum_duration: 3
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `GROQ_API_KEY` | Groq API key | (required) |
-| `model` | Whisper model to use | `whisper-large-v3` |
-| `minimum_duration` | Minimum audio duration in seconds | `3` |
+| Option             | Description                       | Default            |
+| ------------------ | --------------------------------- | ------------------ |
+| `GROQ_API_KEY`     | Groq API key                      | (required)         |
+| `model`            | Whisper model to use              | `whisper-large-v3` |
+| `minimum_duration` | Minimum audio duration in seconds | `3`                |
 
----
+***
 
-#### hugging_face_whisper
+#### hugging\_face\_whisper
 
 Speech-to-text transcription using Hugging Face's Whisper implementation, supporting both API-based and local inference.
 
@@ -105,14 +105,14 @@ links:
       minimum_duration: 3
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `model` | Hugging Face model identifier | `openai/whisper-large-v3` |
-| `minimum_duration` | Minimum audio duration in seconds | `3` |
+| Option             | Description                       | Default                   |
+| ------------------ | --------------------------------- | ------------------------- |
+| `model`            | Hugging Face model identifier     | `openai/whisper-large-v3` |
+| `minimum_duration` | Minimum audio duration in seconds | `3`                       |
 
----
+***
 
-#### openai_transcribe
+#### openai\_transcribe
 
 Speech-to-text transcription using OpenAI's Whisper API or Azure OpenAI. Supports automatic chunking for long audio files.
 
@@ -138,20 +138,20 @@ links:
       silence_len: 2000
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `OPENAI_API_KEY` | OpenAI API key | (none) |
-| `AZURE_OPENAI_API_KEY` | Azure OpenAI API key | (none) |
-| `AZURE_OPENAI_ENDPOINT` | Azure OpenAI endpoint URL | (none) |
-| `model` | Model to use | `gpt-4o-transcribe` |
-| `language` | Language code | `en` |
-| `minimum_duration` | Minimum audio duration in seconds | `3` |
-| `max_chunk_duration` | Maximum chunk duration for splitting | `480` (8 min) |
-| `use_silence_chunking` | Split at silence points | `true` |
-| `silence_thresh` | Silence threshold in dBFS | `-40` |
-| `silence_len` | Minimum silence length in ms | `2000` |
+| Option                  | Description                          | Default             |
+| ----------------------- | ------------------------------------ | ------------------- |
+| `OPENAI_API_KEY`        | OpenAI API key                       | (none)              |
+| `AZURE_OPENAI_API_KEY`  | Azure OpenAI API key                 | (none)              |
+| `AZURE_OPENAI_ENDPOINT` | Azure OpenAI endpoint URL            | (none)              |
+| `model`                 | Model to use                         | `gpt-4o-transcribe` |
+| `language`              | Language code                        | `en`                |
+| `minimum_duration`      | Minimum audio duration in seconds    | `3`                 |
+| `max_chunk_duration`    | Maximum chunk duration for splitting | `480` (8 min)       |
+| `use_silence_chunking`  | Split at silence points              | `true`              |
+| `silence_thresh`        | Silence threshold in dBFS            | `-40`               |
+| `silence_len`           | Minimum silence length in ms         | `2000`              |
 
----
+***
 
 #### transcribe
 
@@ -167,14 +167,14 @@ links:
         output_options: ["vendor"]
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `transcribe_options.model_size` | Model size | `base` |
+| Option                              | Description           | Default      |
+| ----------------------------------- | --------------------- | ------------ |
+| `transcribe_options.model_size`     | Model size            | `base`       |
 | `transcribe_options.output_options` | Output format options | `["vendor"]` |
 
----
+***
 
-#### wtf_transcribe
+#### wtf\_transcribe
 
 Transcribes dialog recordings via the `vfun` transcription service and writes a [WTF (World Transcription Format)](../extensions/wtf-transcription.md)-shaped analysis entry. Refactored in May 2026 to decompose `run()` and normalize timeout option names.
 
@@ -191,24 +191,24 @@ links:
       url-timeout: 60
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `vfun-server-url` | vfun transcription endpoint | (required) |
-| `api-key` | Service API key | `None` |
-| `language` | BCP-47 language hint | `None` (auto-detect) |
-| `diarize` | Emit speaker labels | `false` |
-| `vfun-timeout` | Transcription request timeout (s) | `300` |
-| `url-timeout` | Media-fetch timeout (s) | `60` |
+| Option            | Description                       | Default              |
+| ----------------- | --------------------------------- | -------------------- |
+| `vfun-server-url` | vfun transcription endpoint       | (required)           |
+| `api-key`         | Service API key                   | `None`               |
+| `language`        | BCP-47 language hint              | `None` (auto-detect) |
+| `diarize`         | Emit speaker labels               | `false`              |
+| `vfun-timeout`    | Transcription request timeout (s) | `300`                |
+| `url-timeout`     | Media-fetch timeout (s)           | `60`                 |
 
 Writes an `analysis[]` entry with `type: "wtf_transcription"`, `vendor` inferred from the service response, `encoding: "json"`, and a WTF document in `body`. See [WTF Transcription extension](../extensions/wtf-transcription.md) for the body shape.
 
----
+***
 
 ### Analysis Links
 
 These links use AI to analyze and extract insights from vCon content.
 
----
+***
 
 #### analyze
 
@@ -230,20 +230,20 @@ links:
         text_location: "body.text"
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `OPENAI_API_KEY` | OpenAI API key | (required) |
-| `prompt` | Analysis prompt | (required) |
-| `analysis_type` | Type label for the analysis | `summary` |
-| `model` | OpenAI model | `gpt-3.5-turbo-16k` |
-| `sampling_rate` | Fraction of vCons to analyze (0-1) | `1` |
-| `temperature` | Model temperature | `0.3` |
-| `source.analysis_type` | Source analysis type to analyze | `transcript` |
-| `source.text_location` | Path to text within source | `body.text` |
+| Option                 | Description                        | Default             |
+| ---------------------- | ---------------------------------- | ------------------- |
+| `OPENAI_API_KEY`       | OpenAI API key                     | (required)          |
+| `prompt`               | Analysis prompt                    | (required)          |
+| `analysis_type`        | Type label for the analysis        | `summary`           |
+| `model`                | OpenAI model                       | `gpt-3.5-turbo-16k` |
+| `sampling_rate`        | Fraction of vCons to analyze (0-1) | `1`                 |
+| `temperature`          | Model temperature                  | `0.3`               |
+| `source.analysis_type` | Source analysis type to analyze    | `transcript`        |
+| `source.text_location` | Path to text within source         | `body.text`         |
 
----
+***
 
-#### analyze_vcon
+#### analyze\_vcon
 
 AI analysis of entire vCon objects, returning structured JSON output.
 
@@ -259,17 +259,17 @@ links:
       model: "gpt-4-turbo"
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `OPENAI_API_KEY` | OpenAI API key | (required) |
-| `system_prompt` | System prompt for the model | (optional) |
-| `prompt` | Analysis prompt | (required) |
-| `analysis_type` | Type label for the analysis | `vcon_analysis` |
-| `model` | OpenAI model | `gpt-4-turbo` |
+| Option           | Description                 | Default         |
+| ---------------- | --------------------------- | --------------- |
+| `OPENAI_API_KEY` | OpenAI API key              | (required)      |
+| `system_prompt`  | System prompt for the model | (optional)      |
+| `prompt`         | Analysis prompt             | (required)      |
+| `analysis_type`  | Type label for the analysis | `vcon_analysis` |
+| `model`          | OpenAI model                | `gpt-4-turbo`   |
 
----
+***
 
-#### detect_engagement
+#### detect\_engagement
 
 Detects whether both parties actively engaged in a conversation.
 
@@ -287,19 +287,19 @@ links:
         text_location: "body.paragraphs.transcript"
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `OPENAI_API_KEY` | OpenAI API key | (required) |
-| `prompt` | Evaluation prompt | (engagement detection prompt) |
-| `analysis_type` | Type label | `engagement_analysis` |
-| `model` | OpenAI model | `gpt-4.1` |
-| `sampling_rate` | Fraction to process | `1` |
+| Option           | Description         | Default                       |
+| ---------------- | ------------------- | ----------------------------- |
+| `OPENAI_API_KEY` | OpenAI API key      | (required)                    |
+| `prompt`         | Evaluation prompt   | (engagement detection prompt) |
+| `analysis_type`  | Type label          | `engagement_analysis`         |
+| `model`          | OpenAI model        | `gpt-4.1`                     |
+| `sampling_rate`  | Fraction to process | `1`                           |
 
 Adds an `engagement` tag with value `true` or `false`.
 
----
+***
 
-#### analyze_and_label
+#### analyze\_and\_label
 
 Combined analysis that extracts labels/categories and applies them as tags.
 
@@ -316,19 +316,19 @@ links:
         type: "json_object"
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `OPENAI_API_KEY` | OpenAI API key | (required) |
-| `prompt` | Label extraction prompt | (categorization prompt) |
-| `analysis_type` | Type label | `labeled_analysis` |
-| `model` | OpenAI model | `gpt-4-turbo` |
-| `response_format` | Response format | `{"type": "json_object"}` |
+| Option            | Description             | Default                   |
+| ----------------- | ----------------------- | ------------------------- |
+| `OPENAI_API_KEY`  | OpenAI API key          | (required)                |
+| `prompt`          | Label extraction prompt | (categorization prompt)   |
+| `analysis_type`   | Type label              | `labeled_analysis`        |
+| `model`           | OpenAI model            | `gpt-4-turbo`             |
+| `response_format` | Response format         | `{"type": "json_object"}` |
 
 Returns JSON with `labels` array and applies each label as a tag.
 
----
+***
 
-#### check_and_tag
+#### check\_and\_tag
 
 Evaluates a condition using AI and applies a tag if the condition is met.
 
@@ -347,17 +347,17 @@ links:
         text_location: "body"
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `OPENAI_API_KEY` | OpenAI API key | (required) |
-| `tag_name` | Tag name to apply | (required) |
-| `tag_value` | Tag value to apply | (required) |
+| Option                | Description          | Default    |
+| --------------------- | -------------------- | ---------- |
+| `OPENAI_API_KEY`      | OpenAI API key       | (required) |
+| `tag_name`            | Tag name to apply    | (required) |
+| `tag_value`           | Tag value to apply   | (required) |
 | `evaluation_question` | Question to evaluate | (required) |
-| `model` | OpenAI model | `gpt-5` |
+| `model`               | OpenAI model         | `gpt-5`    |
 
----
+***
 
-#### hugging_llm_link
+#### hugging\_llm\_link
 
 AI analysis using Hugging Face language models, supporting both API and local inference.
 
@@ -371,19 +371,19 @@ links:
       analysis_type: "hf_summary"
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `model` | Hugging Face model identifier | (required) |
-| `prompt` | Analysis prompt | (required) |
-| `analysis_type` | Type label | `hf_analysis` |
+| Option          | Description                   | Default       |
+| --------------- | ----------------------------- | ------------- |
+| `model`         | Hugging Face model identifier | (required)    |
+| `prompt`        | Analysis prompt               | (required)    |
+| `analysis_type` | Type label                    | `hf_analysis` |
 
----
+***
 
 ### Routing and Filtering Links
 
 These links control vCon flow through chains.
 
----
+***
 
 #### sampler
 
@@ -400,18 +400,18 @@ links:
       modulo: 5            # For modulo method
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `method` | Sampling method | `percentage` |
-| `percentage` | Percentage to process (0-100) | `100` |
-| `rate` | Process 1 out of N | `1` |
-| `modulo` | Process if UUID modulo equals 0 | `1` |
+| Option       | Description                     | Default      |
+| ------------ | ------------------------------- | ------------ |
+| `method`     | Sampling method                 | `percentage` |
+| `percentage` | Percentage to process (0-100)   | `100`        |
+| `rate`       | Process 1 out of N              | `1`          |
+| `modulo`     | Process if UUID modulo equals 0 | `1`          |
 
 Returns `None` for filtered vCons, stopping their chain processing.
 
----
+***
 
-#### jq_link
+#### jq\_link
 
 Filters vCons using jq expressions for complex content-based filtering.
 
@@ -425,15 +425,15 @@ links:
       forward_list: "sales_ingress"
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `expression` | jq expression to evaluate | (required) |
-| `forward_on_match` | Continue chain if expression matches | `true` |
-| `forward_list` | Alternative ingress list for matches | (none) |
+| Option             | Description                          | Default    |
+| ------------------ | ------------------------------------ | ---------- |
+| `expression`       | jq expression to evaluate            | (required) |
+| `forward_on_match` | Continue chain if expression matches | `true`     |
+| `forward_list`     | Alternative ingress list for matches | (none)     |
 
----
+***
 
-#### tag_router
+#### tag\_router
 
 Routes vCons to additional Redis lists based on tags attached to the vCon. The vCon is pushed onto every matching target list; processing in the current chain continues unless `forward_original` is set to `false`.
 
@@ -449,20 +449,20 @@ links:
       forward_original: true
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `tag_routes` | Dict mapping tag value → target Redis list name. The link checks tags in the vCon's `attachments[]` of type `tags` against the keys here. | `{}` |
-| `forward_original` | If `true`, continue the current chain after routing. If `false`, return `None` to stop the chain (vCon proceeds only on the routed queues). | `true` |
+| Option             | Description                                                                                                                                 | Default |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `tag_routes`       | Dict mapping tag value → target Redis list name. The link checks tags in the vCon's `attachments[]` of type `tags` against the keys here.   | `{}`    |
+| `forward_original` | If `true`, continue the current chain after routing. If `false`, return `None` to stop the chain (vCon proceeds only on the routed queues). | `true`  |
 
 Returns `vcon_uuid` (chain continues) or `None` (chain stops) per `forward_original`.
 
----
+***
 
 ### Data Management Links
 
 These links modify vCon content.
 
----
+***
 
 #### tag
 
@@ -480,13 +480,13 @@ links:
           value: "true"
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `tags` | List of tags to add | `[]` |
-| `tags[].name` | Tag name | (required) |
-| `tags[].value` | Tag value | (required) |
+| Option         | Description         | Default    |
+| -------------- | ------------------- | ---------- |
+| `tags`         | List of tags to add | `[]`       |
+| `tags[].name`  | Tag name            | (required) |
+| `tags[].value` | Tag value           | (required) |
 
----
+***
 
 #### diet
 
@@ -505,17 +505,17 @@ links:
       remove_system_prompts: true
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `remove_dialog_bodies` | Remove dialog body content | `false` |
-| `remove_attachments` | Remove all attachments | `false` |
-| `remove_analysis_types` | Analysis types to remove | `[]` |
-| `redirect_media_to_storage` | Move media to storage | (none) |
-| `remove_system_prompts` | Remove system prompts | `false` |
+| Option                      | Description                | Default |
+| --------------------------- | -------------------------- | ------- |
+| `remove_dialog_bodies`      | Remove dialog body content | `false` |
+| `remove_attachments`        | Remove all attachments     | `false` |
+| `remove_analysis_types`     | Analysis types to remove   | `[]`    |
+| `redirect_media_to_storage` | Move media to storage      | (none)  |
+| `remove_system_prompts`     | Remove system prompts      | `false` |
 
----
+***
 
-#### expire_vcon
+#### expire\_vcon
 
 Sets a Redis TTL on the vCon key so the working copy is cleaned up automatically. The vCon stays in any storage backends configured on the chain — this only affects the Redis hot cache.
 
@@ -527,17 +527,17 @@ links:
       seconds: 86400  # 24 hours
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
+| Option    | Description                                     | Default            |
+| --------- | ----------------------------------------------- | ------------------ |
 | `seconds` | TTL in seconds applied via `EXPIRE vcon:{uuid}` | `86400` (24 hours) |
 
----
+***
 
 ### Integration Links
 
 These links connect to external services.
 
----
+***
 
 #### webhook
 
@@ -556,16 +556,16 @@ links:
         x-conserver-api-token: "your-api-token"
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `webhook-urls` | List of URLs to POST the vCon JSON to | `[]` |
-| `headers` | Headers to attach to each request | `{}` |
+| Option         | Description                           | Default |
+| -------------- | ------------------------------------- | ------- |
+| `webhook-urls` | List of URLs to POST the vCon JSON to | `[]`    |
+| `headers`      | Headers to attach to each request     | `{}`    |
 
 Each URL is called sequentially with a `POST` containing the full vCon JSON. Per-call latency and status codes are recorded as OTEL metrics.
 
----
+***
 
-#### post_analysis_to_slack
+#### post\_analysis\_to\_slack
 
 Posts vCon analysis results to Slack channels.
 
@@ -583,25 +583,25 @@ links:
         tag_value: "high"
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `webhook_url` | Slack webhook URL | (required) |
-| `channel` | Slack channel | (required) |
-| `analysis_type` | Analysis type to post | `summary` |
-| `template` | Message template | `{body}` |
-| `condition` | Optional tag condition | (none) |
+| Option          | Description            | Default    |
+| --------------- | ---------------------- | ---------- |
+| `webhook_url`   | Slack webhook URL      | (required) |
+| `channel`       | Slack channel          | (required) |
+| `analysis_type` | Analysis type to post  | `summary`  |
+| `template`      | Message template       | `{body}`   |
+| `condition`     | Optional tag condition | (none)     |
 
----
+***
 
 ### Audit and Compliance Links
 
 These links provide integrity and audit trail capabilities.
 
----
+***
 
 #### datatrails
 
-Creates [DataTrails](https://app.datatrails.ai) Events for each vCon, producing a tamper-evident audit trail via OIDC-authenticated calls. DataTrails statements map onto SCITT envelopes — if you want a vendor-neutral transparency service, prefer the [`scitt`](#scitt) link instead.
+Creates [DataTrails](https://app.datatrails.ai) Events for each vCon, producing a tamper-evident audit trail via OIDC-authenticated calls. DataTrails statements map onto SCITT envelopes — if you want a vendor-neutral transparency service, prefer the [`scitt`](standard-links.md#scitt) link instead.
 
 ```yaml
 links:
@@ -618,17 +618,17 @@ links:
         conserver_link_version: "auto"
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `api_url` | DataTrails Archivist API root | `https://app.datatrails.ai/archivist` |
-| `auth_url` | OIDC client-credentials token endpoint | `https://app.datatrails.ai/archivist/iam/v1/appidp/token` |
-| `client_id` / `client_secret` | OIDC client credentials | (required) |
-| `partner_id` | Partner identifier used in event attribution | `not-set` |
-| `asset_attributes` | Initial attributes for the DataTrails asset | DataTrails-recommended defaults |
+| Option                        | Description                                  | Default                                                   |
+| ----------------------------- | -------------------------------------------- | --------------------------------------------------------- |
+| `api_url`                     | DataTrails Archivist API root                | `https://app.datatrails.ai/archivist`                     |
+| `auth_url`                    | OIDC client-credentials token endpoint       | `https://app.datatrails.ai/archivist/iam/v1/appidp/token` |
+| `client_id` / `client_secret` | OIDC client credentials                      | (required)                                                |
+| `partner_id`                  | Partner identifier used in event attribution | `not-set`                                                 |
+| `asset_attributes`            | Initial attributes for the DataTrails asset  | DataTrails-recommended defaults                           |
 
 DataTrails is the durable store for the audit data — the vCon itself is not modified.
 
----
+***
 
 #### scitt
 
@@ -651,19 +651,19 @@ links:
       store_receipt: true
 ```
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `scrapi_url` | SCRAPI endpoint for the SCITT transparency service | `http://scittles:8000` |
-| `signing_key_pem` | Base64-encoded PEM. Preferred for containers / k8s deployments. | `None` |
+| Option             | Description                                                         | Default                      |
+| ------------------ | ------------------------------------------------------------------- | ---------------------------- |
+| `scrapi_url`       | SCRAPI endpoint for the SCITT transparency service                  | `http://scittles:8000`       |
+| `signing_key_pem`  | Base64-encoded PEM. Preferred for containers / k8s deployments.     | `None`                       |
 | `signing_key_path` | Filesystem path to the signing key (fallback for local development) | `/etc/scitt/signing-key.pem` |
-| `issuer` | COSE issuer identifier | `conserver` |
-| `key_id` | Key identifier | `conserver-key-1` |
-| `vcon_operation` | Lifecycle event recorded (e.g. `vcon_created`, `vcon_enhanced`) | `vcon_created` |
-| `store_receipt` | Append the COSE receipt as an analysis entry on the vCon | `true` |
+| `issuer`           | COSE issuer identifier                                              | `conserver`                  |
+| `key_id`           | Key identifier                                                      | `conserver-key-1`            |
+| `vcon_operation`   | Lifecycle event recorded (e.g. `vcon_created`, `vcon_enhanced`)     | `vcon_created`               |
+| `store_receipt`    | Append the COSE receipt as an analysis entry on the vCon            | `true`                       |
 
 Writes an `analysis[]` entry with `type: "scitt_receipt"`, `vendor: "scittles"`, and a body containing `entry_id`, `cose_receipt`, and `subject`. See [Lifecycle extension](../extensions/lifecycle.md) for how this composes with the vCon lifecycle audit story.
 
----
+***
 
 ## Using Links in Chains
 
