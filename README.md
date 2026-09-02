@@ -11,7 +11,7 @@ description: >-
 
 Every business runs on conversations. Calls, chats, video meetings, agent dialog. Until now there has been no shared way to record what was said, on whose behalf, and under what authority, in a form that survives moving between systems.
 
-vCon (virtual conversation) is that container. It is an open IETF standard for packaging the parties, the dialog, the recording or transcript, the consent, and the analysis into one signed, portable JSON object. The Conserver is the open source platform that creates and manages vCons at scale.
+[vCon (virtual conversation) is that container](vcons/a-vcon-primer.md). It is an open IETF standard for packaging the parties, the dialog, the recording or transcript, the consent, and the analysis into one signed, portable JSON object. The Conserver is the open source platform that creates and manages vCons at scale.
 
 {% columns %}
 {% column %}
