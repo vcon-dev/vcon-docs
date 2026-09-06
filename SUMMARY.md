@@ -19,6 +19,8 @@
   * [🔌 API Reference](vcon-js-library/api-reference.md)
   * [📜 LLM Guide](vcon-js-library/llm-guide.md)
   * [👩‍💻 GitHub Repo](https://github.com/vcon-dev/vcon-js)
+* [vCon-C Library](vcon-c-library/README.md)
+  * [👩‍💻 GitHub Repo](https://github.com/vcon-dev/vcon-c)
 * [vCon Adapters](vcon-adapters/README.md)
   * [🚀 Quick Start From Template](vcon-adapters/quick-start-from-template.md)
   * [⚙️ Operational Patterns](vcon-adapters/operational-patterns.md)
