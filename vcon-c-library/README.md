@@ -77,6 +77,13 @@ free(json);
 vcon_free(v);
 ```
 
+For a full walkthrough — parties, a recording dialog with inline audio and a
+content hash, transcript + summary analysis, tags, a lawful-basis consent
+record, validation, a permission check, JWS signing and verification, and
+serialization — see
+[`examples/call_recording.c`](https://github.com/vcon-dev/vcon-c/blob/main/examples/call_recording.c),
+which the default build compiles to `./build/call_recording`.
+
 Build and install:
 
 ```bash
