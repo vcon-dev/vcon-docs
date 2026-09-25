@@ -23,6 +23,10 @@ Tools for managing vCons at scale.
 - [Mongo ↔ Redis Sync](mongo-redis-sync.md) — keep a Mongo vCon store and a Redis cache in sync
 - [vCon MCP Adapters](vcon-mcp-adapters.md) — observability adapters (OpenTelemetry) for the MCP server
 
+## Datasets
+
+- [Public vCon Datasets](vcon-datasets.md) — public GitHub datasets of vCons, and how to load one with vcon-data
+
 ## Apps and stores
 
 - [vCon Apps and Stores](../vcon-apps-and-stores/README.md) — community-built apps and the vCon App Template

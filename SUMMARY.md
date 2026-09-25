@@ -71,6 +71,7 @@
   * [🗂️ vCon Admin](tools/vcon-admin.md)
   * [🔁 Mongo Redis Sync](tools/mongo-redis-sync.md)
   * [📊 vCon MCP Adapters](tools/vcon-mcp-adapters.md)
+  * [📚 Public vCon Datasets](tools/vcon-datasets.md)
   * [vCon Apps and Stores](vcon-apps-and-stores/README.md)
     * [TADHack vCon](vcon-apps-and-stores/tadhack-vcon.md)
     * [vCon Stores and Apps](https://youtu.be/TgAwtYP0pjA)
