@@ -1,7 +1,7 @@
 ---
 description: >-
   Drop-into-context guide for LLMs generating vCon adapter code. Spec target:
-  draft-ietf-vcon-vcon-core-02, syntax 0.4.0. Pairs with the
+  draft-ietf-vcon-vcon-core-04, syntax 0.4.0. Pairs with the
   vcon-adapter-template repo.
 ---
 
@@ -11,7 +11,7 @@ This page is designed to be pasted into a model's context window when you want i
 
 ## Ground truth
 
-**Spec:** IETF [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/). The `vcon` syntax parameter is the string `"0.4.0"`. Any older value (`0.0.1`, `0.0.2`, `0.2.0`, `0.3.0`) is wrong.
+**Spec:** IETF [`draft-ietf-vcon-vcon-core-04`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/). The `vcon` syntax parameter is the string `"0.4.0"`. Any older value (`0.0.1`, `0.0.2`, `0.2.0`, `0.3.0`) is wrong. For an attachment or analysis with `encoding: "json"`, `body` is the parsed JSON value itself (an object or array), not a `json.dumps()` string; a reader should still accept the older stringified form.
 
 **Canonical scaffold:** [vcon-dev/vcon-adapter-template](https://github.com/vcon-dev/vcon-adapter-template). New adapters SHOULD start from this template — it ships a `vcon_builder.py` wrapper, HMAC webhook delivery, retries/DLQ, health + Prometheus endpoints, and 14 spec-compliance smoke tests.
 
@@ -148,29 +148,31 @@ v.add_analysis(
     dialog=0,
     vendor="openai-whisper",                                          # REQUIRED
     product="whisper-large-v3",
-    body=json.dumps(wtf_document),
+    body=wtf_document,
     encoding="json",
     schema="https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/",
 )
 ```
 
-Field name is `schema`, NOT `schema_version`. `vendor` is REQUIRED — the lib raises `TypeError` if you omit it.
+Field name is `schema`, NOT `schema_version`. `vendor` is REQUIRED, the lib raises `TypeError` if you omit it. `body` is the raw dict, not a `json.dumps()` string.
 
 ## Attachments (metadata, signaling, consent)
 
-Standard core attachment — uses `purpose`:
+Standard core attachment, uses `purpose`:
 
 ```python
 v.add_attachment(
     purpose="call_metadata",     # NEVER "type" for core attachments
-    body=json.dumps({"queue": "support", "skill": "billing"}),
+    start="2026-05-19T14:32:00Z",  # REQUIRED
+    body={"queue": "support", "skill": "billing"},
     encoding="json",
-    party=0,                     # REQUIRED — use 0 for vCon-level
-    dialog=0,                    # REQUIRED — use 0 for vCon-level
+    mediatype="application/json",  # REQUIRED alongside encoding, when there's a body
+    party=0,                     # REQUIRED, use 0 for vCon-level
+    dialog=0,                    # REQUIRED, use 0 for vCon-level
 )
 ```
 
-The lawful\_basis extension is the **only** documented exception — it uses `type: "lawful_basis"`. See [Extensions Cookbook](extensions-cookbook.md).
+`lawful_basis` writes `purpose: "lawful_basis"` too in new code, the same field as every other attachment. A reader should still accept the legacy `type: "lawful_basis"` field on older vCons. See [Extensions Cookbook](extensions-cookbook.md).
 
 ## Tags
 
@@ -196,7 +198,7 @@ Every extension used MUST appear in top-level `extensions[]`. The template inclu
 | `appended`       | `amended`  | top-level metadata                  |
 | `must_support`   | `critical` | top-level metadata                  |
 | `schema_version` | `schema`   | analysis                            |
-| `type`           | `purpose`  | attachments (except `lawful_basis`) |
+| `type`           | `purpose`  | attachments, including `lawful_basis` in new code (readers still accept legacy `type`) |
 | `did`            | (removed)  | party                               |
 | `0.2.0`, `0.3.0` | `"0.4.0"`  | `vcon` syntax param                 |
 
@@ -285,12 +287,13 @@ For HTTP webhook delivery, sign the body with HMAC-SHA256 (`X-Hub-Signature-256:
 1. Use the library helpers; never hand-roll `vcon_dict[...]` (except the four `new_vcon` quirks).
 2. Set `vcon` syntax to `"0.4.0"`.
 3. Drop empty `group: []` and `redacted: {}` from `build_new()`.
-4. Attachments use `purpose` — except `lawful_basis`, which uses `type`.
+4. Attachments use `purpose`, including `lawful_basis` in new code (readers should still accept the legacy `type` field on older vCons).
 5. Analysis uses `schema`, never `schema_version`. `vendor` is required.
 6. Transcripts live in `analysis[]`, not `attachments[]`.
-7. `content_hash` is `sha512-<base64url>`, never hex.
+7. `content_hash` is `sha512-<base64url>`, never hex. Inline binary bodies use `base64url`, never plain base64.
 8. List every extension you use in top-level `extensions[]`.
 9. Timestamps are ISO-8601 with timezone.
-10. Validate before returning.
+10. For a JSON body, assign the parsed value directly; don't call `json.dumps()` on it first.
+11. Validate before returning.
 
 When generating adapter code, ground every decision on the [Spec Compliance Checklist](spec-compliance-checklist.md) and the [Extensions Cookbook](extensions-cookbook.md). If you're unsure, prefer the shape used by [`vcon-adapter-template`](https://github.com/vcon-dev/vcon-adapter-template).

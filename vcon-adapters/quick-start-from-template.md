@@ -6,7 +6,7 @@ description: Scaffold a new vCon adapter in five minutes from the official templ
 
 The [vcon-adapter-template](https://github.com/vcon-dev/vcon-adapter-template) repo is a GitHub template repository. This page is the shortest path from "I have a source platform that produces conversations" to "I have a running, spec-compliant adapter delivering vCons over a signed webhook."
 
-Spec target: [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), syntax `"0.4.0"`.
+Spec target: [`draft-ietf-vcon-vcon-core-04`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), syntax `"0.4.0"`.
 
 ## Prerequisites
 

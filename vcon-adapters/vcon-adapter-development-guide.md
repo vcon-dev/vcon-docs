@@ -10,7 +10,7 @@ The [Quick Start From Template](quick-start-from-template.md) covers \~90% of ne
 
 If you haven't read the [Quick Start From Template](quick-start-from-template.md) and the [Spec Compliance Checklist](spec-compliance-checklist.md) yet, do that first. This page assumes both.
 
-**Spec target:** [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), syntax `"0.4.0"`.
+**Spec target:** [`draft-ietf-vcon-vcon-core-04`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), syntax `"0.4.0"`.
 
 ## Listener shapes
 
@@ -149,7 +149,7 @@ A constant question for adapter authors: "where does X go?" The shortest answer:
 | Transcripts (WTF or otherwise)         | `analysis[]`                                  | Derived FROM the recording          |
 | Sentiment, summaries, intent labels    | `analysis[]`                                  | Derived FROM the conversation       |
 | SIP Call-ID, P-Asserted-Identity       | `attachments[]` (`purpose: "sip_signaling"`)  | Signaling metadata about the call   |
-| Recording consent, GDPR basis          | `attachments[]` (`type: "lawful_basis"`)      | Legal metadata about the recording  |
+| Recording consent, GDPR basis          | `attachments[]` (`purpose: "lawful_basis"` in new code; readers still accept legacy `type`) | Legal metadata about the recording  |
 | CRM ticket IDs, source row IDs         | `tags` attachment via `add_tag()`             | Lookup keys for joins               |
 | Agent name, queue name                 | `party.role`, `party.name`                    | Party metadata                      |
 
@@ -185,7 +185,7 @@ A survey of the existing ecosystem adapters found these recurring bugs. Don't re
 1. **Missing `vcon` syntax field.** `Vcon.build_new()` leaves it empty; `new_vcon()` from the template fills it. Skipping the helper drops the field.
 2. **Hand-rolled dicts.** Some older adapters bypass the library entirely. They drift the moment the spec changes. Always go through the library helpers.
 3. **`schema_version` in analysis.** Old field name. The library kwarg is `schema`; emit `schema`.
-4. **`type` on attachments (other than `lawful_basis`).** Core attachments use `purpose`. Only `lawful_basis` is the documented exception.
+4. **`type` on attachments.** Core attachments use `purpose`. New code should write `purpose: "lawful_basis"` too; only readers of older vCons need to fall back to the legacy `type` field.
 5. **Hex content\_hash.** External media `content_hash` MUST be `sha512-<base64url>`. Hex is silently accepted by lenient parsers and silently broken by strict ones.
 6. **Timestamps without timezone.** Naive datetimes are ambiguous. Always serialize with `Z` or an explicit offset.
 7. **Empty `group: []` / `redacted: {}`.** Drop these unless you actually use them. Some validators flag them.

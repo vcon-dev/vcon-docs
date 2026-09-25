@@ -8,7 +8,7 @@ description: >-
 
 This is the gate every adapter PR (and every hand-written vCon construction) should pass. It mirrors the 14 smoke tests in [`vcon-adapter-template/tests/test_vcon_builder.py`](https://github.com/vcon-dev/vcon-adapter-template/blob/main/tests/test_vcon_builder.py) and the [`CONTRIBUTING.md`](https://github.com/vcon-dev/vcon-adapter-template/blob/main/CONTRIBUTING.md) in the same repo. If you scaffolded from the template, `pytest` runs all of this for you.
 
-**Spec target:** IETF [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), syntax `"0.4.0"`.
+**Spec target:** IETF [`draft-ietf-vcon-vcon-core-04`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), syntax `"0.4.0"`.
 
 ## The one-line rule
 
@@ -31,7 +31,7 @@ The template's `new_vcon()` helper handles all five of these — call it instead
 * [ ] Constructed via `Vcon.add_analysis(type, dialog, vendor, body, encoding, schema, product, ...)`
 * [ ] Field name is **`schema`** — never `schema_version`
 * [ ] `vendor` is REQUIRED on every analysis (the lib enforces this as a kwarg)
-* [ ] `body` is always a string. For JSON bodies, pair it with `encoding="json"`
+* [ ] For a JSON body, pair it with `encoding="json"` and write the parsed JSON value itself (an object or array), not a `json.dumps()` string. Readers should still accept the older stringified form
 * [ ] Transcripts live in `analysis[]`, not `attachments[]`
 * [ ] Transcript analysis has `schema=<WTF draft URL>`, `encoding="json"`, `vendor="<provider>"`, `product="<model>"`
 
@@ -40,9 +40,11 @@ See the [Extensions Cookbook](extensions-cookbook.md) for full transcript exampl
 ## Attachment objects
 
 * [ ] Constructed via `Vcon.add_attachment(purpose, body, encoding, party, dialog, ...)`
-* [ ] Field name is **`purpose`** — never `type` (in core; `lawful_basis` is a documented exception, see below)
-* [ ] `party` AND `dialog` indices are passed. Use `0, 0` for vCon-level attachments not tied to a specific party or dialog
-* [ ] JSON-bodied attachments use `encoding="json"` with a JSON-string `body`
+* [ ] Field name is **`purpose`**, never `type`, including on `lawful_basis` attachments in new code (readers should still accept the legacy `type` field on older vCons)
+* [ ] `start`, `party`, AND `dialog` are all present. Use `0, 0` for `party`/`dialog` on vCon-level attachments not tied to a specific party or dialog
+* [ ] An attachment with a body carries `mediatype` alongside `encoding`
+* [ ] For a JSON body, `encoding="json"` pairs with the parsed JSON value itself (an object or array), not a `json.dumps()` string. Readers should still accept the older stringified form
+* [ ] Inline binary bodies (audio, images) use `base64url`, never plain base64 or hex
 
 ## Tags
 
@@ -65,7 +67,7 @@ These names appear in older vcon-mcp code and older draft revisions. **Never** e
 | `appended`              | `amended`      | Legacy vcon-mcp column name                                         |
 | `must_support`          | `critical`     | Legacy vcon-mcp column name                                         |
 | `schema_version`        | `schema`       | Older draft field name; current spec is `schema`                    |
-| `type` (on attachments) | `purpose`      | Core spec uses `purpose`; only `lawful_basis` extension uses `type` |
+| `type` (on attachments) | `purpose`      | Core spec uses `purpose`. `lawful_basis` also writes `purpose` in new code; readers should still accept the legacy `type` field on older vCons |
 | `did` (on parties)      | (removed)      | The `did` field was removed in `0.4.0`                              |
 
 The template's smoke test `test_no_legacy_field_names_in_serialized_vcon` greps the serialized vCon for `appended` and `must_support` and fails the build if either appears.
@@ -77,9 +79,7 @@ The template's smoke test `test_no_legacy_field_names_in_serialized_vcon` greps 
 
 ## Lawful basis (if recording consent is tracked)
 
-The `lawful_basis` attachment is the **single documented exception** to the "use `purpose` on attachments" rule:
-
-* [ ] Attachment uses `type: "lawful_basis"` (not `purpose`)
+* [ ] Attachment uses `purpose: "lawful_basis"` in new code. Readers should still accept the legacy `type: "lawful_basis"` field on older vCons
 * [ ] `"lawful_basis"` is added to top-level `extensions[]`
 * [ ] For synthetic test data: `lawful_basis: "legitimate_interests"` + `proof_mechanism` of type `external_system`
 
