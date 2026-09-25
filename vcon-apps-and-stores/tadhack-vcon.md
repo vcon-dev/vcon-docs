@@ -9,11 +9,11 @@ icon: face-glasses
 For this year's TADHack vCon Hackathon, we've generated a set of synthetic vCons for your use:
 
 * You can download the set at [https://github.com/vcon-dev/tadhack-2025](https://github.com/vcon-dev/tadhack-2025)&#x20;
-* An S3 Bucket is here: arn:aws:s3:::tadhack-vcons
+* Audio lives in the repo alongside the vCons, in IETF vCon syntax 0.4.0
 
 ## Overview
 
-This dataset contains customer service conversation data from Aquidneck Yacht Brokers in VCON (Virtual Call Object Notation) format. The conversations span from May 18-24, 2025, and represent typical customer interactions for a yacht brokerage company.  The dataset includes 42 customer service calls between Aquidneck Yacht Brokers agents and customers, covering various marine industry-specific support scenarios.
+This dataset contains customer service conversation data from Aquidneck Yacht Brokers in VCON (Virtual Call Object Notation) format. The conversations span from May 18-24, 2025, and represent typical customer interactions for a yacht brokerage company.  The dataset includes 43 customer service calls between Aquidneck Yacht Brokers agents and customers, covering various marine industry-specific support scenarios.
 
 ### Conversation Types
 
