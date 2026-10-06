@@ -17,8 +17,8 @@ New here? Start with [A vCon Primer](../vcons/a-vcon-primer.md) for the written 
 
 ## Start with the keynote
 
-{% embed url="https://www.youtube.com/watch?v=YDh0phRx0bM" %}
-Thinking in vCon — the through-line of the series, in one sitting. 17:55.
+{% embed url="https://www.youtube.com/watch?v=MjhpMnvcNds" %}
+Thinking in vCon — the through-line of the series, in one sitting. 17:41.
 {% endembed %}
 
 Why conversations have never had a standard file format the way documents, images, and spreadsheets do, and why that gap matters now. Introduces vCon as a single trustworthy object carrying a conversation's recording, transcript, metadata, provenance, and rights.

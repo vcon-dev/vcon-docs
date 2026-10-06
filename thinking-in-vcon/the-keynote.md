@@ -7,9 +7,9 @@ description: >-
 
 # 🎤 The Keynote
 
-{% embed url="https://www.youtube.com/watch?v=YDh0phRx0bM" %}
+{% embed url="https://www.youtube.com/watch?v=MjhpMnvcNds" %}
 
-Thinking in vCon — the keynote, in one sitting. 17:55.
+Thinking in vCon — the keynote, in one sitting. 17:41.
 
 ### The argument
 
@@ -34,7 +34,7 @@ A conversation with a standard format is a conversation you can reason about. Co
 
 ### Watch and share
 
-* [Thinking in vCon — full talk on YouTube](https://www.youtube.com/watch?v=YDh0phRx0bM)
+* [Thinking in vCon — full talk on YouTube](https://www.youtube.com/watch?v=MjhpMnvcNds)
 * [Thinking in vCon playlist on YouTube](https://www.youtube.com/playlist?list=PLaxNQ-GrpFLc)
 * [conserver channel on YouTube](https://www.youtube.com/@conserverio)
 

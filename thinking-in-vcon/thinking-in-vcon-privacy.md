@@ -4,8 +4,8 @@ description: Existing privacy law already applies to conversations. This episode
 
 # 🔒 Thinking in vCon: Privacy
 
-{% embed url="https://www.youtube.com/watch?v=dw4mMcp7jD0" %}
-Thinking in vCon: Privacy — 15:16, a companion to the main talk.
+{% embed url="https://www.youtube.com/watch?v=B3FO8y5fRB8" %}
+Thinking in vCon: Privacy — 15:09, a companion to the main talk.
 {% endembed %}
 
 ## The argument

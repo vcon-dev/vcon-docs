@@ -19,7 +19,7 @@ Every business runs on conversations. Calls, chats, video meetings, agent dialog
 {% endcolumn %}
 
 {% column %}
-{% embed url="https://www.youtube.com/watch?v=YDh0phRx0bM" %}
+{% embed url="https://www.youtube.com/watch?v=MjhpMnvcNds" %}
 {% endcolumn %}
 {% endcolumns %}
 
