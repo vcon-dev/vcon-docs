@@ -1,137 +1,152 @@
 ---
-description: World Transcription Format — a vendor-neutral analysis shape for speech-to-text output.
+description: >-
+  Shows how to store speech-to-text output from any provider in one shape, so
+  you can switch or compare providers without rewriting downstream code.
 ---
 
 # 🗣️ WTF Transcription Extension
 
-**Draft:** [`draft-howe-vcon-wtf-extension`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/) · **Extension name:** `"wtf"` (often emitted as `"wtf_transcription"` by older library code)
+**Draft:** [`draft-howe-vcon-wtf-extension-02`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/) · **Extension token:** `wtf_transcription`
 
-## What it is
+## Purpose of the format
 
-Every speech-to-text provider — Whisper, Deepgram, AssemblyAI, Google, AWS, Azure, ElevenLabs, the next one — has its own JSON output shape. If you want to swap providers, compare them on the same audio, or build downstream tooling that doesn't care who did the transcription, you end up writing adapter code over and over.
+Every speech-to-text provider returns its own JSON. The World Transcription Format (WTF) defines one shape for that output: the full transcript, time-aligned segments, optional word timing, speaker diarization, quality metrics and processing metadata, with provider-specific extras kept in a separate `extensions` object. A transcript in WTF form reads the same whether Whisper, Deepgram or another engine produced it.
 
-The World Transcription Format (WTF) extension defines a single canonical shape for that output. It covers the transcript text, time-aligned segments, optional word-level timing, optional speaker labels, quality metrics, and provider metadata.
+WTF data is analysis, derived from the dialog. The draft says it MUST be stored in `analysis[]` (Section 6.1). The extension is Compatible and does not need to be listed in `critical` (Section 5.1).
 
-WTF data lives in `analysis[]`, not `attachments[]` — it's *derived from* the conversation, not supplied alongside it.
+## Analysis entry
 
-## When to use it
-
-- Recording → transcription pipelines where you may switch providers later.
-- Quality benchmarking: same audio, multiple providers, identical downstream code.
-- LLM ingestion: a stable transcript shape means prompts and parsers don't change when the ASR vendor does.
-- Speaker diarization workflows: WTF carries speaker labels in a standard way.
-
-## Spec surface
-
-The WTF document is added as an `analysis[]` entry. The recommended form per the speckit is to use `type: "transcript"` and identify WTF via the `schema:` URL — this stays compatible with consumers that just want "any transcript". Older library code (and the draft's own examples) use `type: "wtf_transcription"`; both forms are valid as long as `schema:` points at the WTF draft.
+This vCon reduces the draft's example in Section 12.1 to two words:
 
 ```json
 {
+  "vcon": "0.4.0",
+  "uuid": "01928e10-193e-8231-b9a2-279e0d16bc46",
+  "created_at": "2025-01-02T12:00:00Z",
+  "extensions": ["wtf_transcription"],
+  "parties": [
+    { "tel": "+12025550100", "name": "Alice" },
+    { "tel": "+12025550199", "name": "Bob" }
+  ],
+  "dialog": [
+    {
+      "type": "recording",
+      "start": "2025-01-02T12:15:30Z",
+      "duration": 65.2,
+      "parties": [0, 1],
+      "mediatype": "audio/x-wav",
+      "url": "https://example.com/recordings/call-recording.wav",
+      "content_hash": "sha512-GLy6IPaIUM1GqzZqfIPZlWjaDsNgNvZM0iCONNThnH0a75fhUM6cYzLZ5GynSURREvZwmOh54-2lRRieyj82UQ"
+    }
+  ],
   "analysis": [
     {
-      "type": "transcript",
+      "type": "wtf_transcription",
       "dialog": 0,
-      "vendor": "openai-whisper",
-      "product": "whisper-large-v3",
+      "vendor": "deepgram",
+      "product": "nova-2",
+      "mediatype": "application/json",
       "encoding": "json",
-      "schema": "https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/",
-      "body": "{\"transcript\":{\"text\":\"Hello, I need help with my account.\",\"language\":\"en\",\"duration\":3.2,\"confidence\":0.95},\"segments\":[{\"id\":0,\"start\":0.0,\"end\":3.2,\"text\":\"Hello, I need help with my account.\",\"confidence\":0.95}],\"metadata\":{\"created_at\":\"2026-05-18T10:00:00Z\",\"provider\":\"whisper\",\"model\":\"whisper-large-v3\"}}"
+      "body": {
+        "transcript": {
+          "text": "Hello,",
+          "language": "en-US",
+          "duration": 65.2,
+          "confidence": 0.92
+        },
+        "segments": [
+          {
+            "id": 0,
+            "start": 0.5,
+            "end": 1.1,
+            "text": "Hello,",
+            "confidence": 0.95,
+            "speaker": 0,
+            "words": [0, 1]
+          }
+        ],
+        "words": [
+          { "id": 0, "start": 0.5, "end": 0.8, "text": "Hello", "confidence": 0.98, "speaker": 0, "is_punctuation": false },
+          { "id": 1, "start": 0.9, "end": 1.1, "text": ",", "confidence": 0.95, "speaker": 0, "is_punctuation": true }
+        ],
+        "speakers": {
+          "0": { "id": 0, "label": "Alice", "segments": [0], "total_time": 0.6, "confidence": 0.95 }
+        },
+        "metadata": {
+          "created_at": "2025-01-02T12:15:30Z",
+          "processed_at": "2025-01-02T12:16:35Z",
+          "provider": "deepgram",
+          "model": "nova-2",
+          "audio": { "duration": 65.2 }
+        }
+      }
     }
   ]
 }
 ```
 
-**Required analysis fields:**
+The draft's example points the dialog at a file with no `url` or `body`; this reduction adds a `url` and a placeholder `content_hash` so the dialog is complete under core-04. It has no lawful basis attachment because the point is the analysis shape; see [Lawful Basis](lawful-basis.md) for that.
 
-- `type` — `"transcript"` (recommended) or `"wtf_transcription"`.
-- `dialog` — index of the dialog this transcription covers.
-- `vendor` — REQUIRED by the core spec. Identifies the ASR provider (e.g. `"openai-whisper"`, `"deepgram"`, `"assemblyai"`).
-- `product` — the specific model (e.g. `"whisper-large-v3"`, `"nova-2"`).
-- `encoding` — `"json"`.
-- `schema` — URL pointing at the WTF draft, so consumers know how to parse `body`.
-- `body` — JSON-encoded WTF document as a **string**. The body is always a string in vCon; pair it with `encoding: "json"` to indicate the string is itself JSON.
+## Analysis fields
 
-## The WTF document shape
+From draft Section 6.1 and core-04 Section 4.5:
 
-Inside `body` (decoded), the WTF document has four top-level sections:
+* `type` MUST be `"wtf_transcription"`.
+* `encoding` MUST be `"json"`, and `body` is the WTF object itself, not a string.
+* `dialog` SHOULD give the transcribed dialog index.
+* `vendor` is required by core-04. Use the provider; put the model in `product`.
 
-```json
-{
-  "transcript": {
-    "text": "Hello, I need help with my account.",
-    "language": "en",
-    "duration": 3.2,
-    "confidence": 0.95
-  },
-  "segments": [
-    { "id": 0, "start": 0.0, "end": 3.2, "text": "Hello, I need help with my account.",
-      "confidence": 0.95, "speaker": 0 }
-  ],
-  "speakers": [
-    { "id": 0, "label": "Customer", "segments": [0], "total_time": 3.2, "confidence": 0.95 }
-  ],
-  "metadata": {
-    "created_at": "2026-05-18T10:00:00Z",
-    "provider": "whisper",
-    "model": "whisper-large-v3"
-  }
-}
-```
+## Body structure
 
-`transcript` and `segments` are required. `speakers` is optional (use it when diarization was performed). `metadata` carries provider/model details and processing context.
+**Required** (Section 6.2.1):
 
-Word-level timing is optional and lives inside each segment as a `words[]` array:
+* `transcript`: `text`, `language` (BCP 47, such as `en-US`), `duration` in seconds, `confidence` from 0 to 1.
+* `segments`: array of `id`, `start`, `end` (seconds, `end` after `start`), `text`, `confidence`, and optionally `speaker` (integer or string) and `words`.
+* `metadata`: `created_at`, `processed_at`, `provider` (lowercase), `model`, and optionally `processing_time`, `audio` (`duration`, `sample_rate`, `channels`, `format`, `bitrate`) and `options`.
 
-```json
-{ "id": 0, "start": 0.0, "end": 0.5, "text": "Hello", "confidence": 0.98, "speaker": 0 }
-```
+**Optional** (Section 6.2.2):
 
-Don't forget to declare the extension at the top level:
+* `words`: a top-level array of word objects (`id`, `start`, `end`, `text`, `confidence`, `speaker`, `is_punctuation`). A segment's `words` array holds indexes into this array, not word objects.
+* `speakers`: an object keyed by speaker ID, each value with `id`, `label`, `segments`, `total_time`, `confidence`. Not an array.
+* `alternatives`, `enrichments`, `quality`, `streaming`, and `extensions` for provider-specific data such as `extensions.whisper` or `extensions.deepgram`.
 
-```json
-{
-  "vcon": "0.4.0",
-  "extensions": ["wtf"]
-}
-```
+All confidence values are normalized to the range 0 to 1 (Section 8.1).
 
-## Python helper
+## Python
 
-The `vcon` Python library has `add_wtf_transcription_attachment()`. Be aware of two quirks:
-
-1. The helper places the transcription as an **attachment**, not an analysis entry. Spec-compliant code puts WTF data in `analysis[]`. You can either rebuild the attachment manually (shown above) or call the helper and then move the entry.
-2. The helper emits `type: "wtf_transcription"` — you may want to rename this to `purpose:` (if you keep it as an attachment) or to `type: "transcript"` (if you move it into `analysis[]`).
-
-The direct-construction pattern is usually simpler:
+Build the analysis entry with the [`vcon`](https://pypi.org/project/vcon/) library's `add_analysis()`, which takes keyword arguments only:
 
 ```python
-import json
 from vcon import Vcon
 
-v = Vcon.build_new()
-v.vcon_dict["vcon"] = "0.4.0"
-# ... add parties, dialog ...
+v = Vcon.build_new()  # sets "vcon": "0.4.0"
+# add parties and the recording dialog first
 
-wtf_doc = {
-    "transcript": {"text": "...", "language": "en", "duration": 3.2, "confidence": 0.95},
-    "segments": [{"id": 0, "start": 0.0, "end": 3.2, "text": "...", "confidence": 0.95}],
-    "metadata": {"provider": "whisper", "model": "whisper-large-v3",
-                 "created_at": "2026-05-18T10:00:00Z"},
+wtf = {
+    "transcript": {"text": "Hello, I need help with my account.", "language": "en-US",
+                   "duration": 3.2, "confidence": 0.95},
+    "segments": [{"id": 0, "start": 0.0, "end": 3.2,
+                  "text": "Hello, I need help with my account.", "confidence": 0.95}],
+    "metadata": {"created_at": "2026-10-06T14:00:00Z", "processed_at": "2026-10-06T14:00:04Z",
+                 "provider": "whisper", "model": "whisper-large-v3"},
 }
 
-v.vcon_dict["analysis"].append({
-    "type": "transcript",
-    "dialog": 0,
-    "vendor": "openai-whisper",
-    "product": "whisper-large-v3",
-    "encoding": "json",
-    "schema": "https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/",
-    "body": json.dumps(wtf_doc),
-})
-v.add_extension("wtf")
+v.add_analysis(
+    type="wtf_transcription",
+    dialog=0,
+    vendor="openai",
+    product="whisper-large-v3",
+    mediatype="application/json",
+    encoding="json",
+    body=wtf,
+)
+v.add_extension("wtf_transcription")
 ```
+
+Avoid the library's WTF helpers in 0.10.0 for now. `add_wtf_transcription_attachment()` stores WTF in `attachments[]`, which the draft does not allow. `add_wtf_transcription_analysis()` writes `type: "transcription"` instead of `"wtf_transcription"` and passes the body through `json.dumps`, producing a string. Both are upstream bugs in vcon 0.10.0.
 
 ## See also
 
-- [Standard Links — Conserver](../conserver/standard-links.md) — the conserver ships Whisper and Deepgram links that emit WTF-shaped analysis.
-- [Speech Recognition Test Set](../use-cases-studies/speech-recognition-test-set.md) — multi-provider benchmarking is one of WTF's design goals.
+* [Field reference](../vcons/field-reference.md) for analysis fields and body encodings.
+* [Standard Links](../conserver/standard-links.md) for the conserver's transcription links.
+* [Speech Recognition Test Set](../use-cases-studies/speech-recognition-test-set.md) for multi-provider comparison.

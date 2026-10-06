@@ -1,58 +1,55 @@
 ---
 description: >-
-  The TypeScript / JavaScript implementation of vCon, parallel to the Python
-  library.
+  What vcon-js 0.5.2 covers, how it differs from the Python library, and where
+  to start.
 icon: plug
 ---
 
 # vCon-JS Library
 
-`vcon-js` is the TypeScript / JavaScript implementation of the vCon specification. It is a peer to the [Python `vcon` library](../vcon-library/), targeting the same [`draft-ietf-vcon-vcon-core`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) spec.
+`vcon-js` is the TypeScript and JavaScript implementation of the vCon specification. It is a peer to the [Python `vcon` library](../vcon-library/) and targets [`draft-ietf-vcon-vcon-core`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) with syntax parameter `"0.4.0"`.
 
-> **Current version:** `vcon-js` **0.5.0** · Install with `npm install vcon-js` · [GitHub: vcon-dev/vcon-js](https://github.com/vcon-dev/vcon-js) · Targets [`draft-ietf-vcon-vcon-core`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/).
+> **Current version:** `vcon-js` **0.5.2** (npm). Install with `npm install vcon-js`. Node 18 or later. Source and changelog: [vcon-dev/vcon-js](https://github.com/vcon-dev/vcon-js).
 
-## When to use vcon-js vs the Python library
+## When to use vcon-js
 
-* **vcon-js** if you're writing Node services, Edge functions, Cloudflare Workers, browser code, or any TypeScript codebase that needs to read or write vCons.
-* **Python `vcon`** if you're writing data pipelines, ML preprocessing, or anything inside the conserver runtime.
+* **vcon-js** for Node services, edge functions, Cloudflare Workers, browser code, or any TypeScript codebase that reads or writes vCons.
+* **Python `vcon`** for data pipelines, ML preprocessing, and conserver links.
 
-The two libraries produce byte-compatible vCons. You can build with one and consume with the other.
+Both libraries write the same JSON structure and each reads the other's output. They do not produce identical bytes. Python 0.10 writes the tags attachment body as a list and drops empty `meta`; vcon-js writes tags as a JSON object. Treat the JSON as interchangeable and do not compare serialized strings across libraries. Field rules live in the [field reference](../vcons/field-reference.md).
 
-## Parity with the Python library
+## What 0.5.2 covers
 
-What you get in 0.5.0:
+* Classes: `Vcon`, `Party`, `Dialog`, `Attachment`, `PartyHistory`. `Analysis` is a type, passed as a plain object to `addAnalysis`.
+* Current core-draft surface: `recording-set` dialogs (`recordings`, `recording_set`), analysis `attachment` reference with `dialog` optional, party `type`, `org`, `dept`, and a typed `provenance` parameter on dialog and analysis.
+* Spec-correct names: `amended`, `critical`, `purpose` on attachments, `mediatype`. `vcon: "0.4.0"` is set for you.
+* Inline and external content: `body` plus `encoding`, or `url` plus `content_hash` (format `sha512-<base64url>`, checked by `validate()`).
+* `addAnalysis` accepts an object or array body, serializes it to a string, and sets `encoding: "json"`.
+* Tags through `addTag`, `getTag`, and the `tags` getter, stored as one `purpose: "tags"` attachment with `start` set.
+* Declared extensions through `addExtension`, `addCriticalExtension`, `hasExtension`, `isCriticalExtension`.
+* Finders: `findPartyIndex`, `findDialog`, `findAttachmentByPurpose`, `findAnalysisByType`.
+* Per-class validators: `Dialog.validate()`, `Attachment.validate()`, `Party.validate()`, `PartyHistory.validate()`.
+* Schema conformance: the test suite validates emitted vCons against the core JSON Schema.
 
-* ✅ Full core spec coverage: `Vcon`, `Party`, `Dialog`, `Attachment`, `Analysis`, `PartyHistory`
-* ✅ Current core-draft surface: `recording-set` dialogs (`recordings` / `recording_set`), analysis `attachment` reference (with `dialog` optional), party `type` / `org` / `dept`
-* ✅ Spec-correct field names: `amended` (not `appended`), `purpose` on attachments, `vcon: "0.4.0"` syntax param set automatically
-* ✅ External and inline media (`body` + `encoding` or `url` + `content_hash`)
-* ✅ Content hash validation (enforces `sha512-<base64url>` format)
-* ✅ Auto-serialization: `addAnalysis({body: someObject, encoding: "json"})` JSON-stringifies the body for you
-* ✅ Generic extension declaration (`addExtension`, `addCriticalExtension`)
-* ✅ Tags via `addTag()`, with read-through `tags` property
-* ✅ Per-class validators: `Dialog.validate()`, `Attachment.validate()`, `Party.validate()`, `PartyHistory.validate()`
+## What it does not do
 
-What's not in 0.5.0 yet (vs. Python `vcon`):
+* **No per-extension helpers.** Python has `add_lawful_basis_attachment()`, `add_wtf_transcription_attachment()`, and `add_wtf_transcription_analysis()`. In vcon-js you build the attachment or analysis yourself with `addAttachment` or `addAnalysis`. See [Lawful Basis](../extensions/lawful-basis.md) and [WTF Transcription](../extensions/wtf-transcription.md) for the shapes. Extension parameters round-trip untyped, except `provenance`.
+* **No signing or encryption.** Version 0.5.2 removed the unused `jose` and `jsonwebtoken` dependencies and the `Signature` type and the `signature`, `signatures`, and `payload` fields on `VconData`. Key management and JWS handling are the caller's job. The per-dialog `alg` and `signature` fields for url-referenced content are unchanged.
+* **No whole-vCon validator and no content-hash helper.** Compute hashes yourself (the [quickstart](quickstart.md) shows `node:crypto`).
+* **No extension-specific search helpers.** Filter `attachments` and `analysis` with `findAttachmentByPurpose` or `Array.filter`.
 
-* ❌ Per-extension helpers. The Python library has `add_lawful_basis_attachment()`, `add_wtf_transcription_attachment()`, and `add_wtf_transcription_analysis()`; vcon-js exposes the generic `addAttachment` / `addAnalysis` and you provide the extension shape yourself. Every extension parameter round-trips untyped; the one typed exception is `provenance` (draft-howe-vcon-provenance) on dialog and analysis. The [Extensions section](../extensions/) shows what each one requires.
-* ❌ Built-in signing/encryption convenience. The Python lib wraps JWS/JWE via `sign()`/`verify()` (RS256); in vcon-js the `signatures` and `payload` shapes are typed in `VconData` but you handle key management and signing through `jsonwebtoken` or a similar peer dependency.
-* ❌ Extension-specific search helpers (`findLawfulBasisAttachments`, `findWtfAttachments`). Filter the arrays manually for now.
+## Examples
 
-## Worked examples
+The repository ships runnable TypeScript examples under [`examples/`](https://github.com/vcon-dev/vcon-js/tree/main/examples): a text chat, a call recording with external media, a video conference, and an inline recording. Run them with the `npm run example:*` scripts in the repo.
 
-The library ships three runnable TypeScript tutorials under [`examples/`](https://github.com/vcon-dev/vcon-js/tree/main/examples):
+## In this section
 
-* `01-text-chat.ts` — multi-turn text chat with mixed-identifier parties, tags, serialization (`npm run example:chat`)
-* `02-call-recording.ts` — phone recording with external media, content hash, STIR validation, sentiment/transcription analysis, contact_center extension, party history (`npm run example:call`)
-* `03-video-conference.ts` — five-party video call, incomplete dialogs, multiple attachments, meeting series grouping, action-items analysis (`npm run example:conference`)
-
-## Documentation in this section
-
-* [Quickstart](quickstart.md) — create a vCon, add parties and dialog, add an analysis, serialize.
-* [API Reference](api-reference.md) — every exported class and method.
-* [LLM Guide](llm-guide.md) — paste this into a model's context window when you want it to generate vcon-js code.
+* [Quickstart](quickstart.md) builds a vCon with parties, dialog, analysis, a lawful basis attachment, and tags.
+* [API Reference](api-reference.md) lists every exported class, method, and type.
+* [LLM Guide](llm-guide.md) is a rule sheet to paste into a model's context when it generates vcon-js code.
 
 ## See also
 
-* [Python vCon Library](../vcon-library/) — the peer implementation
-* [Extensions](../extensions/) — the shape of each extension, useful when you need to add extension data manually in vcon-js
+* [Python vCon Library](../vcon-library/)
+* [vCon-C Library](../vcon-c-library/)
+* [Extensions](../extensions/)

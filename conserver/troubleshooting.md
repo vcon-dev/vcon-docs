@@ -1,551 +1,186 @@
 ---
-description: Common issues and solutions
+description: Symptoms, causes and fixes for the problems operators hit when running the conserver, checked against how vcon-server behaves.
 ---
 
 # 😥 Troubleshooting
 
-This guide covers common issues when running the Conserver and how to resolve them.
+Commands below use the service names in the checked-in `docker-compose.yml`: `api`, `conserver` and `redis`. Rename them if your compose file differs. For how chains, links and queues behave, see [Concepts](concepts.md).
 
-## Diagnostic Commands
-
-### Check System Health
+## Start with these checks
 
 ```bash
-# Redis connectivity
-redis-cli ping
-# Expected: PONG
-
-# API health
-curl -H "x-conserver-api-token: $TOKEN" http://localhost:8000/api/config
-
-# Queue status
-redis-cli LLEN incoming_calls
-redis-cli LLEN DLQ:incoming_calls
-```
-
-### View Logs
-
-```bash
-# Docker Compose logs
-docker compose logs -f conserver-api
-docker compose logs -f conserver-worker
-
-# Filter for errors
-docker compose logs conserver-worker 2>&1 | grep -i error
-```
-
-***
-
-## Connection Issues
-
-### Redis Connection Failed
-
-**Symptoms:**
-
-* Workers won't start
-* "Connection refused" errors
-* API returns 500 errors
-
-**Diagnosis:**
-
-```bash
-# Check Redis is running
-docker compose ps redis
-
-# Check Redis connectivity
-redis-cli -h localhost -p 6379 ping
-
-# Check Redis logs
-docker compose logs redis
-```
-
-**Solutions:**
-
-1.  **Verify Redis URL:**
-
-    ```bash
-    # In .env
-    REDIS_URL=redis://localhost:6379
-
-    # For Docker networking
-    REDIS_URL=redis://redis:6379
-    ```
-2.  **Check Docker networking:**
-
-    ```bash
-    docker network ls
-    docker network inspect vcon-server_default
-    ```
-3.  **Redis memory full:**
-
-    ```bash
-    redis-cli INFO memory
-    # If used_memory > maxmemory, increase or clear old data
-    ```
-
-### API Authentication Failed
-
-**Symptoms:**
-
-* 403 Forbidden responses
-* "Invalid API Key" errors
-
-**Solutions:**
-
-1.  **Check token configuration:**
-
-    ```bash
-    # Verify environment variable
-    echo $CONSERVER_API_TOKEN
-
-    # Check token file exists
-    cat /path/to/api_tokens.txt
-    ```
-2.  **Check header name:**
-
-    ```bash
-    # Default header
-    curl -H "x-conserver-api-token: $TOKEN" ...
-
-    # Custom header (if CONSERVER_HEADER_NAME is set)
-    curl -H "x-custom-header: $TOKEN" ...
-    ```
-3.  **For external ingress, check ingress\_auth config:**
-
-    ```yaml
-    ingress_auth:
-      my_ingress_list: "correct-api-key"
-    ```
-
-***
-
-## Processing Issues
-
-### vCons Not Being Processed
-
-**Symptoms:**
-
-* Queue depth keeps growing
-* No worker activity in logs
-* vCons stuck in ingress list
-
-**Diagnosis:**
-
-```bash
-# Check queue depth
-redis-cli LLEN incoming_calls
-
-# Check workers are running
+# Containers and the build that is running
 docker compose ps
+curl http://localhost:8000/api/version
 
-# Check worker logs
-docker compose logs conserver-worker --tail 100
+# The API process
+curl http://localhost:8000/api/health
+
+# Redis
+docker compose exec redis redis-cli ping
+
+# Queues
+docker compose exec redis redis-cli LLEN incoming_calls
+docker compose exec redis redis-cli LLEN DLQ:incoming_calls
+docker compose exec redis redis-cli LLEN DLQ:storage:postgres
+
+# Logs
+docker compose logs --tail 200 conserver
+docker compose logs --tail 200 api
 ```
 
-**Solutions:**
+`/api/health` returns `healthy` whenever the API process runs, even with Redis down. Use `redis-cli ping` for Redis.
 
-1.  **Chain not enabled:**
+## Connection problems
 
-    ```yaml
-    chains:
-      main:
-        enabled: 1  # Must be 1, not 0 or false
-    ```
-2.  **Ingress list mismatch:**
+### The containers cannot reach Redis
 
-    ```yaml
-    chains:
-      main:
-        ingress_lists:
-          - incoming_calls  # Must match where vCons are pushed
-    ```
-3.  **Workers crashed:**
+**Symptoms:** `Redis not ready yet. Retrying...` repeats in the log, or requests return `500`.
 
-    ```bash
-    docker compose restart conserver-worker
-    ```
-4.  **Configuration not loaded:**
+1. Check `REDIS_URL`. In the compose network it is `redis://redis`. With a password, it is `redis://:<password>@redis:6379`.
+2. The compose file declares the network `conserver` as external. If `docker compose up` says the network is missing, run `docker network create conserver`.
+3. Check Redis memory with `redis-cli INFO memory`. Under `maxmemory-policy noeviction`, a full Redis refuses writes with an `OOM command not allowed` error. Raise `maxmemory`, lower `VCON_REDIS_EXPIRY`, or drain a backed-up queue. Do not switch to an eviction policy, because it can delete queued UUIDs and vCons.
 
-    ```bash
-    # Check current config
-    curl -H "x-conserver-api-token: $TOKEN" http://localhost:8000/api/config
-    ```
+### The API returns 403
 
-### High DLQ Count
+**Symptoms:** `{"detail": "Invalid API Key"}` or another `403`.
 
-**Symptoms:**
+1. The header must be `x-conserver-api-token`, or the name in `CONSERVER_HEADER_NAME`.
+2. Compare the token with `CONSERVER_API_TOKEN`, or with a line of the file named by `CONSERVER_API_TOKEN_FILE`. The API reads the file once at start, so restart it after a change.
+3. A partner key from `ingress_auth` works only on `POST /vcon/external-ingress`. The main token does not work there, and a partner key does not work anywhere else. The `detail` for external ingress names the reason: `API Key required`, `No ingress authentication configured`, `Ingress list '<name>' not configured`, or `Invalid API Key for ingress list '<name>'`.
 
-* vCons accumulating in dead letter queue
-* Processing errors in logs
+### The API returns 422
 
-**Diagnosis:**
+The body failed validation. The reply names the field. The usual causes are a missing `vcon`, `uuid` or `created_at`, a `dialog[].url` that is not a URL, a negative `duration`, a `parties[].tel` that is not a phone number, or a `dialog[].parties` index that does not exist. The rules are listed under [vCon validation](api.md#vcon-validation).
+
+## Processing problems
+
+### vCons stay on the ingress list
+
+**Symptoms:** `LLEN` on the ingress list keeps growing and nothing happens.
+
+1. Is a worker running? `docker compose ps` should show `conserver`. In the log, look for `Worker-1 started`.
+2. Does a chain name this exact list in `ingress_lists`? A list that no chain names is never read. With no chains at all, the worker logs `No ingress lists configured, retrying in 15s`.
+3. Does `config.yml` parse? The worker re-reads the file on every pass, and a file that does not parse stops the worker. Check the log for a YAML error, validate the file, and restart the worker. Test with `python -c "import yaml; yaml.safe_load(open('config.yml'))"`.
+4. `enabled: 0` does not stop a chain. The conserver ignores `enabled`. If a chain should not run, remove it from the file.
+5. You do not need to restart for a `config.yml` change. The next vCon uses it. Environment variable changes and new `imports` do need a restart.
+
+### A vCon enters a chain and nothing comes out
+
+A link that returns `None` ends the chain for that vCon without an error. Nothing reaches egress or storage, and the log says `Link <name> halted chain processing for vCon <uuid>`. The usual causes are:
+
+* `sampler` or `jq_link` filtered it. A `jq_link` filter that errors also filters.
+* `tag_router` with `forward_original: false`.
+* A link could not load the vCon. `VconRedis.get_vcon` returns `None` when the vCon is in neither Redis nor a storage, which happens when the working copy expired before the vCon was processed.
+* `wtf_transcribe` has no `vfun-server-url`.
+
+### The dead letter queue grows
+
+**Symptoms:** `conserver.dlq.count` rises, or `LLEN DLQ:<list>` is above zero.
+
+There are two queues, and they replay different things.
+
+| Queue | A UUID is there because | Read | Replay |
+| ----- | ----------------------- | ---- | ------ |
+| `DLQ:<ingress_list>` | A link raised, or a tracer with `dlq_vcon_on_error: true` raised | `GET /api/dlq?ingress_list=<list>` | `POST /api/dlq/reprocess?ingress_list=<list>` |
+| `DLQ:storage:<name>` | One storage `save` raised | `GET /api/dlq/storage?storage_name=<name>` | `POST /api/dlq/storage/reprocess?storage_name=<name>` |
+
+1. Find the cause. Search the log for `Critical error processing vCon` (ingress DLQ) or `Failed to save vCon ... Moving to storage DLQ` (storage DLQ). The line carries the link or storage name and the exception.
+2. Fix it. The common causes are a provider key that is wrong or still reads `${...}`, because the conserver does not expand variables, a provider that is down or rate limiting, a storage that refuses connections, or a vCon whose body is missing.
+3. Replay. Each call moves or retries at most `count` UUIDs, default 1000, so repeat it until it returns `0`:
 
 ```bash
-# Check DLQ depth
-redis-cli LLEN DLQ:incoming_calls
-
-# Get DLQ contents
-curl -H "x-conserver-api-token: $TOKEN" \
-  "http://localhost:8000/api/dlq?ingress_list=incoming_calls"
-
-# Check recent errors
-docker compose logs conserver-worker 2>&1 | grep -i error | tail 50
+curl -X POST -H "x-conserver-api-token: $TOKEN" \
+  "http://localhost:8000/api/dlq/reprocess?ingress_list=incoming_calls&count=1000"
 ```
 
-**Solutions:**
+An ingress replay runs the whole chain again. Links skip work they have already done, such as a transcript that exists, so the repeat is cheap. A storage replay runs only the write, and stops at the first failure, so fix the backend first.
 
-1. **Identify the failing link:**
-   * Check logs for which link is failing
-   * Look for exceptions and stack traces
-2.  **Common link failures:**
+A dead-lettered vCon keeps its Redis copy for `VCON_DLQ_EXPIRY` seconds (default seven days). Replay before it expires. A storage replay that returns `409` found a stale `DLQ:storage:<name>:replay-lock` key. Delete that key if no replay is running.
 
-    **API key missing/invalid:**
+### A link seems stuck
 
-    ```yaml
-    links:
-      analyze:
-        options:
-          OPENAI_API_KEY: ${OPENAI_API_KEY}  # Check env var is set
-    ```
+The conserver does not enforce a chain `timeout`, so a link that never returns holds its worker slot until you restart the worker. Put a timeout on the call that can hang. `vfun-timeout` and `url-timeout` do this for `wtf_transcribe`. The `webhook` link has no timeout at all, so prefer the `webhook` storage, which times out after 30 seconds. Lower `CONSERVER_VCON_CONCURRENCY` to 1 to see one chain at a time, and use `conserver.vcons.inflight` and the per-link `execution_time` histogram to find the slow link. `delay` is a built-in link you can use to test a slow chain.
 
-    **External service down:**
+### vCons are lost when a worker restarts
 
-    ```bash
-    # Test connectivity
-    curl https://api.openai.com/v1/models -H "Authorization: Bearer $OPENAI_API_KEY"
-    ```
+With more than one worker per container, shutdown gives each worker 30 seconds. A chain still running then is killed, and its UUID is already off the ingress list. Resubmit it with `POST /api/vcon/ingress?ingress_list=<list>`, which accepts the UUID if the vCon is still in Redis or a storage. See [Production Deployment](production-deployment.md#shutdown).
 
-    **Timeout:**
+## Transcription problems
 
-    ```yaml
-    chains:
-      main:
-        timeout: 600  # Increase for long transcriptions
-    ```
-3.  **Reprocess after fixing:**
+### A vCon has no transcript
 
-    ```bash
-    curl -X POST -H "x-conserver-api-token: $TOKEN" \
-      "http://localhost:8000/api/dlq/reprocess?ingress_list=incoming_calls"
-    ```
+1. The dialog must have `type: "recording"` and, for `openai_transcribe` and `deepgram_link`, a `url`. `groq_whisper` and `hugging_face_whisper` also accept an inline body, and read `duration` without a default. A recording with no `duration` raises a `KeyError`.
+2. The recording must be at least `minimum_duration` seconds. The defaults are 3 for OpenAI, 30 for Groq and Hugging Face, and 60 for Deepgram.
+3. A dialog that already has a `transcript` analysis is skipped. That makes reruns safe, and it also means a changed option does not re-transcribe. To redo one, remove the analysis from the stored vCon.
+4. For Deepgram, a transcript below `minimum_confidence` (default 0.5) is discarded.
+5. The key goes in the link's `options`. If the log shows a 401 from the provider, check that the value is the real key and not a `${VAR}` placeholder.
+6. A `wtf_transcribe` failure on one dialog is logged and skipped. Look for `Error transcribing dialog` in the log.
 
-### Link Timeout
+### An analysis link does nothing
 
-**Symptoms:**
+An analysis link reads the transcript at `source.text_location`. The default, `body.paragraphs.transcript`, matches Deepgram output. For OpenAI, Groq and Hugging Face transcripts set `text_location: body.text`. A mismatch logs `No source_text found at <path>` and skips the dialog. The link also skips when `sampling_rate` or `only_if` excludes the vCon, and when an analysis of its `analysis_type` already exists.
 
-* "Processing timeout" errors
-* vCons moving to DLQ after timeout period
+## Storage problems
 
-**Solutions:**
+### A storage write fails
 
-1.  **Increase chain timeout:**
+1. Replay the queue after fixing the backend. The reason is in the log line `Failed to save vCon <uuid> to storage <name>`.
+2. Postgres and S3 read most options by key, so `options` must include them all. A `KeyError` for `aws_access_key_id` or `host` means one is missing. S3 does not use an instance role.
+3. `file` raises when a vCon is larger than `max_file_size` (10 MB by default). Files also vanish with the container unless `path` is on a volume.
+4. `milvus` raises `ModuleNotFoundError` when `pymilvus` is not in the image, and raises when the collection does not exist and `create_collection_if_missing` is false.
+5. `elasticsearch` skips a vCon with no dialog without an error, and logs, but does not raise, when a single document fails.
+6. `sftp` and `chatgpt_files` have known faults at this release. See [Storage](storage.md).
+7. `spaceandtime` logs a failed write and does not dead-letter it.
 
-    ```yaml
-    chains:
-      main:
-        timeout: 600  # Seconds
-    ```
-2. **Optimize processing:**
-   * Use faster models
-   * Skip unnecessary processing steps
-   * Add sampling to process fewer vCons
-3.  **Check external API performance:**
+### The API returns 404 for a vCon
 
-    ```bash
-    # Time an API call
-    time curl https://api.example.com/endpoint
-    ```
-
-***
-
-## Transcription Issues
-
-### No Transcription Generated
-
-**Symptoms:**
-
-* vCon has no transcript analysis
-* Transcription link completes but adds nothing
-
-**Diagnosis:**
+The working copy expires after `VCON_REDIS_EXPIRY` seconds. After that the API asks each storage with a `get`, in config order. If none has the vCon, you get `404`. Check that the chain lists a storage that supports `get`, such as `postgres`, `s3`, `mongo`, `file` or `vcon_mcp`, and that the write succeeded.
 
 ```bash
-# Check vCon dialogs
-curl -H "x-conserver-api-token: $TOKEN" \
-  "http://localhost:8000/api/vcon/$VCON_UUID" | jq '.dialog'
+docker compose exec redis redis-cli EXISTS vcon:<uuid>
+docker compose exec redis redis-cli TTL vcon:<uuid>
 ```
 
-**Solutions:**
+`DELETE /api/vcon/<uuid>` removes the Redis key and the storage copies but leaves the entry in the `vcons` sorted set, so `GET /api/vcon` can still list a UUID that returns `404`.
 
-1.  **Check dialog type:**
+## Configuration problems
 
-    ```json
-    // Dialog must be type "recording"
-    {"type": "recording", "url": "https://..."}
-    ```
-2.  **Check duration requirement:**
+### A setting has no effect
 
-    ```yaml
-    links:
-      transcribe:
-        options:
-          minimum_duration: 30  # Audio must be >= 30 seconds
-    ```
-3.  **Check audio URL is accessible:**
+* **Secrets show as literal text.** The conserver does not expand `${VAR}`. Write the value into `config.yml`.
+* **A `_FILE` variable is ignored.** Only `CONSERVER_API_TOKEN_FILE` exists.
+* **An environment variable is not read.** `LOG_LEVEL`, `HOSTNAME`, `TICK_INTERVAL` and `VCON_SORTED_FORCE_RESET` have no effect. Use `LOGGING_CONFIG_FILE` for logging.
+* **A chain `timeout` or `enabled` does nothing.** Neither is enforced.
+* **The `diet` link did nothing.** Its options are `remove_dialog_body`, `remove_analysis`, `remove_attachment_types`, `remove_system_prompts`, `post_media_to_url` and the `s3_*` options. Names such as `remove_dialog_bodies` are ignored.
+* **The `tag` link adds the wrong tags.** `tags` is a list of `"name:value"` strings or a dict, not a list of objects.
+* **`POST /api/config` returns 500.** `CONSERVER_CONFIG_FILE` is unset, or the file is on a read-only mount.
 
-    ```bash
-    curl -I "https://your-audio-url.mp3"
-    ```
-4.  **Check API key:**
+### An imported module is not found
 
-    ```yaml
-    links:
-      deepgram:
-        options:
-          DEEPGRAM_KEY: ${DEEPGRAM_KEY}  # Verify env var
-    ```
+**Symptoms:** `ModuleNotFoundError` in the log.
 
-### Transcription Already Exists
+1. Check the `imports:` entry. `module` is the import name, and `pip_name` is the package to install.
+2. A missing module is installed with `pip install` when a worker starts, or when the link first runs. The container needs network access to the package index, or the package built into the image.
+3. A module you wrote must be on `PYTHONPATH` in the image.
 
-**Symptoms:**
+## Performance problems
 
-* "Dialog already transcribed" in logs
-* Link skipping dialogs
+### Processing is slow or the queue backs up
 
-**Explanation:** Links skip processing if analysis already exists (idempotency).
+1. Check what limits you. `conserver.link.execution_time` by link shows the slow step, and `conserver.vcons.inflight` shows whether workers are at their limit.
+2. For chains that wait on the network, raise `CONSERVER_VCON_CONCURRENCY`. For CPU-bound work, raise `CONSERVER_WORKERS` or add containers.
+3. Use `sampler` or `sampling_rate` to analyze a share of vCons.
+4. Use a smaller model for `analyze` and the other analysis links.
+5. Make sure Redis has memory headroom. See `conserver.redis.memory_used_bytes`.
 
-**If you need to re-transcribe:**
+### Redis memory climbs
 
-1. Delete the vCon and re-submit
-2. Or create a new link with different `analysis_type`
+1. Lower `VCON_REDIS_EXPIRY`, and add the `expire_vcon` link at the end of chains that do not need the working copy.
+2. Add the `diet` link to drop dialog bodies, and store them in S3.
+3. Check that the dead letter queues are not holding vCons for `VCON_DLQ_EXPIRY`.
+4. Check the `redis_storage` storage. It writes into the same Redis.
 
-***
+## Report a problem
 
-## Storage Issues
-
-### Storage Write Failed
-
-**Symptoms:**
-
-* "Failed to save" errors
-* vCon not appearing in storage backend
-
-**Diagnosis:**
-
-```bash
-# Check storage backend connectivity
-# For PostgreSQL:
-psql -h localhost -U postgres -d vcons -c "SELECT 1"
-
-# For S3:
-aws s3 ls s3://your-bucket/
-```
-
-**Solutions:**
-
-1.  **Check credentials:**
-
-    ```yaml
-    storages:
-      postgres:
-        options:
-          password: ${POSTGRES_PASSWORD}  # Verify env var
-    ```
-2.  **Check network connectivity:**
-
-    ```bash
-    # From container
-    docker exec conserver-worker ping postgres
-    ```
-3. **Check permissions:**
-   * Database user has write permissions
-   * S3 IAM role allows PutObject
-
-### vCon Not Found
-
-**Symptoms:**
-
-* 404 when fetching vCon
-* "vCon not found" errors
-
-**Diagnosis:**
-
-```bash
-# Check Redis
-redis-cli EXISTS vcon:$VCON_UUID
-
-# Check sorted set
-redis-cli ZSCORE vcons vcon:$VCON_UUID
-```
-
-**Solutions:**
-
-1. **vCon expired from Redis:**
-   * Check `VCON_REDIS_EXPIRY` setting
-   * vCon should be auto-fetched from storage if configured
-2. **vCon never stored:**
-   * Check chain has storage backends configured
-   * Check storage write didn't fail
-3. **Wrong UUID format:**
-   * Ensure UUID includes hyphens
-   * Check for typos
-
-***
-
-## Configuration Issues
-
-### Configuration Not Loading
-
-**Symptoms:**
-
-* Changes to config.yml not taking effect
-* Wrong settings being used
-
-**Solutions:**
-
-1.  **Check config file path:**
-
-    ```bash
-    echo $CONSERVER_CONFIG_FILE
-    ```
-2.  **Validate YAML syntax:**
-
-    ```bash
-    python -c "import yaml; yaml.safe_load(open('config.yml'))"
-    ```
-3.  **Restart workers:**
-
-    ```bash
-    docker compose restart conserver-worker
-    ```
-4.  **Use API to update:**
-
-    ```bash
-    curl -X POST -H "x-conserver-api-token: $TOKEN" \
-      -H "Content-Type: application/json" \
-      -d @config.json \
-      http://localhost:8000/api/config
-    ```
-
-### Import/Module Not Found
-
-**Symptoms:**
-
-* "ModuleNotFoundError" in logs
-* Dynamic imports failing
-
-**Solutions:**
-
-1.  **Check imports section:**
-
-    ```yaml
-    imports:
-      my_module:
-        module: my_module
-        pip_name: my-package>=1.0.0  # Correct package name
-    ```
-2.  **Check pip\_name format:**
-
-    ```yaml
-    # PyPI
-    pip_name: package-name>=1.0.0
-
-    # GitHub
-    pip_name: git+https://github.com/org/repo.git@tag
-    ```
-3. **Check network access:**
-   * Container can reach PyPI/GitHub
-   * No firewall blocking
-
-***
-
-## Performance Issues
-
-### Slow Processing
-
-**Symptoms:**
-
-* High processing times
-* Queue backing up
-
-**Solutions:**
-
-1.  **Scale workers:**
-
-    ```bash
-    docker compose up -d --scale conserver-worker=5
-    ```
-2.  **Use sampling:**
-
-    ```yaml
-    links:
-      analyze:
-        options:
-          sampling_rate: 0.1  # Process 10%
-    ```
-3.  **Use faster models:**
-
-    ```yaml
-    links:
-      analyze:
-        options:
-          model: "gpt-3.5-turbo"  # Faster than gpt-4
-    ```
-4.  **Skip unnecessary links:**
-
-    ```yaml
-    chains:
-      fast_chain:
-        links:
-          - transcribe
-          # Skip heavy analysis for speed
-    ```
-
-### Memory Issues
-
-**Symptoms:**
-
-* OOM errors
-* Container restarts
-
-**Solutions:**
-
-1.  **Increase container memory:**
-
-    ```yaml
-    services:
-      conserver-worker:
-        deploy:
-          resources:
-            limits:
-              memory: 8G
-    ```
-2.  **Configure Redis maxmemory:**
-
-    ```bash
-    redis-cli CONFIG SET maxmemory 2gb
-    redis-cli CONFIG SET maxmemory-policy noeviction
-    ```
-3.  **Use diet link to reduce vCon size:**
-
-    ```yaml
-    links:
-      slim_down:
-        module: links.diet
-        options:
-          remove_dialog_bodies: true
-    ```
-
-***
-
-## Getting Help
-
-If you can't resolve an issue:
-
-1. **Check logs carefully** - Most errors have clear messages
-2. **Search GitHub issues** - Someone may have had the same problem
-3. **Create a GitHub issue** with:
-   * Conserver version
-   * Configuration (sanitized)
-   * Error messages
-   * Steps to reproduce
+Open an issue on [vcon-server](https://github.com/vcon-dev/vcon-server/issues) with the output of `GET /api/version`, the relevant log lines, and your chain configuration with every key and password removed. Do not paste names of real customers or callers into a public issue.

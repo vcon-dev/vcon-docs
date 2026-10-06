@@ -1,115 +1,177 @@
 ---
 description: >-
-  Every tool the vCon MCP server exposes, grouped by purpose. Quick lookup for
-  LLM-driven workflows.
+  Every tool, resource and prompt the vCon MCP server exposes, with the key
+  parameters of each, so you can pick the right call without reading the source.
 ---
 
 # 🧰 Tool Reference
 
-The vCon MCP server exposes **46 tools** to LLM clients. They split into seven groups by purpose. For each tool's authoritative response schema, call `describe_response_shape(tool_name)` against the live server — see [Contract Tools](contract-tools.md).
+The server exposes 46 tools in seven groups, 19 resources and 10 prompts. This page is built from
+each tool's `inputSchema` in [vcon-dev/vcon-mcp](https://github.com/vcon-dev/vcon-mcp) at release
+1.9.2. For the response shape of a contract or search tool, call `describe_response_shape` against
+the live server; see [Contract Tools](contract-tools.md).
 
-The May 2026 contract redesign added a six-tool family (`vcon_fetch`, `vcon_search`, `vcon_capabilities`, `vcon_taxonomy`, `vcon_graph_shape`, `describe_response_shape`) that LLM clients should prefer over the legacy equivalents wherever they overlap.
+Which tools a client sees depends on the deployment. `MCP_TOOLS_PROFILE`, the category variables
+and read-only keys filter the list; see
+[Transport and Deployment](transport-and-deployment.md#which-tools-a-client-sees). The category in
+brackets after each group heading is the one those filters use.
 
-## vCon CRUD (8 tools)
+## vCon CRUD (17 tools)
 
-Create, fetch, update, and delete vCons; append the three sub-resources (dialog, analysis, attachment).
+Create, read, update and delete a vCon and its parts. Category `write`, except `get_vcon` (`read`).
 
-| Tool                        | Purpose                                                                                                                                                                                         |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `create_vcon`               | Create a new vCon from a JSON object.                                                                                                                                                           |
-| `create_vcon_from_template` | Create a vCon from one of the server's named templates (`phone_call`, `chat_conversation`, `email_thread`, `video_meeting`, `custom`).                                                          |
-| `get_vcon`                  | Fetch a vCon by UUID. **For LLM workflows, prefer `vcon_fetch`** — it returns a stable envelope and lets you control byte budget.                                                               |
-| `update_vcon`               | Partially update an existing vCon. Accepts both spec-correct (`amended`, `critical`) and legacy (`appended`, `must_support`) field names — see [Field-Name Migration](field-name-migration.md). |
-| `delete_vcon`               | Delete a vCon by UUID. Cascades to all related rows (parties, dialog, analysis, attachments).                                                                                                   |
-| `add_dialog`                | Append a dialog entry to an existing vCon.                                                                                                                                                      |
-| `add_analysis`              | Append an analysis entry. `vendor` is REQUIRED.                                                                                                                                                 |
-| `add_attachment`            | Append an attachment. Uses `purpose` (or `type` for the lawful\_basis extension exception).                                                                                                     |
+| Tool | Key parameters | What it does |
+| ---- | -------------- | ------------ |
+| `create_vcon` | `parties` (required), `subject`, `dialog`, `analysis`, `attachments`, `extensions`, `critical` | Validates and stores a new vCon. `must_support` is accepted as a deprecated alias for `critical` |
+| `create_vcon_from_template` | `template_name` (required: `phone_call`, `chat_conversation`, `email_thread`, `video_meeting`, `custom`), `parties` (required, non-empty), `subject`, `metadata` | Builds a vCon from a named template and stores it |
+| `get_vcon` | `uuid` (required), `response_format` (`full` default, `summary`, `metadata`) | Returns one vCon. `summary` keeps only analyses of type `summary`. LLM clients should prefer `vcon_fetch` |
+| `update_vcon` | `uuid`, `updates` (both required), `return_updated` (default true) | Updates top-level `subject`, `extensions` and `critical` only. Use the child tools for everything else |
+| `delete_vcon` | `uuid` (required) | Deletes the vCon and its parties, dialog, analysis and attachments. No confirmation parameter; it cannot be undone |
+| `add_dialog` | `vcon_uuid`, `dialog` (both required; `dialog.type` required) | Appends a dialog: `recording`, `text`, `transfer` or `incomplete` |
+| `add_analysis` | `vcon_uuid`, `analysis` (both required; `analysis.type` and `analysis.vendor` required) | Appends an analysis |
+| `add_attachment` | `vcon_uuid`, `attachment` (both required) | Appends an attachment. Set `purpose`; `type` is a legacy field kept for old data |
+| `update_dialog` | `vcon_uuid`, `index`, `dialog` | Replaces the dialog at `index`. Omitted fields are cleared |
+| `remove_dialog` | `vcon_uuid`, `index` | Strips the dialog to a placeholder that keeps `type`, so later indexes do not shift |
+| `update_analysis` | `vcon_uuid`, `index`, `analysis` | Replaces the analysis at `index`. `vendor` required |
+| `remove_analysis` | `vcon_uuid`, `index` | Deletes the analysis and renumbers the rest |
+| `update_attachment` | `vcon_uuid`, `index`, `attachment` | Replaces the attachment at `index` |
+| `remove_attachment` | `vcon_uuid`, `index` | Deletes the attachment and renumbers the rest. Removing the `tags` attachment clears the vCon's tags |
+| `add_party` | `vcon_uuid`, `party` | Appends a party and returns its index |
+| `update_party` | `vcon_uuid`, `index`, `party` | Replaces the party at `index` |
+| `remove_party` | `vcon_uuid`, `index`, `anonymize` (default false) | Leaves an empty placeholder party, or `{name: "anonymous"}` with `anonymize`, so dialog and attachment references do not shift |
 
-## Search — legacy (4 tools)
+Every write is validated before it reaches the database: at least one party, and each party with
+an identifier; a valid dialog type; `disposition` on an `incomplete` dialog; `vendor` on every
+analysis; encodings of `base64url`, `json` or `none`; either `body` and `encoding` or `url` and
+`content_hash`; ISO 8601 dates. An analysis that uses `schema_version` instead of `schema` is
+rejected.
 
-The pre-2026 search tools. Still supported. For new LLM-driven workflows prefer `vcon_search` from the [contract surface](contract-tools.md).
+## Contract and discovery (7 tools)
 
-| Tool                    | Purpose                                                                                                                     |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `search_vcons`          | Filter by subject, party, dates, and tags. Metadata-only.                                                                   |
-| `search_vcons_content`  | Postgres full-text search over dialog and analysis bodies.                                                                  |
-| `search_vcons_semantic` | Vector / embedding similarity (pgvector, 384-dim, OpenAI by default). Use when the query is conceptual rather than literal. |
-| `search_vcons_hybrid`   | Combines full-text and semantic with a tunable `semantic_weight`.                                                           |
+The surface built for LLM clients: one envelope, cursor pagination, a byte budget. Category `read`.
+Design and envelopes are on [Contract Tools](contract-tools.md).
 
-## Contract / discovery (6 tools, new May 2026)
+| Tool | Key parameters | What it does |
+| ---- | -------------- | ------------ |
+| `vcon_capabilities` | none | Supported tools, include groups, search modes, limits, byte budgets and the legacy-to-contract tool mapping |
+| `vcon_taxonomy` | none | Fixed guidance on tag and attachment conventions for one dealer-call dataset, plus a coverage snapshot. Disabled under the `public` profile |
+| `vcon_graph_shape` | none | Analysis types, attachment purposes and tag keys actually present, with counts and co-occurrence edges. Same payload as resource `vcon://v1/graph/shape` |
+| `describe_response_shape` | `tool_name`, `include_example` (default true) | JSON Schema and an example payload for a contract tool or a legacy read tool. No `tool_name` lists the tools it can describe |
+| `vcon_fetch` | `id` (required), `include`, `max_response_bytes` (default 250000, min 1024) | One vCon in `{ok, item}` with only the include groups you ask for |
+| `vcon_search` | `mode` (`metadata` default, `keyword`, `semantic`, `hybrid`), `query`, `embedding`, `tags`, `filters`, `include`, `limit` (default 25, max 100), `cursor`, `max_response_bytes`, `threshold` (0.7), `semantic_weight` (0.6) | All four search modes behind one `{ok, items, page}` envelope |
+| `vcon_aggregate` | `group_by` (only `dealer`), `tags`, `filters.start_date`, `filters.end_date`, `having.min_count` (default 1), `limit` (default 20, max 500) | Per-dealer `filtered_count` and `baseline_count`, so a client can compute a rate in one call. Needs the `aggregate_vcons_by_dealer_stats` RPC. Disabled under the `public` profile |
 
-The LLM-facing surface. Stable envelopes, cursor pagination, byte-budget enforcement, dealer filtering. See [Contract Tools](contract-tools.md) for the design rationale and envelope formats.
+## Search, legacy (4 tools)
 
-| Tool                      | Purpose                                                                                                                                                  |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `vcon_fetch`              | Fetch a vCon (or a partial projection of one) with explicit `include` selection and `max_response_bytes`. Returns `{ok, item}`.                          |
-| `vcon_search`             | Unified search across `metadata`, `keyword`, `semantic`, and `hybrid` modes. Cursor-based, dealer-filterable, LLM-hardened. Returns `{ok, items, page}`. |
-| `vcon_capabilities`       | Returns what the server supports — tools, includes, search modes, byte budgets, migration hints. Call once per session and cache.                        |
-| `vcon_taxonomy`           | Controlled vocabulary the corpus actually uses (portal taxonomy, common tag keys, attachment types, preferred fields).                                   |
-| `vcon_graph_shape`        | Live shape of the corpus — analysis types, attachment purposes, tag keys, and their co-occurrence edges.                                                 |
-| `describe_response_shape` | JSON Schema + example payload for any tool. Use before parsing or planning a multi-step query.                                                           |
+The original search tools. Still supported. New clients should use `vcon_search`. Category `read`.
+
+| Tool | Key parameters | What it does |
+| ---- | -------------- | ------------ |
+| `search_vcons` | `subject`, `party_name`, `party_email`, `party_tel`, `start_date`, `end_date`, `tags`, `limit` (default 10, max 1000), `response_format` (`metadata` default, `full`, `ids_only`), `include_count` | Metadata filters only |
+| `search_vcons_content` | `query` (required), dates, `tags`, `limit` (default 50), `response_format` (`snippets` default, `full`, `metadata`, `ids_only`), `include_count` | Keyword search over subject, parties, dialog and analysis |
+| `search_vcons_semantic` | `query` or `embedding` (384 numbers), `tags`, `threshold` (default 0.7), `limit` (default 50), `response_format`, `include_count` | Similarity search over stored embeddings |
+| `search_vcons_hybrid` | `query` (required), `embedding`, `tags`, `semantic_weight` (default 0.6), `limit` (default 50), `response_format`, `include_count` | Keyword and semantic scores blended by `semantic_weight` |
+
+Keyword search is Postgres full text search (`tsvector` and `plainto_tsquery`). It stems, so
+"refunds" matches "refund", and it does not correct misspellings. Semantic search embeds the query
+with the provider set by `EMBEDDING_PROVIDER` (see
+[Transport and Deployment](transport-and-deployment.md#semantic-search)) and compares it with the
+384-dimension vectors in `vcon_embeddings`. A vCon with no embedding yet cannot be found this way.
 
 ## Tags (5 tools)
 
-Tags are stored as `attachments[]` entries with `purpose: "tags"` and a JSON body. The MCP server materializes them through `vcon_tags_mv` for fast lookup.
+A vCon's tags live in one attachment with `purpose: "tags"`, `encoding: "json"` and a body that is
+an array of `"key:value"` strings, for example `["department:sales", "priority:high"]`. The
+materialized view `vcon_tags_mv` turns them into rows so tag filters are cheap. There is no tool
+that tags many vCons in one call.
 
-| Tool              | Purpose                                                                  |
-| ----------------- | ------------------------------------------------------------------------ |
-| `manage_tag`      | Add, update, or remove a single tag.                                     |
-| `get_tags`        | List tags on a specific vCon.                                            |
-| `get_unique_tags` | List all distinct tag keys/values across the database.                   |
-| `search_by_tags`  | Find vCons matching tag filters. Fast — backed by the materialized view. |
-| `remove_all_tags` | Bulk-clear all tags on a vCon.                                           |
+| Tool | Key parameters | What it does | Category |
+| ---- | -------------- | ------------ | -------- |
+| `manage_tag` | `vcon_uuid`, `action` (`set` or `remove`), `key` (all required), `value` (string, number or boolean; stored as a string) | Sets or removes one tag on one vCon | `write` |
+| `remove_all_tags` | `vcon_uuid` | Clears every tag on one vCon | `write` |
+| `get_tags` | `vcon_uuid` (required), `key`, `default_value` | All tags on a vCon, or one tag's value | `read` |
+| `get_unique_tags` | `include_counts`, `key_filter`, `min_count` (default 1) | Distinct tag keys and values across the store | `read` |
+| `search_by_tags` | `tags` (required), `limit` (default 50), `return_full_vcons`, `max_full_vcons` (default 20) | UUIDs of vCons that carry every given tag, optionally the vCons themselves | `read` |
 
 ## Analytics (6 tools)
 
-Aggregations over the corpus. Reports rather than queries.
+Reports over the whole store. Category `analytics`.
 
-| Tool                           | Purpose                                                                 |
-| ------------------------------ | ----------------------------------------------------------------------- |
-| `get_database_analytics`       | High-level summary: size, growth, content distribution, health.         |
-| `get_monthly_growth_analytics` | Ingestion trend, with `granularity` of `daily`, `weekly`, or `monthly`. |
-| `get_attachment_analytics`     | Distribution of attachment purposes, mediatypes, and sizes.             |
-| `get_tag_analytics`            | Tag frequency and value distribution.                                   |
-| `get_content_analytics`        | Dialog mediatypes, party patterns, analysis vendors.                    |
-| `get_database_health_metrics`  | Query performance, index usage, optimization hints.                     |
+| Tool | Key parameters | What it does |
+| ---- | -------------- | ------------ |
+| `get_database_analytics` | `include_growth_trends`, `include_content_analytics`, `include_attachment_stats`, `include_tag_analytics`, `include_health_metrics`, `months_back` (default 12) | One combined report |
+| `get_monthly_growth_analytics` | `months_back` (default 12), `include_projections`, `granularity` (`monthly` default, `weekly`, `daily`) | Ingestion over time |
+| `get_attachment_analytics` | `include_size_distribution`, `include_type_breakdown`, `include_temporal_patterns`, `top_n_types` (default 10) | Attachment types, media types and sizes |
+| `get_tag_analytics` | `include_frequency_analysis`, `include_value_distribution`, `include_temporal_trends`, `top_n_keys` (default 20), `min_usage_count` | Tag key and value frequencies |
+| `get_content_analytics` | `start_date`, `end_date`, `include_dialog_analysis`, `include_analysis_breakdown`, `include_party_patterns`, `include_conversation_metrics`, `include_temporal_content` | Dialog types, analysis types and vendors, party patterns, counts of vCons with no dialog or no analysis |
+| `get_database_health_metrics` | `include_performance_metrics`, `include_storage_efficiency`, `include_index_health`, `include_connection_metrics`, `include_recommendations` | Performance, storage, index and cache indicators with recommendations |
 
-## Database inspection (6 tools)
+## Database inspection (5 tools)
 
-For ops, debugging, and capacity planning. Read-only.
+For operators. Category `infra`.
 
-| Tool                      | Purpose                                                                                                                                                                  |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `get_database_shape`      | Tables, columns, indexes, relationships, sizes.                                                                                                                          |
-| `get_database_stats`      | Cache hit rates, index usage, slow-query stats.                                                                                                                          |
-| `get_database_size_info`  | Row counts and storage totals, with recommendations for large datasets.                                                                                                  |
-| `get_smart_search_limits` | The result-size and depth bounds the server will apply. Useful before constructing a large search.                                                                       |
-| `analyze_query`           | Returns a Postgres `EXPLAIN` plan for the SQL behind a given tool call.                                                                                                  |
-| `vcon_aggregate`          | Server-side rollup grouped by dealer. Returns `filtered_count` and `baseline_count` per group for rate calculation, backed by the `aggregate_vcons_by_dealer_stats` RPC. |
+| Tool | Key parameters | What it does |
+| ---- | -------------- | ------------ |
+| `get_database_shape` | `include_counts`, `include_sizes`, `include_indexes` (all default true), `include_columns` (default false) | Tables, row counts, sizes and indexes |
+| `get_database_stats` | `include_query_stats`, `include_index_usage`, `include_cache_stats`, `table_name` | Table access, index usage and cache hit ratios |
+| `get_database_size_info` | `include_recommendations` (default true) | Store size with suggested query limits |
+| `get_smart_search_limits` | `query_type` (`basic`, `content`, `semantic`, `hybrid`, `analytics`), `estimated_result_size` | A suggested result limit for a planned query |
+| `analyze_query` | `query` (required, SQL starting with `SELECT`), `analyze_mode` (`explain` default, `explain_analyze`) | Postgres plan for the caller's SQL. `explain_analyze` runs the query |
 
-## Schema & examples (2 tools)
+## Schema and examples (2 tools)
 
-| Tool           | Purpose                                                                                                                   |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `get_schema`   | Return the vCon JSON Schema (or TypeScript types) in the format the client requests.                                      |
-| `get_examples` | A handful of example vCons covering common patterns — `minimal`, `phone_call`, `chat`, `email`, `video`, `full_featured`. |
+Category `schema`.
 
-## When to use which search tool
+| Tool | Key parameters | What it does |
+| ---- | -------------- | ------------ |
+| `get_schema` | `format` (`json_schema` default, `typescript`), `version` (default `latest`) | The vCon schema the server validates against |
+| `get_examples` | `example_type` (required: `minimal`, `phone_call`, `chat`, `email`, `video`, `full_featured`), `format` (`json` default, `yaml`) | An example vCon |
 
-The five search-shaped tools overlap. Quick guide:
+## Resources
 
-| Situation                                                 | Use                                                               |
-| --------------------------------------------------------- | ----------------------------------------------------------------- |
-| LLM-driven workflow, want stable envelopes and pagination | `vcon_search`                                                     |
-| Literal keyword in conversation content                   | `vcon_search` mode=`keyword` (or legacy `search_vcons_content`)   |
-| Conceptual / fuzzy query                                  | `vcon_search` mode=`semantic` (or legacy `search_vcons_semantic`) |
-| Mixed, want best general result                           | `vcon_search` mode=`hybrid` (or legacy `search_vcons_hybrid`)     |
-| Just need metadata or a UUID lookup                       | `vcon_search` mode=`metadata` or `vcon_fetch`                     |
-| Tag-only filtering, no full-text                          | `search_by_tags`                                                  |
+Read-only data at `vcon://v1/` URIs. Resource reads run no plugin hooks.
 
-## See also
+| URI | Returns |
+| --- | ------- |
+| `vcon://v1/vcons/recent`, `.../recent/{n}` | The newest vCons in full, 10 by default, at most 100 |
+| `vcon://v1/vcons/recent/ids`, `.../recent/ids/{n}` | UUID, timestamp and subject of the newest vCons |
+| `vcon://v1/vcons/ids`, `.../ids/{n}`, `.../ids/{n}/after/{timestamp}` | Every vCon ID, paged by timestamp, 100 by default, at most 1000 |
+| `vcon://v1/vcons/{uuid}` | One vCon |
+| `vcon://v1/vcons/{uuid}/metadata`, `/parties`, `/dialog`, `/analysis`, `/attachments` | One part of a vCon |
+| `vcon://v1/vcons/{uuid}/attachments/purpose/{purpose}` | Attachments with that purpose |
+| `vcon://v1/vcons/{uuid}/attachments/type/{type}` | Attachments with that legacy type |
+| `vcon://v1/vcons/{uuid}/analysis/type/{type}` | Analyses of that type |
+| `vcon://v1/vcons/{uuid}/transcript`, `/summary`, `/tags` | The transcript analysis, the summary analysis, the parsed tags |
+| `vcon://v1/discovery/attachments/purposes`, `.../attachments/types`, `.../analysis/types` | Distinct attachment purposes, legacy attachment types and analysis types in the store |
+| `vcon://v1/graph/shape` | The same shape graph `vcon_graph_shape` returns |
 
-* [Contract Tools](contract-tools.md) — design and envelope formats for the May 2026 family
-* [Field-Name Migration](field-name-migration.md) — how the server handles `appended → amended` and `must_support → critical`
-* [Transport and Deployment](transport-and-deployment.md) — auth, transport modes, Docker / npm
-* [What the vCon MCP Server Can Do](what-the-vcon-mcp-server-can-do.md) — narrative overview
+## Prompts
+
+Prompts are query templates a client can offer its user. Each returns guidance on which tools to
+call with which arguments. They are filtered by the same profile as the tools.
+
+| Prompt | Arguments |
+| ------ | --------- |
+| `find_by_exact_tags` | `tag_criteria`, `date_range` |
+| `find_by_semantic_search` | `search_description`, `date_range` |
+| `find_by_keywords` | `keywords`, `filters` |
+| `find_recent_by_topic` | `topic`, `timeframe` |
+| `find_by_party` | `party_identifier`, `date_range` |
+| `discover_available_tags` | `tag_category` |
+| `complex_search` | `search_criteria` |
+| `find_similar_conversations` | `reference`, `limit` |
+| `daily_activity_report` | `date`, `focus_areas` |
+| `help_me_search` | `what_you_want` |
+
+## Which search tool
+
+| Situation | Use |
+| --------- | --- |
+| LLM client that needs stable envelopes and pagination | `vcon_search` |
+| A literal word or phrase | `vcon_search` mode `keyword` |
+| A concept, phrased however | `vcon_search` mode `semantic` |
+| Unsure which | `vcon_search` mode `hybrid` |
+| Dates, subject, participant | `vcon_search` mode `metadata` |
+| One known UUID | `vcon_fetch` |
+| Tags only | `vcon_search` with `tags`, or `search_by_tags` |
+| A count or rate per dealer | `vcon_aggregate` |

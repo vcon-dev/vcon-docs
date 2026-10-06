@@ -1,63 +1,49 @@
 ---
-description: Append-only audit ledger anchored in SCITT for vCon creation, transmission, consent, and deletion events.
+description: >-
+  Explains how to record what happened to a vCon (creation, sharing, consent,
+  redaction, deletion) on a SCITT transparency service, so you can prove it
+  later.
 ---
 
 # 🔄 Lifecycle Extension
 
-**Draft:** [`draft-howe-vcon-lifecycle`](https://datatracker.ietf.org/doc/draft-howe-vcon-lifecycle/) · **Extension name:** `"lifecycle"`
+**Draft:** [`draft-howe-vcon-lifecycle-01`](https://datatracker.ietf.org/doc/draft-howe-vcon-lifecycle/) · **Extension token:** none
 
-## What it is
+## Purpose of the extension
 
-A vCon is a snapshot. The question regulators and auditors usually want to answer — "what happened to this conversation, when, and who saw it?" — needs more than a snapshot. The Lifecycle extension answers that question by anchoring vCon events in an external [SCITT (Supply Chain Integrity, Transparency, and Trust)](../deep-dives/scitt-supply-chain-integrity-transparency-and-trust.md) ledger.
+A vCon is a snapshot of one conversation. Regulators and auditors usually ask a different question: what happened to that conversation afterwards, when, and who held it. The lifecycle draft answers that by recording "moments that matter" as operations on a [SCITT](../deep-dives/scitt-supply-chain-integrity-transparency-and-trust.md) transparency service. Each operation gets a SCITT receipt, which is the durable proof that it was recorded.
 
-Unlike most extensions, **Lifecycle adds no per-vCon fields**. The vCon itself stays small. The lifecycle data lives on an append-only, cryptographically verifiable SCITT ledger that the vCon and its downstream consumers reference.
+The draft states that these events "are not intended to be stored within the vCon itself" (Section 5). It defines no vCon parameters and no extension token, and its IANA section reads "This document has no IANA actions" (Section 8). So there is nothing to add to `extensions` or `critical`, and no field to look for in the vCon. The draft does not specify how an event identifies its vCon.
 
-## When to use it
+## Lifecycle events
 
-- GDPR compliance: demonstrate the chain of consent acceptance, transfers, and (eventually) deletion in response to a Right to Erasure request.
-- CCPA / state-level privacy laws with similar audit requirements.
-- Internal compliance for regulated industries (healthcare, financial services) where conversation handling has to be auditable end-to-end.
-- Multi-party processing pipelines (call recording → transcription → analysis → CRM) where each handoff needs an independent, tamper-evident record.
+The full list from Section 5:
 
-## Spec surface
+| Event | Meaning |
+| --- | --- |
+| `vcon_created` | The vCon was first recorded. Recordings or attachments may be added later. |
+| `vcon_enhanced` | The vCon was amended or added to, for example a transcription correction or a consent change. |
+| `vcon_sent` | The vCon was sent to an external party. Records what was sent, to whom and when. |
+| `vcon_received` | The vCon was received from an external party. |
+| `vcon_consent_accepted` | One or more parties consented to the vCon being recorded and shared for its intended purpose. |
+| `vcon_consent_revoked` | One or more parties revoked consent for one or more purposes. |
+| `vcon_party_redacted` | A party's information was redacted. The vCon can remain usable. |
+| `vcon_deleted` | The vCon was deleted, because of revocation or because it is no longer needed. A Data Controller that deletes a vCon must tell every recipient to delete it or take over as Data Controller. |
+| `vcon_expired` | The vCon expired under license terms or compliance rules. This triggers deletion and notice to everyone it was shared with. |
+| `vcon_rcvr_purged` | A receiving entity no longer needs the vCon, deletes it, and notifies the sender. |
 
-Lifecycle defines a vocabulary of event types that get recorded on a SCITT ledger. The events the draft enumerates include:
+## Flow
 
-| Event | When to record it |
-|-------|-------------------|
-| `vcon_created` | New vCon assembled and signed |
-| `vcon_enhanced` | An analysis or attachment was added |
-| `vcon_sent` | The vCon (or a derived projection) was transmitted to another party |
-| `vcon_received` | The vCon was received from another party |
-| `vcon_consent_accepted` | Consent (lawful basis) was recorded for the conversation |
-| `vcon_consent_revoked` | A party revoked consent — triggers downstream cleanup |
-| `vcon_deleted` | The vCon was deleted in response to a Right to Erasure request |
+Section 4 walks through three roles. A Data Originator (the infrastructure that captured the call) creates the vCon and sends it to a Data Controller. The Controller records `vcon_received`, adds transcription and licensing, and sends it on to Data Processors. A Processor validates the Controller's SCITT receipt, records consent, enhances the vCon, and gives the data subject a way to review and revoke consent.
 
-Each event entry on the SCITT ledger references the vCon's UUID, includes a timestamp, and is signed by the party producing it. The SCITT receipt that comes back from the ledger is the durable proof that the event happened.
+When a data subject revokes consent, the Controller records the revocation on its transparency service and passes the request to every Processor that has not yet acknowledged it. Each Processor deletes the data. The events stay on the transparency service; that record is the audit trail.
 
-To signal that a vCon participates in this lifecycle scheme, declare the extension:
+## With Lawful Basis
 
-```json
-{
-  "vcon": "0.4.0",
-  "extensions": ["lifecycle"]
-}
-```
-
-You generally do **not** put `"lifecycle"` in `must_understand[]` — consumers that don't speak SCITT can still process the vCon, they just won't validate the audit trail.
-
-## Operational pattern
-
-A typical flow:
-
-1. **Create.** Build the vCon, sign it, post a `vcon_created` entry to the SCITT ledger. Store the receipt alongside the vCon.
-2. **Consent.** When you add a [lawful basis attachment](lawful-basis.md), post a `vcon_consent_accepted` entry.
-3. **Process.** Each time you add analysis or share the vCon, post `vcon_enhanced` / `vcon_sent` / `vcon_received` entries.
-4. **Revocation.** If a data subject revokes consent, post `vcon_consent_revoked`. Downstream consumers watching the ledger trigger their own deletion workflows.
-5. **Deletion.** Post `vcon_deleted` after the vCon (and any derived data) has been removed. The deletion event itself remains on the ledger forever — that's the audit trail.
+[Lawful Basis](lawful-basis.md) records, inside the vCon, which processing is allowed. Lifecycle records, outside the vCon, what was done and when. A lawful basis attachment can also name a SCITT registry in its `registry` field.
 
 ## See also
 
-- [vCon Lifecycle Management using SCITT](../deep-dives/vcon-lifecycle-management-using-scitt.md) — the long-form rationale and walkthrough.
-- [SCITT: Supply Chain Integrity, Transparency and Trust](../deep-dives/scitt-supply-chain-integrity-transparency-and-trust.md) — what SCITT is and why it fits here.
-- [Lawful Basis](lawful-basis.md) — the consent record that lifecycle events reference.
+* [vCon Lifecycle Management using SCITT](../deep-dives/vcon-lifecycle-management-using-scitt.md) for the longer walkthrough.
+* [SCITT: Supply Chain Integrity, Transparency and Trust](../deep-dives/scitt-supply-chain-integrity-transparency-and-trust.md) for background on SCITT.
+* [Field reference](../vcons/field-reference.md) for the extension tokens that do exist.

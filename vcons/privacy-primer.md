@@ -5,16 +5,16 @@ description: A short orientation to data privacy and communications privacy for 
 # 🔒 Privacy Primer
 
 {% hint style="info" %}
-**Read the full primer in the IETF draft.** This page is a short orientation. The authoritative version, with full treatment of data subjects' rights, sensitive data, deidentification, communications privacy, AI considerations, and security considerations, lives in [`draft-ietf-vcon-privacy-primer`](https://datatracker.ietf.org/doc/draft-ietf-vcon-privacy-primer/). If you are designing or reviewing a system that handles vCons, read the draft.
+**Read the full primer in the IETF draft.** This page is a short orientation. The authoritative version, with full treatment of data subjects' rights, sensitive data, deidentification, communications privacy, AI considerations, and security considerations, lives in [`draft-ietf-vcon-privacy-primer-01`](https://datatracker.ietf.org/doc/draft-ietf-vcon-privacy-primer/), the current revision on datatracker as of 2026-10-06. If you are designing or reviewing a system that handles vCons, read the draft.
 {% endhint %}
 
-## Why a primer
+## Reason for a primer
 
 The democratization of technology has produced a wave of new entrants in the market for personal data, driven by motives that range from commerce and regulation to fraud prevention and charitable causes. More and more of them touch conversational data as it crosses network boundaries. vCon is one of the artifacts that makes that crossing possible, by giving conversational data a structure that can be processed and shared ethically.
 
 Many of those entrants do not arrive with a working understanding of data minimization, lawful basis for processing, redaction, the right to know, or the right to erasure. The vCon design decisions are a direct response to those concerns: encryption, signing for change detection, redacted versions that retain a verifiable trail back to the original. None of that does any good if the people building and operating the systems do not share a baseline vocabulary. That is what this primer, and the IETF draft behind it, are for.
 
-## Who this is for
+## Intended audience
 
 The draft is written for three audiences who tend to share the same room at IETF and around vCon work:
 
@@ -24,7 +24,7 @@ The draft is written for three audiences who tend to share the same room at IETF
 
 If you recognize yourself in one of those groups, the draft is written for you.
 
-## What it covers
+## Scope of the primer
 
 The primer is informational, not normative. Its goals are modest:
 
@@ -35,7 +35,7 @@ The primer is informational, not normative. Its goals are modest:
 
 It is a primer, not a panacea. Much like the distinction between HTTP and HTTPS, the vCon framework gives well-intentioned actors something to build on, while leaving the question of bad actors to the legal system.
 
-## Privacy and vCon — in general
+## Privacy scope of vCon
 
 Privacy is sometimes summarized as "the right to be let alone." It helps to think of it in four aspects:
 
@@ -48,8 +48,8 @@ vCon concentrates on the first and the fourth: **data privacy** and **communicat
 
 IETF standards already address privacy in Internet communications, including data minimization ([RFC 7258](https://www.rfc-editor.org/rfc/rfc7258)). They generally do not address the privacy of individuals' data with respect to the organizations that collect, process, and disclose it. The privacy primer extends to that second question.
 
-## Where to go next
+## Further reading
 
-- [`draft-ietf-vcon-privacy-primer`](https://datatracker.ietf.org/doc/draft-ietf-vcon-privacy-primer/) — the full primer, including data subjects' rights, what counts as protected and sensitive data, deidentification and anonymization, communications privacy, AI-specific considerations, and security considerations.
-- [Lawful Basis extension](../extensions/lawful-basis.md) — how consent and other legal bases for processing are captured inside a vCon.
-- [Lifecycle extension](../extensions/lifecycle.md) — the append-only record of what has happened to a vCon, and how revocation propagates.
+- [`draft-ietf-vcon-privacy-primer-01`](https://datatracker.ietf.org/doc/draft-ietf-vcon-privacy-primer/): the full primer, including data subjects' rights, what counts as protected and sensitive data, deidentification and anonymization, communications privacy, AI-specific considerations, and security considerations.
+- [Lawful Basis extension](../extensions/lawful-basis.md): how consent and other legal bases for processing are captured inside a vCon.
+- [Lifecycle extension](../extensions/lifecycle.md): the append-only record of what has happened to a vCon, and how revocation propagates.

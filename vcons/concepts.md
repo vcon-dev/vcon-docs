@@ -1,70 +1,57 @@
 ---
-description: Important Ideas for vCons and the Conserver
+description: >-
+  Defines the terms you meet in the vCon spec and on this site in a sentence
+  or two each, with links to the exact field definitions.
 ---
 
 # 💡 Concepts
 
+Short definitions, aligned with [`draft-ietf-vcon-vcon-core-04`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/). For every field name, type and requirement, see the [field reference](field-reference.md).
+
 ## vCon
 
-A vCon is the container for data and information relating to a real-time, human conversation. It is analogous to a \[[vCard](https://datatracker.ietf.org/doc/html/rfc6350)] which enables the definition, interchange and storage of an individual's various points of contact. The current specification is [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), with syntax parameter `"vcon": "0.4.0"`. The data contained in a vCon may be derived from any multimedia session, traditional phone call, video conference, SMS or MMS message exchange, webchat or email thread. The data in the container relating to the conversation may include Call Detail Records (CDR), call meta data, participant identity information (e.g. STIR PASSporT), the actual conversational data exchanged (e.g. audio, video, text), realtime or post conversational analysis and attachments of files exchanged during the conversation. A standardized conversation container enables many applications, establishes a common method of storage and interchange, and supports identity, privacy and security efforts&#x20;
+A JSON container for one conversation: who took part, what was said, analysis of it, and related files. Conversations can be phone calls, video meetings, text messages, chat or email threads. The name echoes [vCard](https://datatracker.ietf.org/doc/html/rfc6350), which did the same for contact details. A vCon carries `uuid`, `created_at` and, under core-04, `"vcon": "0.4.0"`, plus four arrays: `parties`, `dialog`, `analysis` and `attachments`.
 
-## Conserver
+## Party
 
-The conserver is a data platform designed to extract conversations from business phone systems, transform them into actionable insights, and send that data into common business tools such as spreadsheets, Salesforce and no code toolsets. An open core product, the conserver enables data engineering teams to supply a reliable source of information for AI, ML and operational software in cloud, premise and hybrid contexts. The core for many of the business cases enabled by the conserver is the smart capture, redaction and lifecycle management of recorded customer conversations and customer journeys, recently accelerated by FTC and GDPR regulations and by increasing investments into AI and ML.
+An entry in `parties` for each participant or observer, human or bot. Every party field is optional, and a party can be empty when nothing is known about it. Identifiers include `tel`, `sip`, `mailto`, `did` and a STIR PASSporT in `stir`. Descriptive fields include `name`, `type` (`person`, `bot` or `organization`), `org`, `dept`, location in `gmlpos` or `civicaddress`, and `validation`, which names how identity was checked without storing the data used to check it. Other entries refer to a party by its index in the array.
 
-From a system perspective, shown above, the Conserver attaches to information systems like Web Chat and call center queues, and extracts information from them after conversations are ended. This information is then cleaned and transformed into actionable data. For instance, a distributed call center might extract conversations from a group of sales agents, convert them into text, then filter those conversations looking for times when customers objected to a sale. These objections are then pushed into database tables and Google Sheets as a data self-service option for any business team. The conserver supports multiple data pipelines, each one extracting data from a number of systems, performing transformations such as translations, transcriptions and redactions, and then pushing the prepared data into applications to be used.
+## Dialog
 
-In contrast to other data platforms, the Conserver is dedicated to managing the particular complexities of real time conversational sources. For instance, the amount of bandwidth and storage required to manage an hour long audio recording is an order of magnitude larger than managing a typical business object like a PDF. However, even this is just a start. Video is a few orders of magnitude greater than that, and the data creation for service providers such as Zoom and Skype are magnitudes of order still greater. From a legal perspective, regulatory compliance for customer data protections are particular for recorded conversations, and require support for tracking data’s use by automations, and for tracking deletion from a “Right to be Forgotten” request.
-
-## Parties
-
-The parties section of the vCon is an array that refers to the people or systems in the conversation. Each "dialog" provides an index into the parties array to identify the people.  Each party identifies the
-
-* Network identifier of the party, currently held in the 'tel" field
-* The mail adress
-* The name of the party
-* The role of the party, represented by a string (we use labels like customer, agent)&#x20;
-* A validation field, allowing for evidence of third party validation of the identities of the parties
-* Other information, such as civic address, timezone or jCard.
-
-## Dialogs
-
-The dialogs section of the vCon is an array of transcripts and recordings that represent the media of the conversation itself.  Each dialog contains an identification of:
-
-* The type of the dialog (recording, transcript)
-* The start time
-* Duration
-* The parties in the conversation
-* The originating party of the conversation
-* The mimetype of the recording
-* Any associated filename
-
-The content of the dialog comes in two flavors: packed and unpacked.  Packed data is included in the vCon itself in the body field.  Unpacked data is not included in the vCon, but is instead referenced by URL, not necessarily publicly accessible.  For both cases, the media of the vCon can be signed to prevent tampering or modification after the vCon is constructed.&#x20;
+An entry in `dialog` for captured conversation. Core-04 defines five types: `recording` (audio or video), `text` (a message, chat line or email), `recording-set` (several recordings that make up one call), `transfer` (who transferred whom, to whom) and `incomplete` (a call that failed before anyone spoke, with a `disposition` such as `no-answer` or `busy`). A transcript is not dialog; it is analysis.
 
 ## Analysis
 
-The analysis section of the vCon is an array of objects that represents third party analysis of the vCon itself. Examples of Analysis includes:
+An entry in `analysis` for anything derived from the conversation: transcripts, summaries, sentiment, translations. Each entry names its `type` and the `vendor` that produced it, and can name a `product` and a `schema` for its format. The list doubles as a record of which systems have processed the conversation.
 
-* Sentiment analysis of the conversation itself
-* A list of promises made by the people on the call
-* A summary of the conversation
+## Attachment
 
-Each analysis captures the vendor, schema and details of the analysis itself. In addition to the value that the analysis provides, this also becomes an accounting of the times and places this conversation has been processed by third parties. This list is critical in compliance to data regulations as it allows data controllers to fulfill their obligations to reporting and removing personal data on demand of people and regulators.
+An entry in `attachments` for material supplied alongside the conversation rather than derived from it: a document shared during a call, lead data, a signaling trace, or a lawful basis record. Each attachment has a `purpose`, a `start` time, the index of the `party` that contributed it, and a related `dialog` index.
 
-## Attachments
+## Inline and external content
 
-The attachments section of the vCon is an array of objects that are documents, traces and other pieces of data that provides the context of a conversation.  For instance, a sales organization may store the lead information in the attachment; a conference call may include the powerpoint that was discussed.  Links in the conserver use attachments to store tracing information, such as the raw responses from external systems or the original source of the vCon.&#x20;
+Dialog, analysis and attachment entries hold content one of two ways. Inline content sits in `body` with an `encoding`: `none` for plain text, `base64url` for binary, `json` for a JSON value. External content is referenced by an HTTPS `url` with a `content_hash` (`sha512-` followed by the Base64url digest), so a reader can tell whether the file changed. A `mediatype` gives the content's media type.
 
-## Encryption and Signing
+## Extension
 
-vCons support encryption of the parent object, and each of the analysis sections can carry encrypted bodies. In addition, external URLs and the vCon itself are signed, allowing for tamper detection of the contents.
+A separately specified addition to the core fields, named in the top-level `extensions` array. An extension a reader must understand to interpret the vCon correctly is also listed in `critical`; a reader that does not support it must reject the vCon. See [Extensions](../extensions/README.md).
 
-## Data Projection
+## Signed and encrypted forms
 
-Since the vCon is a nested document, sometimes it is more convenient to format the data in a vCon in other formats, particularly for relational data storage. For instance, a call log link may need to provide a single database row for each vCon into a spreadsheet. A data projection picks and chooses the data inside the vCon to create the spreadsheet row. Normally, data is lost through a projection.
+A vCon exists in three forms. The unsigned form is the plain JSON object. The signed form wraps it in a JWS signature, which detects any change. The encrypted form wraps the signed form in JWE, encrypting the whole object. Signing is not automatic: core-04 says a vCon SHOULD be signed or encrypted when it leaves the security domain that built it.
 
-## Privacy and Consent in vCon
+## Redacted and amended versions
 
-Privacy and consent are first-class concerns in vCon: the lawful basis for processing a conversation, and any consent that was given, travel inside the vCon itself, not in a separate system that points at it from the outside. When a customer withdraws consent, every downstream copy of the vCon is governed by that withdrawal.
+A signed vCon cannot change without breaking its signature, so changes produce a new vCon. A redacted vCon removes data, such as personal information, and points back to the less redacted version through `redacted`. An amended vCon adds data, such as new analysis, and points back to the prior version through `amended`. The pointer carries the prior version's `uuid` and can add a `url` with `content_hash`.
 
-For the vocabulary behind that work, including GDPR, CCPA, data minimization, sensitive personal data, and the mechanics of consent, see the [Privacy Primer](privacy-primer.md). For how consent and lawful basis are expressed inside a vCon, see the [Lawful Basis extension](../extensions/lawful-basis.md). For the append-only lifecycle record of what has happened to a vCon, see the [Lifecycle extension](../extensions/lifecycle.md).
+## Data projection
+
+A flat view of selected vCon fields, such as one spreadsheet or database row per conversation. Projections are a convenience for storage and reporting. They usually drop data, so they do not replace the vCon.
+
+## Privacy and consent
+
+The lawful basis for processing a conversation, including any consent given, can travel inside the vCon as a [Lawful Basis](../extensions/lawful-basis.md) attachment, so systems that receive the vCon can check it before acting. The [Lifecycle](../extensions/lifecycle.md) draft records what then happens to the vCon on a SCITT transparency service. For the privacy vocabulary itself, see the [Privacy Primer](privacy-primer.md).
+
+## Conserver
+
+The open source server that collects conversations, builds vCons and runs them through processing chains. See the [Conserver](../conserver/README.md) section.

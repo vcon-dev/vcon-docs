@@ -1,0 +1,36 @@
+name: docs-guard
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 9 * * 1"
+
+jobs:
+  spec-terms:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail on retired vCon field names and dead references
+        run: |
+          # ponytail: plain grep, not a linter. Rename tables live in the two excluded pages.
+          pattern='must_understand|"type": *"lawful_basis"|type: *.lawful_basis.|mechanism_type|draft-howe-vcon-wtf/|draft-howe-vcon-mcp-session|:dlq\b|vcon-mcp:main|allkeys-lru'
+          # Lines that warn against a term (never/not/no/legacy/instead) are allowed.
+          hits=$(grep -rnE --include='*.md' "$pattern" . \
+              --exclude=field-reference.md --exclude=field-name-migration.md \
+            | grep -viE 'never|\bnot\b|\bno\b|legacy|instead|wrong|has no' || true)
+          if [ -n "$hits" ]; then
+            echo "$hits"
+            echo "Retired term found. See vcons/field-reference.md." && exit 1
+          fi
+
+  links:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: lycheeverse/lychee-action@v2
+        with:
+          args: --no-progress --accept 200,206,403,429 --exclude-path .omc './**/*.md'
+          fail: true

@@ -1,40 +1,54 @@
 ---
-description: Convert Claude AI conversation exports into vCons — the canonical adapter for LLM chat sessions.
+description: Convert Claude Code session files and claude.ai conversation exports into vCons from the command line.
 ---
 
 # 🤖 vCon Anthropic Chats
 
-**Repo:** [vcon-dev/vcon-anthropic-chats](https://github.com/vcon-dev/vcon-anthropic-chats) · **First release:** May 2026
+**Repo:** [VCONIC/vcon-anthropic-chats](https://github.com/VCONIC/vcon-anthropic-chats) · **Version:** `0.1.0` · Python 3.12+
 
-A standalone adapter that takes Claude AI conversation exports — the JSON files you get from the Claude web app's export feature, or from the API — and converts them into spec-compliant vCons.
+A command-line converter that turns Claude conversations into vCons, one vCon per chat. It reads two sources, auto-detected from the input path:
 
-## When to use it
+- Claude Code sessions, the JSONL files under `~/.claude/projects/<encoded-cwd>/`
+- The `conversations.json` file from a claude.ai account data export
 
-- You want to put your team's Claude conversations into the same store as your call recordings, emails, and chats.
-- You're building a corpus of LLM interactions for audit, training, or compliance.
-- You need to apply [Lawful Basis](../extensions/lawful-basis.md) consent to AI conversations the same way you do to human ones.
+It does not call the Anthropic API.
+
+## Install and run
+
+```bash
+pip install -e .
+
+vcon-anthropic-chats <input-path> \
+    [--source auto|claude-code|claude-web] \
+    [--out-dir ./out] [--post-url https://example.com/vcons] \
+    [--auth-header-env VCON_AUTH] [--user-email you@example.com] \
+    [--agent-id sip:claude@anthropic.com] [--overwrite] [--dry-run]
+```
+
+The input is a positional path (a file or a directory), not stdin. Give at least one of `--out-dir` or `--post-url` unless you pass `--dry-run`. `--auth-header-env` names an environment variable holding the full header value, for example `Authorization: Bearer ...`, so the token stays off the command line.
+
+```bash
+vcon-anthropic-chats ~/.claude/projects/-Users-me-Documents-GitHub-myrepo --out-dir ./vcons
+```
 
 ## What the output looks like
 
-The adapter uses the [Agent Session extension](../extensions/agent-session.md), so an exported Claude conversation produces:
+Syntax `0.4.0`. Messages become text dialog entries between a customer party and an agent party. The rest is preserved so the conversion loses nothing:
 
-- A `parties[]` array with the human user and one or more agent parties (each agent gets `role: "agent"` and a `meta.agent_session` block identifying the model and provider).
-- A `dialog[]` array with each message as a text dialog entry.
-- An `analysis[]` entry of type `agent_trace` containing the full session trace (tool calls, tool results, reasoning) as a JSON-encoded VAC document.
-- Optional `attachments[]` for files generated or modified during the session (purpose: `agent_file_change`, `agent_artifact`, etc.).
-- An `extensions: ["agent_session"]` declaration.
+- Tool calls and results as attachments of type `tool_use` and `tool_result`
+- Thinking blocks as analysis entries of type `thinking`
+- Other Claude-specific blocks as `claude.<kind>` attachments
+- Session details as a `claude.session_metadata` attachment
+- The original input file as a `source` attachment, base64url encoded
 
-## Install and usage
+## Spec gaps
 
-See the repo README for the current CLI. The typical invocation:
+The converter predates the current drafts, so treat its output as a starting point.
 
-```bash
-vcon-anthropic-chats < claude-export.json > conversation.vcon.json
-```
-
-For batch processing, the same module is usable as a Python import.
+- It does not use the [Agent Session extension](../extensions/agent-session.md): no `extensions[]` array, and the attachments above use a `type` key with the names listed, not the extension's purposes.
+- It writes no `lawful_basis` attachment. Add one before storing the vCons. See [Lawful Basis](../extensions/lawful-basis.md).
 
 ## See also
 
-- [Agent Session extension](../extensions/agent-session.md) — the spec the adapter produces against
-- [vCon Adapter Development Guide](../vcon-adapters/vcon-adapter-development-guide.md) — patterns for building your own adapters
+- [vCon MCP Adapters](vcon-mcp-adapters.md), which converts other agent framework traces
+- [vCon Adapter Development Guide](../vcon-adapters/vcon-adapter-development-guide.md)

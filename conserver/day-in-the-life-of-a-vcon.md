@@ -1,3 +1,7 @@
+---
+description: Follows one phone call through an adapter, a conserver chain, storage and the vCon MCP server, so you can see what each part adds to the record.
+---
+
 # Day In the Life of a vCon
 
 The easiest way to understand a conserver is to follow one conversation through it. This page
@@ -6,14 +10,14 @@ travel from the phone system to an AI assistant answering a manager's question a
 later, picking up a transcript, a summary, a tag, a CRM record and two signed receipts on the way.
 
 The same trip is drawn as a conveyor belt in
-[The Journey of a vCon](/conserver/vcon-conveyor-infographic.md). The station names below match
+[The Journey of a vCon](vcon-conveyor-infographic.md). The station names below match
 that picture, so you can read the two side by side.
 
 For the example, assume a conserver is running with one chain configured for the service line. The
 chain records the vCon on a transparency ledger, transcribes it, summarizes it, checks whether the
 customer mentioned a safety recall, routes the ones that did to the service team, looks the caller
 up in the CRM, and stores the finished record in Postgres, S3 and the vCon MCP server. Every step
-is a configuration choice. None of it is code the dealership wrote.
+but one is a configuration choice. The exception is a short CRM lookup the dealership wrote itself.
 
 <figure><img src="figures/vcon-day-stations.svg" alt="The stations one vCon passes through, from the phone system to an AI assistant"><figcaption>One conversation, twelve stops. The adapter builds the vCon, the chain grows it, storage keeps it, the MCP server answers questions about it.</figcaption></figure>
 
@@ -28,7 +32,7 @@ the conversation would stay.
 ## 1. The adapter
 
 The phone system forks the call to a SIPREC recording server, and a
-[SIPREC adapter](/tools/vcon-siprec-adapter.md) is listening there. When the call ends, the
+[SIPREC adapter](../tools/vcon-siprec-adapter.md) is listening there. When the call ends, the
 adapter builds the vCon.
 
 It creates a `parties[]` entry for the customer and one for the advisor, each carrying the SIP
@@ -45,10 +49,10 @@ is `consent`, the proof mechanism is the recording announcement at `dialog_index
 permission now travels with the conversation instead of sitting in a policy document.
 
 The adapter assigns the vCon a v4 UUID. That UUID is the conversation's name for the rest of its
-life. Adapters are source specific. Nine are published in vcon-dev today, for Twilio, SignalWire,
-SIPREC, Sippy, ElevenLabs, audio file drops, laptop capture, AI agent sessions and an MCP session
-proxy, plus a template for writing your own. Each speaks one platform's dialect and emits the same
-container. See [vCon Adapters](/vcon-adapters/README.md).
+life. Adapters are source specific. Those published in vcon-dev include Twilio, SignalWire,
+SIPREC, Sippy, ElevenLabs, audio file drops and AI agent sessions, plus a template for writing
+your own. Each speaks one platform's dialect and emits the same
+container. See [vCon Adapters](../vcon-adapters/README.md).
 
 ## 2. Onto the belt
 
@@ -60,19 +64,19 @@ x-conserver-api-token: ...
 ```
 
 The conserver stores the JSON in Redis under the key `vcon:{uuid}` and pushes the UUID onto the
-`service_calls` list. An external partner with a scoped key can do the same through
-`POST /vcon/ingress`, which takes a list of UUIDs for vCons already in Redis and can write only to
-the list its key is scoped to.
+`service_calls` list, all in one call. An external partner holding a key scoped to that list would
+send the same vCon to `POST /vcon/external-ingress?ingress_list=service_calls` instead, and that key
+works for nothing else.
 
 From here the vCon is never passed between processes. Every link reads it from Redis and writes it
 back to Redis, which matters when the dialog holds an hour of audio. The list is durable buffering.
 If ten thousand calls end at five o'clock, the list absorbs them and workers pull at their own pace.
-See [API](/conserver/api.md).
+See [Integrating Your App](integrating-your-app.md).
 
 ## 3. The chain
 
-On its next tick the conserver reads the `service_calls` list, finds the new UUID and creates a
-task for it. The chain configured on that list is an ordered set of links, written in YAML:
+A conserver worker is already blocked on a Redis `BLPOP` across every ingress list, so it receives
+the UUID the moment it lands. The chain configured on that list is an ordered set of links, written in YAML:
 
 ```yaml
 chains:
@@ -89,18 +93,18 @@ chains:
       - expire
     storages: [postgres, s3, vcon_mcp]
     egress_lists: [service_done]
-    timeout: 600
 ```
 
 Each link takes the UUID, does one thing to the vCon, and returns the UUID to continue or nothing
-to stop. Because links take and return the same thing, order is a configuration choice and so is
-vendor. Change the YAML, `POST /config`, and the next vCon takes the new route. No redeploy.
+to stop. The exact rules are in [Concepts](concepts.md#link). Because links take and return the same thing, order is a configuration choice and so is
+vendor. Change the YAML, `POST /config`, and every worker picks up the new chain on its next loop. No
+redeploy.
 
 Before the first link runs, the chain's tracers fire once with a link index of -1 to record the
-starting state. A tracer watches. It never writes to the vCon. The documented one is the JLINC
-tracer, which signs a record of each transition, hashes the vCon as it stood, and files the result
-in an external archive. It fires again after every link and once more when the chain completes.
-See [Conserver Tracers](/conserver/conserver-tracers.md).
+starting state. A tracer watches. It never writes to the vCon. The one tracer that ships is JLINC,
+which signs a record of each transition, hashes the vCon as it stood, and files the result in an
+external archive. It fires again after every link that returns. See
+[Conserver Tracers](conserver-tracers.md).
 
 ## 4. The first receipt
 
@@ -112,22 +116,21 @@ the statement's subject.
 
 That is the first entry in the conversation's lifecycle. Anyone holding the vCon later can prove it
 existed at this moment and has not been altered since, without trusting whoever stored it. See the
-[Lifecycle extension](/extensions/lifecycle.md).
+[Lifecycle extension](../extensions/lifecycle.md).
 
 ## 5. Transcription
 
-The second link is `deepgram_link`. It reads the recording from the dialog, skips it if the audio
-is shorter than `minimum_duration`, sends it to Deepgram's `nova-2` model with language detection
-on, and writes the result into `analysis[]`: the full text, timed segments and confidence scores,
+The second link is `transcribe`, configured with `vendor: deepgram`. It reads the recording from
+the dialog, skips it if the audio is shorter than `minimum_duration` (60 seconds by default), sends
+it to Deepgram (`nova-3` by default), and writes the result into `analysis[]`: the full text, timed segments and confidence scores,
 with `vendor` and `product` recorded so a reader knows what produced it.
 
 Audio is opaque. Text is searchable, summarizable, redactable and auditable. This is the moment the
 conversation becomes data.
 
-Swapping the vendor is an edit to the YAML. `groq_whisper`, `hugging_face_whisper`,
-`openai_transcribe` and the local `transcribe` link all write the same kind of entry, and
-`wtf_transcribe` writes the [WTF transcription format](/extensions/wtf-transcription.md) through the
-vfun service. If the vCon already carries a transcript the link notices and skips the work, which is
+Swapping the vendor is an edit to the YAML: set `vendor` to `openai`, `groq`, `hugging_face` or
+`whisper_builtin` for a local model. `wtf_transcribe` is a separate link that writes the
+[WTF transcription format](../extensions/wtf-transcription.md) through the vfun service. If the vCon already carries a transcript the link notices and skips the work, which is
 what makes reprocessing a chain cheap.
 
 ## 6. Analysis and tagging
@@ -138,7 +141,8 @@ noise from the front wheels at low speed, about 30,000 miles, advisor booked an 
 Thursday.
 
 The fourth link is `check_and_tag`, configured with the `evaluation_question` "Does the customer
-mention a safety recall or a recall notice they received?" and a tag of `recall: true`. The model
+mention a safety recall or a recall notice they received?", a `tag_name` of `recall` and a
+`tag_value` of `true`. The model
 reads the transcript, answers yes, since the customer said she had a recall letter in the glove box
 and wondered whether it was related, and the link writes the tag into the vCon's `tags` attachment.
 If the answer had been no, the link would have added nothing and the chain would have carried on.
@@ -161,7 +165,7 @@ another chain's ingress list, and that is how long processes are built out of sh
 ## 8. The custom link
 
 The sixth link is the dealership's own. `crm_lookup` is forty lines of Python following the
-[custom link template](/conserver/creating-custom-links.md). It reads the customer's number from
+[custom link template](creating-custom-links.md). It reads the customer's number from
 `parties[]`, asks the CRM what it knows, and writes the answer back as an attachment carrying the
 account number, the vehicle's VIN, the open repair order and the customer's assigned advisor,
 with the party index that says who it refers to.
@@ -182,34 +186,36 @@ about to land somewhere permanent.
 
 ## 10. Storage
 
-The chain is finished, so the conserver writes the vCon to every storage configured on it, in
-parallel by default. `postgres` writes a row to the `vcons` table with the full document in a
+No link stopped the chain, so the conserver first pushes the UUID onto the `service_done` egress
+list for anything that wants to run next, then writes the vCon to every storage configured on the
+chain, in parallel by default. `postgres` writes a row to the `vcons` table with the full document in a
 JSONB column, the subject and the timestamps. `s3` writes the file to `{path}/2026/09/02/{uuid}.vcon`
 by creation date. `vcon_mcp` POSTs the vCon to a running vCon MCP server's REST API, which puts it
 in the Supabase database that AI assistants will read from.
 
-Then the UUID is pushed onto the `service_done` egress list for anything that wants to run next.
-Fourteen storage backends ship with the conserver, from Elasticsearch and Milvus to Microsoft
+Fifteen storage modules ship with the conserver, from Elasticsearch and Milvus to Microsoft
 Dataverse and a SCITT storage that registers the finished vCon on the ledger without writing the
 receipt back. One write, many destinations, each tuned to a different reader. See
-[Storage](/conserver/storage.md).
+[Storage](storage.md).
 
-Had any link thrown an exception, or the chain run past its 600 second timeout, the UUID would have
-gone to `DLQ:service_calls` instead, where it waits seven days for someone to inspect it and
-`POST /dlq/reprocess` sends it back through. Nothing is dropped silently.
+Had any link thrown an exception, the UUID would have gone to `DLQ:service_calls` instead, and the
+vCon's Redis copy would have been kept for seven days so `POST /dlq/reprocess` can send it back
+through. Had only the S3 write failed, the UUID would have gone to `DLQ:storage:s3` and
+`POST /dlq/storage/reprocess` would retry that one write. The full rules are in
+[Concepts](concepts.md#dead-letter-queues).
 
 ## 11. The MCP server
 
 The conserver's work is done. It processed the conversation once, on arrival, whether or not anyone
-ever asks about it. Asking is the [vCon MCP server](/mcp-server/README.md)'s job.
+ever asks about it. Asking is the [vCon MCP server](../mcp-server/README.md)'s job.
 
 The MCP server is the read path over the same store. It exposes 46 tools over the Model Context
 Protocol, so an AI assistant can search conversations by metadata, by keyword, by meaning, or by
-a hybrid of the two, then fetch one record or one component of one. It reads Redis first and
-falls back to Postgres, so a conversation someone looked at a moment ago comes back in a couple of
-milliseconds. Nothing is copied between the two systems. The conserver decides what the record
-becomes. The MCP server decides what can be asked of it. See
-[MCP and Conserver Together](/mcp-server/mcp-and-conserver-together.md).
+a hybrid of the two, then fetch one record or one component of one. When it is given a Redis
+cache it reads through it, so a conversation someone looked at a moment ago comes back quickly. The
+conserver hands each finished vCon to the MCP server's store through its `vcon_mcp` storage. The
+conserver decides what the record becomes. The MCP server decides what can be asked of it. See
+[Sharing a store with the conserver](../mcp-server/transport-and-deployment.md#sharing-a-store-with-the-conserver).
 
 ## 12. The assistant
 
@@ -226,7 +232,7 @@ the Thursday appointment, the open repair order and a citation back to the call.
 Nobody built an integration for that question. The conversation was already a first class record,
 and the assistant read it the way it reads a file.
 
-## What the vCon carries now
+## Contents of the finished vCon
 
 | Section | What is in it | Who put it there |
 | ------- | ------------- | ---------------- |
@@ -235,7 +241,7 @@ and the assistant read it the way it reads a file.
 | `attachments[]` | INVITE, SDP, STIR PASSporT (`purpose: sip-*`) | Adapter |
 | `attachments[]` | `lawful_basis`: consent, purposes granted, proof, expiration | Adapter |
 | `analysis[]` | `scitt_receipt` for `vcon_created` | `scitt` link |
-| `analysis[]` | Transcript with timed segments and confidences | `deepgram_link` |
+| `analysis[]` | Transcript with timed segments and confidences | `transcribe` link (Deepgram) |
 | `analysis[]` | Summary | `analyze` link |
 | `attachments[]` | `tags`: `recall: true` | `check_and_tag` link |
 | `attachments[]` | CRM account, VIN, open repair order, advisor | Custom link |
@@ -246,12 +252,20 @@ The record only grew. No link rewrote what an earlier one had written, which is 
 account of the conversation part of the conversation. And the same JSON is in Postgres, in S3 and
 behind the MCP server, byte for byte, with two receipts that prove it.
 
-## Some months later
+## The deletion request
 
-The customer sells the car and asks the dealership to delete her recordings. The dealership records
-a `vcon_consent_revoked` event on the transparency ledger, then calls `DELETE /vcon/{uuid}`, which
-removes the vCon from Redis and from every configured storage. It records `vcon_deleted` on the
-ledger. The vCon is gone. The proof that it existed, that consent was given and later withdrawn,
+Some months later the customer sells the car and asks the dealership to delete her recordings. The
+dealership pushes the UUID through a one-link chain whose `scitt` link is configured with
+`vcon_operation: vcon_consent_revoked`, which registers the withdrawal on the transparency ledger.
+Then it calls `DELETE /vcon/{uuid}`. That removes the Redis copy and calls `delete` on every
+configured storage that implements it. Postgres, S3 and the vCon MCP storage all do, so the record
+is gone from all three. Storages without a delete (`mongo`, `sftp`, `milvus`, `dataverse`,
+`redis_storage`, `chatgpt_files`, `spaceandtime`, `scitt`, `webhook`) are skipped, so a deployment
+using them has to delete there by other means.
+
+The conserver does not record `vcon_deleted` on the ledger by itself. Its `on_vcon_deleted` hook is
+a no-op that a deployment can replace at build time; this dealership's replacement registers the
+event. With that in place the vCon is gone. The proof that it existed, that consent was given and later withdrawn,
 and that deletion happened, stays on the ledger forever. When a regulator asks what happened to
 that conversation, the answer comes from the ledger rather than from reconstructed logs.
 
@@ -259,20 +273,18 @@ that conversation, the answer comes from the ledger rather than from reconstruct
 
 Each station alone is useful. Together they turn a phone call that would have sat in a recording
 bucket nobody opened into a record the business and its AI can use, and can prove. The adapter
-ends vendor lock in. The queue guarantees nothing is lost. Transcription turns audio into data.
+ends vendor lock in. The queue absorbs bursts, and the dead letter queues keep failures for replay. Transcription turns audio into data.
 The chain compounds value one link at a time, inside your security boundary. Storage serves every
 reader. The MCP server carries the result to where decisions are now being made. The receipts and
 the lawful basis attachment mean every one of those readers can trust what they are looking at.
 
-## Where to go next
+## Related pages
 
-* [Conserver Introduction](/conserver/conserver-introduction.md) explains the five primitives
-  this page walks through.
-* [Standard Links](/conserver/standard-links.md) is the reference for all 22 shipped links,
-  including every option used above.
-* [Creating Custom Links](/conserver/creating-custom-links.md) is how `crm_lookup` gets written.
-* [Configuring the Conserver](/conserver/configuring-the-conserver.md) covers the chain YAML in
-  full.
-* [Lawful Basis](/extensions/lawful-basis.md) and [Lifecycle](/extensions/lifecycle.md) are the
+* [Concepts](concepts.md) defines the primitives this page walks through and the exact chain rules.
+* [Standard Links](standard-links.md) is the reference for all 23 shipped links, including every
+  option used above.
+* [Creating Custom Links](creating-custom-links.md) is how `crm_lookup` gets written.
+* [Configuring the Conserver](configuring-the-conserver.md) covers the chain YAML in full.
+* [Lawful Basis](../extensions/lawful-basis.md) and [Lifecycle](../extensions/lifecycle.md) are the
   two extensions that make the record governable.
-* [The Journey of a vCon](/conserver/vcon-conveyor-infographic.md) is this page as a picture.
+* [The Journey of a vCon](vcon-conveyor-infographic.md) is this page as a picture.

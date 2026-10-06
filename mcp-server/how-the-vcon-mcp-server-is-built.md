@@ -1,273 +1,152 @@
 ---
 icon: hammer-brush
+description: How the vCon MCP server turns a tool call into Postgres reads and writes, so you can predict its behaviour, extend it with plugins and run it with the right expectations.
 ---
 
 # How the vCon MCP Server is Built
 
-The vCon MCP Server is built in layers, with each layer handling a specific responsibility. This architecture makes the server reliable, performant, and extensible. This page is the narrative architecture overview; for the per-tool surface see [Tool Reference](tool-reference.md).
+The server is TypeScript on the official MCP SDK, with Supabase Postgres underneath. A request
+passes through three layers: the MCP layer that speaks the protocol, a business layer that
+validates and runs hooks, and a query layer that reads and writes normalized tables. This page
+follows the code at release 1.9.2 of [vcon-dev/vcon-mcp](https://github.com/vcon-dev/vcon-mcp).
+For transports, keys and environment variables see
+[Transport and Deployment](transport-and-deployment.md).
+
+<figure><img src="figures/mcp-request-path.svg" alt="A request passes down through the MCP layer, the business logic layer and the database layer, and the answer comes back up the same way"><figcaption>Down through three layers and back up.</figcaption></figure>
 
-> **May 2026 redesign.** The server now exposes 46 tools, including a new contract / discovery family (`vcon_fetch`, `vcon_search`, `vcon_capabilities`, `vcon_taxonomy`, `describe_response_shape`) designed specifically for LLM clients that don't know the server's shape in advance. See [Contract Tools](contract-tools.md). The same release added a field-name migration handling `appended → amended` and `must_support → critical`; see [Field-Name Migration](field-name-migration.md).
+## The MCP layer
 
-### The Three-Layer Architecture
+`src/server/` registers handlers for listing and calling tools, listing and reading resources, and
+listing and getting prompts. On `tools/list` it gathers the 46 built-in tools, drops those the
+deployment's profile or the caller's read-only key excludes, and appends any plugin tools. On
+`tools/call` it finds the tool's handler in a registry (`src/tools/handlers/`) and runs it, or hands
+the call to the plugin that registered the tool.
+
+Resources are read-only views at `vcon://v1/` URIs, for example `vcon://v1/vcons/{uuid}` and
+`vcon://v1/vcons/{uuid}/parties`. Prompts are templates that tell a client which tools to call for
+a kind of question. Both are listed in the [Tool Reference](tool-reference.md#resources).
 
-The server has three main layers:
+## The business layer
+
+### Validation
 
-**MCP Server Layer** - Handles communication with AI assistants using the Model Context Protocol. This layer exposes tools, resources, and prompts that assistants can use.
+Every create and append is checked before it reaches the database (`src/utils/validation.ts`):
 
-**Business Logic Layer** - Contains the core functionality for managing conversations. This includes query engines, validation, and plugin systems.
+* the UUID is well formed and `created_at` is a valid date
+* there is at least one party, and every party has an identifier
+* every dialog type is `recording`, `text`, `transfer` or `incomplete`; an `incomplete` dialog has a `disposition`; a `transfer` dialog has its transfer fields
+* every analysis has `type` and `vendor`, and uses `schema`, not `schema_version`
+* every encoding is `base64url`, `json` or `none`, and a body with `encoding: "json"` parses
+* every analysis and attachment has `body` and `encoding` or `url` and `content_hash`
+
+A failure returns an MCP invalid-params error listing what is wrong. A `critical` entry that is not
+in `extensions` is a warning, not a failure. The `vcon` version field is not checked. Index
+references from dialog to parties are not checked.
+
+Tool arguments are described as JSON Schema for the client, and the schema `get_schema` returns is
+built from Zod definitions in the same code.
 
-**Database Layer** - Stores and retrieves conversation data. This layer uses Supabase and PostgreSQL with extensions for vector search.
+### Plugins
 
-Requests flow from top to bottom. An AI assistant sends a request to the MCP Server Layer. That layer processes it and passes it to the Business Logic Layer. The Business Logic Layer validates and processes the request, then uses the Database Layer to store or retrieve data. Responses flow back up the same path.
-
-### The MCP Server Layer
-
-The MCP Server Layer is the interface between AI assistants and the server. It speaks the Model Context Protocol, which is a standard way for assistants to interact with external systems.
-
-#### Tools, Resources, and Prompts
-
-The server exposes three types of interfaces:
-
-**Tools** are actions the assistant can perform. When you ask the assistant to create a conversation or search for something, it uses a tool. Each tool has a name, description, input parameters, and output format. The assistant reads these definitions and knows how to use each tool.
-
-**Resources** are data the assistant can read. Resources use URI paths, similar to URLs. For example, a resource might be `vcon://uuid/abc123` to access a specific conversation, or `vcon://uuid/abc123/parties` to get just the participant information. Resources are read-only, which keeps them safe.
-
-**Prompts** are guidance templates that help the assistant work effectively. They explain how to structure queries, what information to include, and best practices. The assistant uses prompts to understand how to accomplish tasks correctly.
-
-#### Request Handling
-
-When an assistant sends a request, here is what happens:
-
-1. The request arrives through the MCP protocol, either via standard input/output or HTTP
-2. The server parses the JSON-RPC message to understand what the assistant wants
-3. The server identifies which tool, resource, or prompt is being requested
-4. The server prepares to process the request
-5. Plugin hooks can run at this point to modify or intercept the request
-6. The request moves to the Business Logic Layer for processing
-7. The response comes back from the Business Logic Layer
-8. Plugin hooks can run again to modify the response
-9. The response is formatted as an MCP protocol message
-10. The response is sent back to the assistant
-
-This flow ensures requests are handled consistently and provides opportunities for plugins to add functionality.
-
-### The Business Logic Layer
-
-The Business Logic Layer contains the core functionality of the server. It handles validation, queries, and extensions.
-
-#### The Query Engine
-
-The query engine handles all database operations. It knows how to create, read, update, and delete conversations. It also handles search operations, component management, and tag operations.
-
-The query engine is designed to be efficient. It uses database transactions for operations that involve multiple steps, ensuring data consistency. When creating a conversation, for example, it might need to insert records into multiple tables. Using a transaction means either all the inserts succeed or none of them do, preventing partial data.
-
-The engine also normalizes data when storing it. Normalized data is organized into separate tables with relationships between them. This makes queries efficient and prevents data duplication. When returning data to clients, the engine reconstructs complete conversation objects from the normalized data.
-
-#### The Validation Engine
-
-The validation engine ensures all conversation data follows the IETF vCon standard before it is stored. This prevents invalid data from entering the database and ensures compatibility with other systems.
-
-Validation checks include:
-
-* Version numbers must match the current vCon specification version
-* UUIDs must be in the correct format
-* At least one participant must exist
-* Dialog types must be valid
-* Analysis entries must include required fields like vendor information
-* References between components must be valid (for example, a dialog entry cannot reference a participant that does not exist)
-* Encoding values must be valid
-* Dates must be in ISO 8601 format
-
-If validation fails, the server returns a clear error message explaining what is wrong. This helps users fix their data before trying again.
-
-#### The Plugin System
-
-The plugin system allows extending the server without modifying its core code. Plugins can add new tools, resources, and prompts. They can also intercept operations at various points in the request lifecycle.
-
-Plugins use hooks that fire at specific times:
-
-* Before an operation starts, plugins can modify the request
-* After an operation completes, plugins can modify the response
-* Plugins can add logging, access control, data transformation, or other functionality
-
-For example, a privacy plugin might intercept read operations and remove sensitive information before returning data. An audit plugin might log all operations for compliance tracking. A compliance plugin might check operations against regulatory requirements.
-
-The plugin system loads plugins when the server starts. Plugins register their hooks, tools, resources, and prompts. When requests come in, the server calls the appropriate hooks and tools from all loaded plugins.
-
-### The Database Layer
-
-The Database Layer stores conversation data in Supabase, which provides PostgreSQL with additional features.
-
-#### Normalized Schema Design
-
-The database uses a normalized schema, which means data is organized into separate tables with relationships between them. This is different from storing each conversation as a single JSON document.
-
-The eight core tables are:
-
-* `vcons` — the conversation record itself: `uuid`, `subject`, `created_at`, `updated_at`, `extensions`, `critical` (was `must_support`), `amended` (was `appended`), `vcon_version`
-* `parties` — participants, foreign-keyed to `vcons`: `tel`, `sip`, `mailto`, `name`, `role`, `validation`, `jcard`, `timezone`
-* `dialog` — conversation content: `type` (`recording`, `text`, `transfer`, `incomplete`), `start`, `duration`, `parties[]`, `body`, `encoding`, `mediatype`, `session_id`, `disposition`
-* `analysis` — AI/ML results: `type`, `vendor` (REQUIRED), `product`, `schema` (was `schema_version`), `body`, `encoding`, `dialog_indices[]`
-* `attachments` — files and structured documents: `purpose` (spec field), `party`, `dialog`, `body`, `encoding`, `mediatype`, `filename`, `url`, `content_hash`
-* `groups` — multi-vCon aggregations
-* `party_history` — join / drop / hold / mute events
-* `vcon_embeddings` — semantic-search vectors (`embedding vector(384)`, `model`, with a queue table for asynchronous generation)
-
-Two views and one materialized view round out the data layer:
-
-* `vcons_legacy` — backward-compat view that exposes the old field names (`must_support`, `appended`, `schema_version`, `mimetype`) for clients that haven't migrated. See [Field-Name Migration](field-name-migration.md).
-* `vcon_tags_mv` — materialized view that parses the tags attachment (`purpose: "tags"`, `encoding: "json"`) into rows so tag filtering doesn't pay the JSON-parsing cost on every query.
-
-This design has several benefits:
-
-* Efficient queries. You can search for conversations by participant without loading all conversation data
-* Easy to update. You can add a new dialog entry without touching other parts of the conversation
-* Scalable. The database can handle millions of conversations efficiently
-* Proper constraints. Foreign keys ensure data relationships are valid
-
-When returning data to clients, the query engine joins these tables together to reconstruct complete conversation objects.
-
-#### Search Architecture
-
-The server supports four types of search, each using different database features:
-
-**Metadata search** filters by subject, participant, or dates. It uses B-tree indexes, which are fast for exact matches and range queries. This is the fastest search method, typically returning results in under 100 milliseconds.
-
-**Keyword search** looks for words within conversation content. It uses GIN indexes with trigram matching, which allows it to find words even with minor typos. It searches through dialog text, analysis results, and participant information. This method typically takes a few hundred milliseconds.
-
-**Semantic search** finds conversations by meaning using AI embeddings. Conversations are converted into 384-dimension vectors stored in the `vcon_embeddings` table (`pgvector` extension) and indexed with HNSW for fast similarity search. The default embedding provider is OpenAI; the model is configurable via the `EMBEDDING_MODEL` environment variable, and a queue-based async generator (`embedding_queue` table) handles backfilling new vCons without blocking writes. Semantic queries typically take one to two seconds.
-
-**Hybrid search** combines keyword and semantic search. It runs both searches and merges the results, ranking them based on a weighted combination of both scores. You can control how much weight each method has. This method provides the best of both approaches but takes longer, typically two to three seconds.
-
-Each search method is implemented as a database function that runs on the database server. This keeps search logic close to the data, which improves performance.
-
-#### Tag Storage
-
-Tags are stored as a special type of attachment. This keeps tags within the vCon format while allowing efficient searching.
-
-The server maintains a materialized view that extracts tags from attachments and indexes them. A materialized view is a pre-computed query result that is stored in the database and refreshed periodically. This makes tag searches very fast without requiring schema changes when you add new tags.
-
-When you search by tags, the server uses this materialized view to find conversations quickly. When you add or update tags, the materialized view is updated automatically.
-
-#### Caching with Redis
-
-The server supports optional Redis caching. Redis is an in-memory data store that is much faster than database queries. When enabled, the server checks Redis first before querying the database.
-
-If data is found in Redis, it returns immediately. If not, it queries the database, stores the result in Redis for future requests, and then returns it. This can make frequently accessed conversations load 20 to 50 times faster.
-
-Redis caches have expiration times, so cached data does not become stale. When conversations are updated, the cache is cleared for those conversations, ensuring you always get current data.
-
-### Request Flow Examples
-
-Let us walk through two examples to see how requests flow through the system.
-
-#### Creating a Conversation
-
-You ask the assistant: "Create a vCon for a support call."
-
-1. The assistant calls the `create_vcon` tool with conversation data.
-2. The MCP Server Layer receives the request and identifies it as a tool call.
-3. Plugin hooks can run at this point. For example, a plugin might add default tags or metadata.
-4. The Business Logic Layer receives the request. The validation engine checks that all required fields are present and valid.
-5. If validation passes, the query engine starts a database transaction.
-6. The query engine inserts records:
-   * First, it inserts the main conversation record into the `vcons` table
-   * Then it inserts participant records into the `parties` table
-   * If dialog content is provided, it inserts dialog records
-   * If analysis results are provided, it inserts analysis records
-7. The transaction commits, ensuring all inserts succeed together.
-8. Plugin hooks run again. For example, an audit plugin might log the creation, or a webhook plugin might notify another system.
-9. The response is formatted and sent back to the assistant, including the new conversation's UUID.
-10. The assistant receives the response and confirms the conversation was created.
-
-#### Semantic Search
-
-You ask the assistant: "Find frustrated customers from last week."
-
-1. The assistant calls the `search_vcons_semantic` tool with a query and date range.
-2. The MCP Server Layer receives the request.
-3. Plugin hooks might modify the search criteria. For example, a multi-tenant plugin might add filters to restrict results to your organization.
-4. The Business Logic Layer receives the request. It converts your query text into an embedding vector using an AI service like OpenAI.
-5. The query engine calls a database function that performs the semantic search. The function:
-   * Uses the HNSW index to find conversations with similar embeddings
-   * Filters by your date range
-   * Applies any tag filters you specified
-   * Ranks results by similarity
-   * Returns the top matches
-6. The query engine reconstructs complete conversation objects by joining the search results with related tables.
-7. Plugin hooks might filter the results. For example, a privacy plugin might remove sensitive conversations before returning them.
-8. The response is formatted and sent back to the assistant with search results.
-9. The assistant receives the results and can analyze or present them to you.
-
-### Performance Considerations
-
-The server is designed for performance at multiple levels.
-
-#### Database Optimization
-
-The database uses indexes strategically. B-tree indexes on UUIDs and dates make lookups by identifier or date range fast. GIN indexes on text fields enable fast full-text search. HNSW indexes on embeddings enable fast semantic search.
-
-The server also uses materialized views for frequently accessed data like tags. These views are pre-computed and refreshed periodically, avoiding expensive computations on every query.
-
-Query patterns are optimized. The server uses prepared statements, which are faster than building queries from strings. It batches operations where possible, reducing the number of database round trips.
-
-#### Memory Management
-
-The server limits result set sizes to prevent memory issues. Large searches return paginated results. The server can stream large responses instead of loading everything into memory at once.
-
-Plugin resources are cleaned up properly. When plugins are unloaded or the server shuts down, resources are released to prevent memory leaks.
-
-#### Scalability
-
-The server design supports scaling in multiple ways:
-
-**Horizontal scaling** means running multiple server instances. Since the server is stateless (it does not store session information), you can run multiple instances behind a load balancer. Requests can be distributed across instances.
-
-**Vertical scaling** means increasing the resources available to a single instance. You can add more memory, faster CPUs, or faster database connections.
-
-**Read replicas** allow distributing read queries across multiple database copies. Write operations go to the main database, while read operations can use replicas, reducing load on the primary database.
-
-### Type Safety and Validation
-
-The server is built with TypeScript, which provides compile-time type checking. This means many errors are caught before the code runs. Type definitions match the IETF vCon specification exactly, ensuring the code implements the standard correctly.
-
-Runtime validation uses Zod, which validates data when it arrives. Even if data comes from an external source that might not follow types correctly, Zod ensures it matches the expected structure before processing.
-
-The combination of TypeScript types and Zod validation provides both compile-time safety and runtime safety, preventing many classes of bugs.
-
-### Extensibility Through Plugins
-
-The plugin system allows the server to be extended without modifying core code. This keeps the core simple and focused, while allowing specific needs to be addressed through plugins.
-
-Plugins can be developed independently and loaded at runtime. They can add functionality like compliance checking, privacy controls, integrations with other systems, or custom analytics.
-
-The plugin interface is well-defined, so plugins work reliably. As long as a plugin implements the interface correctly, it will work with the server regardless of when it was developed.
-
-### Transport
-
-The server runs in one of two transports, controlled by the `MCP_TRANSPORT` environment variable:
-
-* **stdio** (default) — for Claude Desktop, the MCP inspector CLI, and any client that launches the server as a subprocess.
-* **HTTP** (Streamable HTTP, spec 2025-03-26) — for remote agents and web clients. Supports stateful (`Mcp-Session-Id` header) or stateless mode, optional Server-Sent Events for notifications, configurable CORS and DNS-rebinding protection.
-
-See [Transport and Deployment](transport-and-deployment.md) for the full environment-variable reference and deployment recipes.
-
-### Security Architecture
-
-Security is handled at multiple levels:
-
-**Authentication** ensures only authorized clients can call the server. The MCP server validates a bearer token configured via the `API_KEYS` environment variable (a comma-separated list). The token is read by default from the `Authorization: Bearer <token>` header; override the header name with `API_KEY_HEADER`. If `API_AUTH_REQUIRED=true` (the default) and `API_KEYS` is unset, the server refuses to start — that's intentional, to prevent accidental unauthenticated deployments. See [Transport and Deployment](transport-and-deployment.md) for the full configuration surface.
-
-**Multi-tenancy.** When `TENANT_ISOLATION=true`, every request must supply a tenant identifier — either via the `x-tenant-id` header or the `TENANT_ID` env var as a default. The server passes the resolved tenant id into every database query, where Supabase Row Level Security policies enforce isolation between tenants.
-
-**Authorization** beyond authentication is delegated to Supabase RLS policies on the database tables. Plugins can add additional authorization checks at the tool layer.
-
-**Data protection** includes encryption at rest in Supabase and TLS in transit. Plugins can add redaction to hide sensitive information before returning data; the response shape stays the same so clients don't need to know whether redaction was applied.
-
-The server itself does not persist credentials — `API_KEYS` is read at startup, and the Supabase service-role or anon key is read per query. Rotate credentials by restarting the server with new values.
-
-### Conclusion
-
-The vCon MCP Server's architecture balances simplicity, performance, and extensibility. The layered design separates concerns, making the code easier to understand and maintain. The normalized database schema ensures efficient queries and scalability. The plugin system allows extending functionality without modifying core code.
-
-This architecture supports the server's goals of providing reliable conversation data management while remaining flexible enough to meet diverse needs. The next post in this series covers business cases and real-world use cases for the server.
+A plugin is a module listed in `VCON_PLUGINS_PATH`. It can register tools, handle calls to them,
+and implement lifecycle hooks:
+
+| Hook | Runs on |
+| ---- | ------- |
+| `beforeCreate`, `afterCreate` | `create_vcon`, `create_vcon_from_template`, REST create |
+| `beforeRead`, `afterRead` | `get_vcon`, REST get |
+| `beforeSearch`, `afterSearch` | `search_vcons` |
+| `beforeUpdate`, `afterUpdate` | `update_vcon` |
+| `beforeDelete`, `afterDelete` | `delete_vcon` |
+
+The contract tools (`vcon_fetch`, `vcon_search` and the rest), the keyword, semantic, hybrid and
+tag searches, the child-edit tools and resource reads run no hooks. A redaction plugin written as
+`afterRead` therefore does not cover `vcon_fetch`. This is tracked in
+[vcon-mcp#100](https://github.com/vcon-dev/vcon-mcp/issues/100). Plugins can also list resources,
+but reads of those URIs are not passed to the plugin.
+
+No plugins ship with the server.
+
+## The query layer
+
+`src/db/queries.ts` talks to Supabase through `supabase-js`, which sends PostgREST HTTP requests.
+Searches and rollups call Postgres functions (`rpc`). There are no prepared statements on the
+client side and no client-held database connection.
+
+### Writes
+
+Creates go through a batch writer (`src/db/batch-writer.ts`) that groups concurrent creates for up
+to 100 vCons or 200 milliseconds per tenant. It upserts the `vcons` rows first, then the parties,
+dialog, analysis and attachment rows in parallel. Each PostgREST call is its own transaction, so
+there is no transaction around a whole vCon: if a child insert fails, the parent row and any
+children already written stay. The caller gets the error and can retry; upserts make a retry
+safe.
+
+Edits to one part, such as `add_dialog` or `update_party`, touch that table's rows and then delete
+the vCon's Redis entry.
+
+### Reads
+
+A read fetches the `vcons` row and its child rows and reassembles the vCon. Keys that have no
+column of their own are kept in each row's `extra` column and merged back, so a vCon reads back with
+the keys it was written with. With Redis configured, single-vCon reads check the cache first.
+
+There is no streaming. Large results are controlled with `limit`, pagination and, on the contract
+tools, `max_response_bytes`.
+
+### Tables
+
+| Table | Holds |
+| ----- | ----- |
+| `vcons` | One row per vCon: `uuid`, `subject`, timestamps, `extensions`, `critical`, `amended`, `redacted`, `group_data`, `tenant_id` |
+| `parties` | Parties, keyed by vCon and index |
+| `dialog` | Dialog entries, keyed by vCon and index |
+| `analysis` | Analyses, keyed by vCon and index |
+| `attachments` | Attachments, keyed by vCon and index, including the tags attachment |
+| `groups`, `party_history` | Group references and party join, drop, hold and mute events |
+| `vcon_embeddings` | 384-dimension vectors with the model that produced them |
+| `embedding_queue` | vCons waiting for embedding, filled by an insert trigger |
+| `privacy_requests`, `s3_sync_tracking`, `migration_reports` | Supporting tables used by scripts and edge functions |
+
+The views are `vcon_tags_mv` (a materialized view with one row per tag) and `vcons_legacy` (old
+field names; see [Field-Name Migration](field-name-migration.md)). Migration
+`20260611120000_vkong_schema.sql` also creates a separate `vkong` schema for another service; the
+MCP server does not use it.
+
+### Search
+
+| Mode | How it runs |
+| ---- | ----------- |
+| Metadata | Filters on `vcons` and `parties` with B-tree indexes; tag filters go through `vcon_tags_mv` |
+| Keyword | `search_vcons_keyword` matches stored `tsvector` columns on subject, parties, dialog bodies and analysis bodies with `plainto_tsquery`. English stemming on text, simple tokens on parties. No typo tolerance |
+| Semantic | `search_vcons_semantic` compares the query embedding with `vcon_embeddings` by cosine distance under an HNSW index |
+| Hybrid | `search_vcons_hybrid` blends keyword rank and semantic similarity by `semantic_weight` |
+
+Trigram (`pg_trgm`) GIN indexes exist on party `name`, `mailto` and `tel` and on dialog and analysis
+bodies. They speed substring filters such as `party_name`; keyword search does not use them.
+
+The query embedding comes from Supabase's built-in `gte-small` by default, or OpenAI
+`text-embedding-3-small` at 384 dimensions when `OPENAI_API_KEY` is set. Stored vCons are embedded
+outside the write path by an edge function.
+
+### Tags
+
+Tags are one attachment per vCon with `purpose: "tags"` and a JSON array of `"key:value"` strings,
+so they stay inside the vCon. `vcon_tags_mv` expands them into rows, and tag filters read the view.
+The view is a snapshot. The server refreshes it, when a tags attachment is newer than the view,
+before `get_unique_tags` and the `vcon_taxonomy` coverage count; otherwise it is refreshed by hand
+or by a scheduled job. Until then a new tag may not match a tag filter.
+
+### Tenancy
+
+Tenancy is set per deployment. With `RLS_ENABLED=true` and `CURRENT_TENANT_ID` set, the server
+calls a database function that sets `app.current_tenant_id` on its session, and Row Level Security
+policies on every table compare each row's `tenant_id` with it. A tenant ID in a JWT claim takes
+precedence. On write, `tenant_id` is taken from the vCon's tenant attachment. One instance serves one
+tenant.
+
+## See also
+
+* [What is the vCon MCP Server?](what-is-the-vcon-mcp-server.md)
+* [Tool Reference](tool-reference.md)
+* [Transport and Deployment](transport-and-deployment.md)

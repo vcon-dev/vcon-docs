@@ -1,53 +1,63 @@
+---
+description: Every route of the conserver REST API, with authentication, parameters, status codes and the Redis behavior behind each.
+---
+
 # 🧩 API
 
-The Conserver provides a REST API built on FastAPI for managing vCons, chains, configuration, and more. The API supports both internal operations and external partner integrations with scoped authentication.
+The conserver API is a FastAPI application. It stores and fetches vCons, feeds and drains chains, reads and writes the configuration, and manages the dead letter queues.
 
-## Base URL
+## Base URL and headers
 
-The API is served at the path configured by the `API_ROOT_PATH` environment variable (default: `/api`).
+Every route, including the system routes, sits under `API_ROOT_PATH` (default `/api`). With the compose file, the API listens on port 8000, so the health route is `http://localhost:8000/api/health`.
 
-## Authorization
+Every response carries `X-Vcon-Server-Version` and `X-Vcon-Server-Commit`, taken from the image build arguments. Both read `dev` or `unknown` on an image built without them. CORS is open to all origins.
 
-The Conserver API supports two authentication models:
+## Authentication
 
-### Internal API Authentication
+Two separate models apply, and a key from one is not accepted by the other.
 
-For full system access, use the main API token via the `x-conserver-api-token` header (or custom header name via `CONSERVER_HEADER_NAME`).
+| Routes | Credential |
+| ------ | ---------- |
+| All routes below except those named next | The main token in the `x-conserver-api-token` header, or the header named by `CONSERVER_HEADER_NAME`. |
+| `GET /version`, `GET /health`, `GET /stats/queue` | None. |
+| `POST /vcon/external-ingress` | A key from `ingress_auth` in `config.yml`, scoped to one ingress list. |
+
+Set `CONSERVER_API_TOKEN`, or `CONSERVER_API_TOKEN_FILE` with one token per line. With neither set, the main API accepts every request. A wrong or missing token returns `403` with `{"detail": "Invalid API Key"}`.
 
 ```bash
-curl -H "x-conserver-api-token: your-api-token" \
-  "http://localhost:8000/api/vcon"
+curl -H "x-conserver-api-token: $TOKEN" "http://localhost:8000/api/vcon"
 ```
 
-Configure the API token via environment variables:
+## Errors
 
-| Variable                   | Description                                           |
-| -------------------------- | ----------------------------------------------------- |
-| `CONSERVER_API_TOKEN`      | Single API token for authentication                   |
-| `CONSERVER_API_TOKEN_FILE` | Path to file containing API tokens (one per line)     |
-| `CONSERVER_HEADER_NAME`    | Custom header name (default: `x-conserver-api-token`) |
+| Code | Meaning |
+| ---- | ------- |
+| `400` | `GET /vcons/search` called with no search parameter. |
+| `403` | Bad or missing key. External ingress adds the reason to `detail`. |
+| `404` | Unknown vCon, or an unknown storage name on a storage DLQ replay. |
+| `409` | A storage DLQ replay is already running, or a stale replay lock needs recovery. |
+| `422` | The request body or a query parameter failed validation. FastAPI returns a `detail` list that names the failing field. |
+| `500` | A Redis or storage error. `detail` is a short fixed message. The cause is in the server log. |
 
-When neither `CONSERVER_API_TOKEN` nor `CONSERVER_API_TOKEN_FILE` is set, authentication is disabled.
-
-### External Ingress Authentication
-
-For external partners, use ingress-specific API keys that only allow access to designated ingress lists. Configure in `config.yml`:
-
-```yaml
-ingress_auth:
-  partner_ingress:
-    - "partner-key-1"
-    - "partner-key-2"
-  customer_data: "single-customer-key"
+```json
+{ "detail": "vCon not found" }
 ```
 
-External partners can only use the `/vcon/ingress` endpoint with their scoped keys (one ingress key per `ingress_list`).
+## vCon validation
 
-***
+`POST /vcon` and `POST /vcon/external-ingress` parse the body with a model that requires `vcon` (string), `uuid` and `created_at`, and accepts extra fields. It returns `422` when:
 
-## System Endpoints (no auth)
+* `dialog[].url` is not empty and does not look like a URL (`scheme://...`).
+* `dialog[].duration` is negative.
+* `dialog[].mimetype` is present and not a valid media type, or `dialog[].alg` is not a known algorithm.
+* `parties[].tel` is not empty and does not look like a phone number.
+* a `dialog[].parties` index is outside the `parties` array.
 
-A small set of system endpoints are mounted at the application root (not under `API_ROOT_PATH`) and require **no authentication**, so they can be used by monitoring tooling, load balancers, and autoscalers.
+The model fills `redacted`, `group` and `appended` with empty defaults, so the copy the API stores in Redis can carry them. The first link that stores the vCon drops an empty `group` and `redacted` and stamps `vcon` as `0.4.0`.
+
+The conserver does not require or check a lawful basis. A vCon you send should carry an attachment with `purpose: "lawful_basis"`, as in [Quick Start](conserver-quick-start.md#send-a-vcon). See the [Lawful Basis extension](../extensions/lawful-basis.md).
+
+## System routes
 
 ### Version
 
@@ -55,21 +65,9 @@ A small set of system endpoints are mounted at the application root (not under `
 GET /version
 ```
 
-Returns build metadata.
-
-**Response:** `200 OK`
-
 ```json
-{
-  "version": "2026.05.18",
-  "git_commit": "5bc6b6e2c5c3a577d8295c1cb88f83d989f5db58",
-  "build_time": "2026-05-18T10:00:00Z"
-}
+{ "version": "2026.05.18", "git_commit": "5bc6b6e", "build_time": "2026-05-18T10:00:00Z" }
 ```
-
-The version follows CalVer (`YYYY.MM.DD`). `git_commit` is the source-of-truth commit deployed; useful for confirming what's running after a roll-out.
-
-***
 
 ### Health
 
@@ -77,456 +75,183 @@ The version follows CalVer (`YYYY.MM.DD`). `git_commit` is the source-of-truth c
 GET /health
 ```
 
-Health-check endpoint.
+Returns `200` with `{"status": "healthy", "version": {...}}`. It does not touch Redis, so it shows the API process is up, not that Redis is reachable.
 
-**Response:** `200 OK`
-
-```json
-{
-  "status": "healthy",
-  "version": { "version": "2026.05.18", "git_commit": "...", "build_time": "..." }
-}
-```
-
-***
-
-### Queue Depth
+### Queue depth
 
 ```
-GET /stats/queue?list_name=<redis-list-name>
+GET /stats/queue?list_name=<redis-list>
 ```
 
-Returns the current depth of a Redis list (queue). Useful for backpressure-aware autoscaling and dashboards.
+Returns `{"list_name": "incoming_calls", "depth": 127}` for any Redis list name. It needs no token, so use it for autoscalers and dashboards, and keep the route off the public internet.
 
-**Query Parameters:**
+## vCons
 
-| Parameter   | Type | Description                       |
-| ----------- | ---- | --------------------------------- |
-| `list_name` | str  | Name of the Redis list to measure |
-
-**Response:** `200 OK`
-
-```json
-{ "list_name": "incoming_calls", "depth": 127 }
-```
-
-***
-
-## vCon Management
-
-### List vCon UUIDs
+### Create a vCon
 
 ```
-GET /vcon
+POST /vcon?ingress_lists=<list>&ingress_lists=<list>
 ```
 
-Retrieves a paginated list of vCon UUIDs, sorted by timestamp (newest first).
-
-**Query Parameters:**
-
-| Parameter | Type     | Description                           | Default |
-| --------- | -------- | ------------------------------------- | ------- |
-| `page`    | int      | Page number (1-indexed)               | `1`     |
-| `size`    | int      | Items per page                        | `50`    |
-| `since`   | datetime | Filter vCons created after this date  | (none)  |
-| `until`   | datetime | Filter vCons created before this date | (none)  |
-
-**Response:** `200 OK`
-
-```json
-["uuid-1", "uuid-2", "uuid-3"]
-```
-
-**Example:**
+Stores the body in Redis with a TTL of `VCON_REDIS_EXPIRY` seconds, adds it to the `vcons` sorted set and indexes its parties. If you pass `ingress_lists`, it also pushes the UUID onto each list, with the caller's trace context stored first so the worker can link its spans. It returns `201` and the stored vCon. The body is not written to any storage until a chain does it.
 
 ```bash
-curl -H "x-conserver-api-token: $TOKEN" \
-  "http://localhost:8000/api/vcon?page=1&size=10&since=2024-01-01"
+curl -X POST "http://localhost:8000/api/vcon?ingress_lists=main_chain" \
+  -H "x-conserver-api-token: $TOKEN" -H "Content-Type: application/json" \
+  -d @vcon.json
 ```
 
-***
-
-### Get vCon by UUID
+### Get a vCon
 
 ```
 GET /vcon/{vcon_uuid}
 ```
 
-Retrieves a single vCon by its UUID. First checks Redis, then falls back to configured storage backends.
+Reads `vcon:{uuid}` from Redis. On a miss it asks each configured storage in turn, restores the first hit into Redis with `VCON_REDIS_EXPIRY`, and adds it to the sorted set. `404` if no storage has it. If `EGRESS_FORMAT_VERSION` is set, the response uses that legacy shape.
 
-**Response:** `200 OK` - Returns the full vCon JSON
-
-**Response:** `404 Not Found` - vCon not found
-
-**Example:**
-
-```bash
-curl -H "x-conserver-api-token: $TOKEN" \
-  "http://localhost:8000/api/vcon/550e8400-e29b-41d4-a716-446655440000"
-```
-
-***
-
-### Get Multiple vCons
+### Get several vCons
 
 ```
-GET /vcons
+GET /vcons?vcon_uuids=<uuid>&vcon_uuids=<uuid>
 ```
 
-Retrieves multiple vCons by their UUIDs in a single request.
+Returns a JSON array in request order. A UUID that is in neither Redis nor storage comes back as `null` in its position.
 
-**Query Parameters:**
-
-| Parameter    | Type        | Description                    |
-| ------------ | ----------- | ------------------------------ |
-| `vcon_uuids` | List\[UUID] | List of vCon UUIDs to retrieve |
-
-**Response:** `200 OK`
-
-```json
-[
-  { "uuid": "...", "vcon": "0.4.0", ... },
-  { "uuid": "...", "vcon": "0.4.0", ... }
-]
-```
-
-**Example:**
-
-```bash
-curl -H "x-conserver-api-token: $TOKEN" \
-  "http://localhost:8000/api/vcons?vcon_uuids=uuid1&vcon_uuids=uuid2"
-```
-
-***
-
-### Create vCon
+### List vCon UUIDs
 
 ```
-POST /vcon
+GET /vcon?page=1&size=50&since=<datetime>&until=<datetime>
 ```
 
-Stores a new vCon in Redis and indexes it for searching.
+Returns UUIDs from the sorted set, newest first by `created_at`. `since` and `until` filter on that timestamp.
 
-**Query Parameters:**
+### Search by party
 
-| Parameter       | Type       | Description                                |
-| --------------- | ---------- | ------------------------------------------ |
-| `ingress_lists` | List\[str] | Optional ingress queues to add the vCon to |
-
-**Request Body:** Full vCon JSON object
-
-**Response:** `201 Created` - Returns the stored vCon
-
-**Example:**
-
-```bash
-curl -X POST "http://localhost:8000/api/vcon?ingress_lists=main_chain" \
-  -H "x-conserver-api-token: $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "vcon": "0.4.0",
-    "uuid": "550e8400-e29b-41d4-a716-446655440000",
-    "created_at": "2024-01-15T10:30:00Z",
-    "parties": [],
-    "dialog": []
-  }'
+```
+GET /vcons/search?tel=<number>&mailto=<address>&name=<name>
 ```
 
-***
+Returns matching UUIDs. At least one parameter is required, or the route returns `400`. Matches are exact. The index is written when a vCon arrives through `POST /vcon` or `POST /vcon/external-ingress`, and its keys expire after `VCON_INDEX_EXPIRY`. Rebuild it with `GET /index_vcons`. When you pass several parameters the route intersects the sets that matched, and a parameter with no match is ignored instead of emptying the result.
 
-### Delete vCon
+### Delete a vCon
 
 ```
 DELETE /vcon/{vcon_uuid}
 ```
 
-Removes a vCon from Redis and all configured storage backends.
+Deletes `vcon:{uuid}` from Redis, then calls `delete` on every storage in `config.yml`. It always returns `204`, including when a delete failed, and logs each failure. The storages that implement delete are `s3`, `postgres`, `file`, `elasticsearch`, `vcon_mcp` and `utopia`. The others are skipped with a warning. The call leaves the sorted set entry and the search index keys in place.
 
-**Response:** `204 No Content`
+## Chains
 
-**Example:**
-
-```bash
-curl -X DELETE -H "x-conserver-api-token: $TOKEN" \
-  "http://localhost:8000/api/vcon/550e8400-e29b-41d4-a716-446655440000"
-```
-
-***
-
-### Search vCons
+### Add UUIDs to an ingress list
 
 ```
-GET /vcons/search
+POST /vcon/ingress?ingress_list=<list>
 ```
 
-Search for vCons by party information (phone, email, name). At least one parameter is required. Multiple parameters use AND logic.
-
-**Query Parameters:**
-
-| Parameter | Type   | Description                 |
-| --------- | ------ | --------------------------- |
-| `tel`     | string | Phone number to search for  |
-| `mailto`  | string | Email address to search for |
-| `name`    | string | Party name to search for    |
-
-**Response:** `200 OK`
-
-```json
-["uuid-1", "uuid-2"]
-```
-
-**Example:**
-
-```bash
-curl -H "x-conserver-api-token: $TOKEN" \
-  "http://localhost:8000/api/vcons/search?tel=%2B1234567890&name=John"
-```
-
-***
-
-## Chain Management
-
-### Add to Ingress
-
-```
-POST /vcon/ingress
-```
-
-Adds vCon UUIDs to a processing chain's ingress list. This is the **only** ingress endpoint; external partners use the same path with a scoped key configured under `ingress_auth` in `config.yml`.
-
-**Authentication:**
-
-* **Internal use:** The main `x-conserver-api-token` grants access to any ingress list.
-*   **External partners:** A scoped key configured under `ingress_auth` for a specific ingress list. The key only authorizes that list — attempts to write to other lists return `403 Forbidden`. Configure in `config.yml`:
-
-    ```yaml
-    ingress_auth:
-      partner_ingress:
-        - "partner-key-1"
-        - "partner-key-2"
-      customer_data: "single-customer-key"
-    ```
-
-**Query Parameters:**
-
-| Parameter      | Type   | Description              |
-| -------------- | ------ | ------------------------ |
-| `ingress_list` | string | Name of the ingress list |
-
-**Request Body:**
-
-```json
-["uuid-1", "uuid-2", "uuid-3"]
-```
-
-**Response:** `204 No Content`
-
-**Example:**
+Body: a JSON array of UUIDs. Each vCon must exist in Redis or in a storage. The route restores a stored one into Redis, skips a missing one with a warning, and pushes the rest. It returns `204` with no body, whether or not it skipped any. This route takes only the main token. A partner key does not work here.
 
 ```bash
 curl -X POST "http://localhost:8000/api/vcon/ingress?ingress_list=main_chain" \
-  -H "x-conserver-api-token: $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '["uuid-1", "uuid-2"]'
+  -H "x-conserver-api-token: $TOKEN" -H "Content-Type: application/json" \
+  -d '["550e8400-e29b-41d4-a716-446655440000"]'
 ```
 
-***
-
-### Get from Egress
+### External ingress
 
 ```
-GET /vcon/egress
+POST /vcon/external-ingress?ingress_list=<list>
 ```
 
-Removes and returns vCon UUIDs from a chain's egress list.
+Body: one full vCon. This is the route for a partner system, and it is the only route that does not take the main token. The partner sends a key from `ingress_auth` in the same header:
 
-**Query Parameters:**
-
-| Parameter     | Type   | Description             | Default    |
-| ------------- | ------ | ----------------------- | ---------- |
-| `egress_list` | string | Name of the egress list | (required) |
-| `limit`       | int    | Maximum UUIDs to remove | `1`        |
-
-**Response:** `204 No Content` with body:
-
-```json
-["uuid-1", "uuid-2"]
+```yaml
+ingress_auth:
+  partner_data:
+    - "partner-key-1"
+    - "partner-key-2"
+  customer_data: "single-key"
 ```
 
-**Example:**
+The route stores, indexes and enqueues the vCon exactly as `POST /vcon` does, onto the one list named in the query, and returns `204`. The key opens only that list. The conserver reads `ingress_auth` from the file on each call. A `403` carries one of these reasons in `detail`: `API Key required`, `No ingress authentication configured`, `Ingress list '<name>' not configured`, `Invalid API Key for ingress list '<name>'`.
 
 ```bash
-curl -H "x-conserver-api-token: $TOKEN" \
-  "http://localhost:8000/api/vcon/egress?egress_list=processed&limit=10"
+curl -X POST "http://localhost:8000/api/vcon/external-ingress?ingress_list=partner_data" \
+  -H "x-conserver-api-token: partner-key-1" -H "Content-Type: application/json" \
+  -d @vcon.json
 ```
 
-***
-
-### Count Egress Queue
+### Take UUIDs from an egress list
 
 ```
-GET /vcon/count
+GET /vcon/egress?egress_list=<list>&limit=1
 ```
 
-Returns the number of vCons in an egress list.
+Removes up to `limit` UUIDs from the list and returns them as a JSON array with status `200`. Despite being a `GET`, it changes state: a UUID you read is gone from the list. It pops from the tail, which is where the conserver appends, so with a small `limit` you get the newest UUIDs first. Fetch each vCon with `GET /vcon/{uuid}`.
 
-**Query Parameters:**
+### Count an egress list
 
-| Parameter     | Type   | Description             |
-| ------------- | ------ | ----------------------- |
-| `egress_list` | string | Name of the egress list |
-
-**Response:** `200 OK`
-
-```json
-42
+```
+GET /vcon/count?egress_list=<list>
 ```
 
-***
+Returns the list length as a bare number.
+
+## Dead letter queues
+
+Two kinds exist. The ingress DLQ `DLQ:<ingress_list>` holds a UUID whose chain raised, and replaying it runs the whole chain again. The storage DLQ `DLQ:storage:<storage_name>` holds a UUID whose write to one storage raised, and replaying it retries only that write. [Concepts](concepts.md#dead-letter-queues) has the full rules.
+
+### Read a DLQ
+
+```
+GET /dlq?ingress_list=<list>
+GET /dlq/storage?storage_name=<name>
+```
+
+Each returns every UUID in the queue, oldest first.
+
+### Replay an ingress DLQ
+
+```
+POST /dlq/reprocess?ingress_list=<list>&count=1000
+```
+
+Moves up to `count` UUIDs, oldest first, from `DLQ:<list>` back onto the ingress list. `count` is 1 to 100000 and defaults to 1000, so a single call stays short on a large queue. It returns the number moved. Call it again until it returns `0`.
+
+### Replay a storage DLQ
+
+```
+POST /dlq/storage/reprocess?storage_name=<name>&count=1000
+```
+
+Calls `save` on the named storage for up to `count` UUIDs from `DLQ:storage:<name>`, and returns how many succeeded. A UUID leaves the queue only after its write succeeds. The route stops at the first failure, so a storage that is still down does not drain the queue. A second call while one runs returns `409`. An unknown storage name returns `404`.
+
+Replay is at least once: a crash between the write and the removal repeats the write, so the storage has to accept a second save of the same UUID. The replay lock, `DLQ:storage:<name>:replay-lock`, has no expiry. If the API crashes mid-replay, delete that key in Redis to recover.
+
+A vCon in either queue has its Redis TTL raised to `VCON_DLQ_EXPIRY` so the body survives until replay.
 
 ## Configuration
 
-### Get Configuration
+### Read the configuration
 
 ```
 GET /config
 ```
 
-Returns the current system configuration from the YAML file.
+Returns the parsed `config.yml` as JSON. It includes every key and password in the file.
 
-**Response:** `200 OK` - Returns full configuration as JSON
-
-***
-
-### Update Configuration
+### Replace the configuration
 
 ```
 POST /config
 ```
 
-Updates the system configuration file.
+Body: the whole configuration as JSON. The route writes it to the path in the `CONSERVER_CONFIG_FILE` environment variable with `yaml.dump`, which drops comments and formatting, and returns `204`. It returns `500` if the variable is unset or the file is read-only. Workers pick the new file up on their next vCon. The conserver does not validate the content.
 
-**Request Body:** Full configuration as JSON
-
-**Response:** `204 No Content`
-
-**Note:** Changes take effect immediately for new chain processing.
-
-***
-
-## Dead Letter Queue
-
-When vCon processing fails, the vCon UUID is moved to a Dead Letter Queue (DLQ). Each ingress list has an associated DLQ named `DLQ:{ingress_list}`.
-
-### Get DLQ Contents
-
-```
-GET /dlq
-```
-
-Returns all vCon UUIDs in a dead letter queue.
-
-**Query Parameters:**
-
-| Parameter      | Type   | Description              |
-| -------------- | ------ | ------------------------ |
-| `ingress_list` | string | Name of the ingress list |
-
-**Response:** `200 OK`
-
-```json
-["failed-uuid-1", "failed-uuid-2"]
-```
-
-**Example:**
-
-```bash
-curl -H "x-conserver-api-token: $TOKEN" \
-  "http://localhost:8000/api/dlq?ingress_list=main_chain"
-```
-
-***
-
-### Reprocess DLQ
-
-```
-POST /dlq/reprocess
-```
-
-Moves all items from a DLQ back to the original ingress list for reprocessing.
-
-**Query Parameters:**
-
-| Parameter      | Type   | Description              |
-| -------------- | ------ | ------------------------ |
-| `ingress_list` | string | Name of the ingress list |
-
-**Response:** `200 OK`
-
-```json
-5  // Number of items moved
-```
-
-**Example:**
-
-```bash
-curl -X POST -H "x-conserver-api-token: $TOKEN" \
-  "http://localhost:8000/api/dlq/reprocess?ingress_list=main_chain"
-```
-
-***
-
-## Lifecycle
-
-### Rebuild Search Index
+### Rebuild the search index
 
 ```
 GET /index_vcons
 ```
 
-Rebuilds the search index for all vCons in Redis. Useful after bulk imports or to refresh expired indices.
-
-**Response:** `200 OK`
-
-```json
-150  // Number of vCons indexed
-```
-
-***
-
-## Redis Caching Behavior
-
-When a vCon is requested but not found in Redis:
-
-1. The API checks each configured storage backend
-2. If found, the vCon is stored back in Redis with TTL (`VCON_REDIS_EXPIRY`, default 1 hour)
-3. The vCon is added to the sorted set for timestamp-based retrieval
-4. Subsequent requests are served from Redis
-
-Configure caching with environment variables:
-
-| Variable            | Description                 | Default            |
-| ------------------- | --------------------------- | ------------------ |
-| `VCON_REDIS_EXPIRY` | Redis cache TTL in seconds  | `3600` (1 hour)    |
-| `VCON_INDEX_EXPIRY` | Search index TTL in seconds | `86400` (24 hours) |
-
-***
-
-## Error Responses
-
-All endpoints return standard HTTP error codes:
-
-| Code  | Description                                |
-| ----- | ------------------------------------------ |
-| `400` | Bad Request - Invalid parameters           |
-| `403` | Forbidden - Invalid or missing API key     |
-| `404` | Not Found - Resource doesn't exist         |
-| `500` | Internal Server Error - Processing failure |
-
-Error response format:
-
-```json
-{
-  "detail": "Error message describing the issue"
-}
-```
+Scans every `vcon:*` key, rebuilds the party index for each, and returns the count. The scan uses `KEYS`, which blocks Redis while it runs, so avoid it on a large instance.

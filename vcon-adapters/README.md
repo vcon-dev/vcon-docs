@@ -5,60 +5,56 @@ description: Patterns, templates, and operational guidance for building services
 
 # 🧩 vCon Adapters
 
-An **adapter** is anything that takes conversation data out of a foreign system — a phone PBX, a softswitch, a contact-center suite, an LLM transcript, a chat platform, a SIPREC stream — and produces a [vCon](../vcons/README.md) on the other side. Adapters are how the rest of the vCon ecosystem (conservers, MCP servers, analytics, archives) gets fed.
+An **adapter** is anything that takes conversation data out of a foreign system, a phone PBX, a softswitch, a contact-center suite, an LLM transcript, a chat platform, a SIPREC stream, and produces a [vCon](../vcons/README.md) on the other side. Adapters are how the rest of the vCon ecosystem (conservers, MCP servers, analytics, archives) gets fed.
 
 This section is the playbook for building, deploying, and operating one.
 
 ## Spec target
 
-Adapters in this section target IETF [`draft-ietf-vcon-vcon-core-04`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) with the `vcon` syntax parameter set to `"0.4.0"`. If you see code or examples elsewhere referring to `0.2.0`, `0.3.0`, or citing `-02`/`-03` of the draft, treat it as out of date.
-
-`-04` changed how a JSON-encoded body is written. For an attachment or analysis object with `encoding: "json"`, `body` is the JSON value itself (an object or array), not a string produced by `json.dumps()`. A reader still has to accept both shapes: plenty of vCons in the wild were built against `-02`/`-03`, where `body` was a JSON string. The adapters below write the new form; readers should accept both.
-
-Attachments carry `purpose` (not `type`), plus `start`, `party`, and `dialog`. An attachment or dialog entry with a body also carries `mediatype` and `encoding`. Inline binary is `base64url`, never plain base64 or hex. Externally hosted media (audio on S3, a filesystem mount) skips the inline `body` and instead carries `url` plus `content_hash`, formatted as `sha512-` followed by the base64url digest.
+Adapters in this section target `draft-ietf-vcon-vcon-core-04`, syntax `"0.4.0"`. The [Spec Compliance Checklist](spec-compliance-checklist.md) holds the full target, with the JSON-body rule and every field rule. Code that cites `0.2.0`, `0.3.0`, `-02` or `-03` is out of date.
 
 ## The canonical flow
 
-Every adapter — webhook receiver, polling job, file watcher, batch CLI — boils down to the same four stages:
+Every adapter (webhook receiver, polling job, file watcher, batch CLI) boils down to the same four stages:
 
 ```
    ┌───────────┐    ┌──────────────┐    ┌────────────────┐    ┌──────────────────┐
-   │ Source    │ →  │ Build vCon   │ →  │ Sign / store   │ →  │ Deliver          │
-   │ event     │    │ (lib helpers)│    │ (optional JWS) │    │ (HMAC webhook)   │
+   │ Source    │ →  │ Build vCon   │ →  │ Lawful basis / │ →  │ Deliver          │
+   │ event     │    │ (lib helpers)│    │ finalize       │    │ (webhook or      │
+   │           │    │              │    │                │    │  conserver)      │
    └───────────┘    └──────────────┘    └────────────────┘    └──────────────────┘
 ```
 
-The work that's actually adapter-specific is the leftmost box: knowing *your* source platform's events, IDs, timestamps, and recording URLs. Everything to the right of that — vCon construction, signing, retries, delivery — is solved. **Don't write it from scratch.**
+The work that's actually adapter-specific is the leftmost box: knowing *your* source platform's events, IDs, timestamps, and recording URLs. Everything to the right of that, vCon construction, lawful basis, retries, delivery, is solved. Content signing (JWS) is not built into the template; see [Operational Patterns](operational-patterns.md#content-signing-add-it-yourself). **Don't write it from scratch.**
 
 ## Start here: use the template
 
 Every adapter in this ecosystem should start from **[vcon-dev/vcon-adapter-template](https://github.com/vcon-dev/vcon-adapter-template)**. It's a GitHub template repo: click "Use this template" or run `gh repo create --template vcon-dev/vcon-adapter-template …`. You get:
 
-- A `vcon_builder.py` thin wrapper over the official `vcon` Python library, spec-correct by construction, with `finalize_vcon()` to close out a vCon and `json_body()` to read an attachment or analysis body back regardless of whether it was written as a raw JSON value or a legacy JSON string
+- A `vcon_builder.py` thin wrapper over the official `vcon` Python library, with `finalize_vcon()` to close out a vCon and `json_body()` to read an attachment or analysis body back whether it was written as a JSON value or a legacy string
 - A lawful-basis builder: `LAWFUL_BASIS*` environment variables or a YAML block build the attachment; leave it unset and the adapter logs a warning and skips the attachment rather than guessing a basis. Never defaulted in code
-- A copyable `assert_spec_compliant()` test, run against the working group's JSON schema, so a new adapter inherits the compliance gate instead of reinventing it
+- A copyable `assert_spec_compliant()` test, run against the vendored JSON schema, so a new adapter inherits the compliance gate
 - Two delivery paths: signed webhooks (HMAC-SHA256, `Idempotency-Key`, exponential-backoff retries, dead-letter queue), or conserver-direct delivery (`POST /vcon?ingress_lists=...` with an `x-conserver-api-token` header) for adapters that talk straight to a vcon-server instance
 - `/healthz` and Prometheus `/metrics` endpoints out of the box
 - YAML config with `${ENV_VAR}` substitution
-- Spec-compliance smoke tests that fail loudly if you drift from the spec
-- Dockerfile + `docker-compose.yml` + GitHub Actions CI
+- Dockerfile, `docker-compose.yml`, and a GitHub Actions workflow that runs lint, type check and tests
 
 → [Quick Start From Template](quick-start-from-template.md) is a one-page recipe to get a new adapter scaffolded in under five minutes.
 
 ## Building a new adapter
 
-Start from the template above, not from an existing adapter repo: several of those predate the template and carry patterns the [checklist](spec-compliance-checklist.md) no longer allows. Configure lawful basis from the first commit (`LAWFUL_BASIS*` env vars or YAML; see the template's `USAGE.md`), and write JSON-encoded bodies the `-04` way: `body` is the parsed JSON value, not a `json.dumps()` string. `finalize_vcon()` and `json_body()` in the template's `vcon_builder.py` handle both ends of that for you.
+Start from the template above, not from an existing adapter repo: several of those predate the template and carry patterns the [checklist](spec-compliance-checklist.md) no longer allows. Configure lawful basis from the first commit (`LAWFUL_BASIS*` env vars or YAML; see the template's `USAGE.md`). The template never defaults a basis; set the one your deployment relies on.
 
 ## Reading order
 
 | Page | When to read it |
 |------|-----------------|
 | [Quick Start From Template](quick-start-from-template.md) | First adapter, or every new adapter. Five-minute scaffold. |
-| [Operational Patterns](operational-patterns.md) | Production deployment. Delivery, signing, retries, DLQ, health, metrics. |
+| [Operational Patterns](operational-patterns.md) | Production deployment. Delivery, HMAC signing, retries, DLQ, health, metrics. |
 | [Spec Compliance Checklist](spec-compliance-checklist.md) | Code review and PR gate. Print and pin to wall. |
 | [Extensions Cookbook](extensions-cookbook.md) | Adding transcripts, consent records, SIP signaling, agent sessions. |
-| [vCon Adapter Development Guide](vcon-adapter-development-guide.md) | Going beyond the template — custom architectures, polling vs. webhook listeners, batch CLI, multi-source. |
-| [LLM Guide: Creating vCon Adapters](llm-guide-creating-vcon-adapters.md) | Drop into a model's context window when you want it to generate adapter code. |
+| [vCon Adapter Development Guide](vcon-adapter-development-guide.md) | Going beyond the template, custom architectures, polling vs. webhook listeners, batch CLI, multi-source. |
+| [LLM Guide: Creating vCon Adapters](llm-guide-creating-vcon-adapters.md) | Short digest to paste into a model's context when you want it to generate adapter code. |
 
 ## Existing adapters in the ecosystem
 
@@ -80,9 +76,9 @@ Written before the template existed and not modernized this round. Useful for th
 
 | Repo | Source | Pattern |
 |------|--------|---------|
-| [`signalwire_adapter`](https://github.com/vcon-dev/signalwire_adapter) | SignalWire telephony | Polling job |
+| [`signalwire_adapter`](https://github.com/vcon-dev/signalwire_adapter) (archived) | SignalWire telephony | Polling job |
 | [`vcon-eleven-labs-adapter`](https://github.com/vcon-dev/vcon-eleven-labs-adapter) | ElevenLabs voice AI | Polling + CLI batch |
-| [`sippy-conserver-adapter`](https://github.com/vcon-dev/sippy-conserver-adapter) | Sippy softswitch (S3) | S3 bucket monitor |
+| [`sippy-conserver-adapter`](https://github.com/vcon-dev/sippy-conserver-adapter) (archived) | Sippy softswitch (S3) | S3 bucket monitor |
 | [`ietf2vcon`](https://github.com/vcon-dev/ietf2vcon) | IETF meeting recordings | Batch CLI per-meeting |
 | [`matrix_vcon_emitter`](https://github.com/vcon-dev/matrix_vcon_emitter) | Matrix chat | Event stream |
 
@@ -90,7 +86,7 @@ For per-adapter documentation pages (`vCon Faker`, `vCon Anthropic Chats`, `vCon
 
 ## Related
 
-- [vCon Library (Python)](../vcon-library/README.md) — the official Python library every adapter should use
-- [vCon-JS Library](../vcon-js-library/README.md) — TypeScript equivalent for Node-based adapters
-- [Extensions](../extensions/README.md) — WTF transcription, lawful basis, SIP signaling, agent session, lifecycle
-- [Conserver](../conserver/README.md) — the typical downstream consumer of adapter output
+- [vCon Library (Python)](../vcon-library/README.md): the official Python library every adapter should use
+- [vCon-JS Library](../vcon-js-library/README.md): TypeScript equivalent for Node-based adapters
+- [Extensions](../extensions/README.md): WTF transcription, lawful basis, SIP signaling, agent session, lifecycle
+- [Conserver](../conserver/README.md): the typical downstream consumer of adapter output

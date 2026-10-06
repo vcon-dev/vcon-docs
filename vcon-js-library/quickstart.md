@@ -1,10 +1,10 @@
 ---
-description: Create a vCon in TypeScript or JavaScript — parties, dialog, analysis, serialize.
+description: Build a vCon in TypeScript with parties, dialog, analysis, a lawful basis attachment, and tags, then serialize it.
 ---
 
 # 🐰 Quickstart (vcon-js)
 
-This is the TypeScript counterpart to the [Python Quickstart](../vcon-library/quickstart.md). Both libraries produce byte-compatible vCons.
+This is the TypeScript counterpart to the [Python Quickstart](../vcon-library/quickstart.md). Both libraries write the same JSON structure. Field rules are in the [field reference](../vcons/field-reference.md).
 
 ## Install
 
@@ -12,9 +12,11 @@ This is the TypeScript counterpart to the [Python Quickstart](../vcon-library/qu
 npm install vcon-js
 ```
 
-vcon-js targets [`draft-ietf-vcon-vcon-core`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) and sets the `vcon: "0.4.0"` syntax parameter automatically.
+vcon-js 0.5.2 targets [`draft-ietf-vcon-vcon-core`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) and sets `vcon: "0.4.0"` for you. It needs Node 18 or later.
 
-## Minimal example
+## Parties and a text dialog
+
+`addParty` returns nothing. A party's index is its position in `parties`.
 
 ```typescript
 import { Vcon, Party, Dialog } from 'vcon-js';
@@ -24,124 +26,127 @@ vcon.subject = 'Customer Support Chat';
 
 vcon.addParty(new Party({ tel: '+15551234567', name: 'Alice', role: 'customer' }));
 vcon.addParty(new Party({ mailto: 'bob@example.com', name: 'Bob', role: 'agent' }));
+const customer = vcon.findPartyIndex('name', 'Alice'); // 0
+const agent = vcon.parties.length - 1;                 // 1
 
-vcon.addDialog(new Dialog({
+const chat = new Dialog({
   type: 'text',
   start: new Date().toISOString(),
   parties: [0, 1],
   originator: 0,
-  mediatype: 'text/plain',
-  body: 'Hi, I need help with my account.',
-  encoding: 'none',
-}));
-
-console.log(vcon.toJson());
+});
+chat.addInlineData('Hi, I need help with my account.', 'text/plain', { encoding: 'none' });
+vcon.addDialog(chat);
 ```
+
+`addInlineData(body, mediatype, { encoding, filename })` sets the body and clears any `url`. `encoding` defaults to `'none'`. Valid encodings are `'base64url'`, `'json'`, and `'none'` (`Attachment.VALID_ENCODINGS`).
 
 ## Recording with external media
 
-For audio/video, prefer the external-media pattern: keep the recording out of the JSON, reference it with `url`, and provide a SHA-512 `content_hash` so consumers can verify integrity.
+Keep audio and video out of the JSON. Reference it with `url` and a `content_hash` of the form `sha512-<base64url>`. `addExternalData(url, mediatype, { filename, content_hash })` sets all three and clears any inline body.
 
 ```typescript
-const dialog = new Dialog({
+import { createHash } from 'node:crypto';
+
+const audio = Buffer.from('placeholder audio bytes'); // your recording bytes
+const hash = 'sha512-' + createHash('sha512').update(audio).digest('base64url');
+
+const recording = new Dialog({
   type: 'recording',
   start: '2026-05-18T14:00:00Z',
-  parties: [0, 1],
-  mediatype: 'audio/x-wav',
+  parties: [customer!, agent],
+  originator: customer,
   duration: 137.5,
-  url: 'https://media.example.com/recordings/abc123.wav',
-  content_hash: 'sha512-iWS5VtJSp7v...',
 });
-vcon.addDialog(dialog);
+recording.addExternalData('https://media.example.com/recordings/abc123.wav', 'audio/x-wav', {
+  filename: 'abc123.wav',
+  content_hash: hash,
+});
+
+const check = recording.validate();
+if (!check.valid) throw new Error(check.errors.join('; '));
+vcon.addDialog(recording);
 ```
 
-## Adding an analysis (transcript)
+`Dialog` also has `isText()`, `isRecording()`, `isAudio()`, `isVideo()`, `isEmail()`, `isInlineData()`, and `isExternalData()`.
 
-Analysis entries record what was derived from the conversation. Always include `vendor`. For JSON-bodied analyses, set `encoding: 'json'` and pass a string body (use `JSON.stringify`).
+## Analysis
+
+Pass an object or array as `body`. `addAnalysis` serializes it to a string and sets `encoding: 'json'`. Always set `vendor`. This example is a WTF transcription; see [WTF Transcription](../extensions/wtf-transcription.md) and [draft-howe-vcon-wtf-extension](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/).
 
 ```typescript
 vcon.addAnalysis({
-  type: 'transcript',
+  type: 'wtf_transcription',
   dialog: 0,
   vendor: 'openai-whisper',
   product: 'whisper-large-v3',
-  encoding: 'json',
   schema: 'https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/',
-  body: JSON.stringify({
+  body: {
     transcript: { text: 'Hello, I need help.', language: 'en', duration: 1.5, confidence: 0.95 },
     segments: [{ id: 0, start: 0.0, end: 1.5, text: 'Hello, I need help.', confidence: 0.95 }],
-    metadata: { provider: 'whisper', model: 'whisper-large-v3', created_at: new Date().toISOString() },
-  }),
+    metadata: { provider: 'whisper', model: 'whisper-large-v3', created_at: '2026-05-18T14:00:00Z' },
+  },
 });
 ```
 
-## Declaring an extension
+## Lawful basis
 
-Extension declarations are generic in vcon-js — there are no per-extension builder helpers in 0.5.0. You add extension data to the right array yourself and declare the extension:
-
-```typescript
-vcon.addExtension('lawful_basis');           // declared but optional for consumers
-vcon.addCriticalExtension('lawful_basis');   // consumers MUST understand this to process the vCon
-```
-
-For the JSON shape of each extension, see the [Extensions section](../extensions/README.md).
-
-### Lawful Basis example
+The lawful basis extension is an attachment with `purpose: 'lawful_basis'` and a JSON body, defined in [draft-howe-vcon-lawful-basis](https://datatracker.ietf.org/doc/draft-howe-vcon-lawful-basis/). The body carries `lawful_basis`, `expiration` (an RFC 3339 time or `null`), and `purpose_grants`, each with `purpose`, `granted`, and `granted_at`. `proof_mechanisms` is optional, each entry with `proof_type`, `timestamp`, and `proof_data`. The values below are an illustration, not a real consent record. Declare the extension with `addExtension`.
 
 ```typescript
 vcon.addAttachment({
-  type: 'lawful_basis',  // <-- exception: lawful_basis uses `type`, not `purpose`
-  encoding: 'json',
+  purpose: 'lawful_basis',
+  start: '2026-05-18T14:00:00Z',
   party: 0,
   dialog: 0,
-  body: JSON.stringify({
+  encoding: 'json',
+  body: {
     lawful_basis: 'consent',
     expiration: '2027-05-18T00:00:00Z',
     purpose_grants: [
-      { purpose: 'recording', granted: true, granted_at: new Date().toISOString() },
-      { purpose: 'transcription', granted: true, granted_at: new Date().toISOString() },
+      { purpose: 'recording', granted: true, granted_at: '2026-05-18T14:00:00Z' },
+      { purpose: 'transcription', granted: true, granted_at: '2026-05-18T14:00:00Z' },
     ],
     proof_mechanisms: [
-      { mechanism_type: 'audio_recording', dialog_index: 0,
-        description: 'Verbal consent at start of recording' },
+      { proof_type: 'verbal_confirmation', timestamp: '2026-05-18T14:00:05Z',
+        proof_data: { dialog_reference: 0, time_offset: '00:00:05' } },
     ],
-  }),
+  },
 });
-vcon.addCriticalExtension('lawful_basis');
+vcon.addExtension('lawful_basis');          // consumers MAY understand it
+// vcon.addCriticalExtension('lawful_basis'); // consumers MUST understand it or refuse the vCon
 ```
+
+Attachment bodies are stored as you pass them, so an object stays an object. Always pass `start`: the core schema requires it and the library does not fill it in for you (only `addTag` does). `party` and `dialog` default to `0`.
 
 ## Tags
 
 ```typescript
 vcon.addTag('region', 'us-east');
-vcon.addTag('campaign', 'spring-2026');
+vcon.getTag('region'); // 'us-east'
+vcon.tags;             // { region: 'us-east' }
 ```
 
-Tags are surfaced through the conserver and through the [vCon MCP server](../mcp-server/README.md) for fast filtering.
+Tags are stored as one `purpose: 'tags'` attachment. The conserver and the [vCon MCP server](../mcp-server/README.md) read them for filtering.
 
-## Loading and saving
+## Serialize and load
 
 ```typescript
-import { Vcon } from 'vcon-js';
-
-// Serialize
 const json = vcon.toJson();
-const obj  = vcon.toDict();
-
-// Deserialize
 const restored = Vcon.buildFromJson(json);
 ```
 
-## Common mistakes (caught in code review)
+## Common mistakes
 
-- Using `appended` instead of `amended` — the library writes `amended`; if you carry data forward from older code, rename.
-- Using `must_support` — use `addCriticalExtension()` (writes to `critical[]`).
-- Putting transcripts in `attachments[]` — transcripts belong in `analysis[]` (see [WTF Transcription](../extensions/wtf-transcription.md)).
-- Passing a JS object directly as `body` for JSON content — `body` must be a string. Use `JSON.stringify`.
-- Forgetting `vendor` on analysis entries — `vendor` is REQUIRED.
+* Using `appended` instead of `amended`, or `must_support` instead of `critical`. Use `addCriticalExtension()` for `critical`.
+* Putting transcripts in `attachments[]`. Transcripts belong in `analysis[]`.
+* Writing `type: 'lawful_basis'` on an attachment. Attachments use `purpose`, not `type`.
+* Omitting `vendor` on an analysis.
+* Omitting `start` on an attachment you add with `addAttachment`.
+* Reading the return value of `addParty` as an index. It returns `void`.
 
 ## See also
 
-- [API Reference](api-reference.md) — full method list
-- [LLM Guide](llm-guide.md) — drop into an LLM's context window for assisted development
-- [Python Quickstart](../vcon-library/quickstart.md) — the Python equivalent
+* [API Reference](api-reference.md)
+* [LLM Guide](llm-guide.md)
+* [Python Quickstart](../vcon-library/quickstart.md)

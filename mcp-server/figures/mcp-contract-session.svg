@@ -22,7 +22,7 @@
 
   <rect x="14" y="80" width="18" height="18" fill="#0BB81E"/><text class="n" x="23" y="93" text-anchor="middle">2</text>
   <text class="tool" x="42" y="93">vcon_taxonomy()</text>
-  <text class="pb" x="266" y="93">the vocabulary this corpus actually uses</text>
+  <text class="pb" x="266" y="93">fixed tag guidance for one dataset</text>
 
   <rect x="14" y="106" width="18" height="18" fill="#0BB81E"/><text class="n" x="23" y="119" text-anchor="middle">3</text>
   <text class="tool" x="42" y="119">vcon_graph_shape()</text>
@@ -40,7 +40,7 @@
   <text class="pb" x="266" y="197">a page of UUIDs and summaries, plus a cursor</text>
 
   <rect x="14" y="210" width="18" height="18" fill="#292929"/><text class="n" x="23" y="223" text-anchor="middle">6</text>
-  <text class="tool" x="42" y="223">vcon_fetch(uuid, max_response_bytes)</text>
+  <text class="tool" x="42" y="223">vcon_fetch(id, max_response_bytes)</text>
   <text class="pb" x="266" y="223">only the parts of one record the question needs</text>
 
   <path d="M500 219 L500 201" stroke="#292929" stroke-width="1" fill="none"/>

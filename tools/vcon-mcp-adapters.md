@@ -1,35 +1,65 @@
 ---
-description: Observability adapters for the vCon MCP server — OpenTelemetry tracing for tool calls.
+description: Convert AI agent framework traces into vCons that carry an MCP session attachment, from the command line or a Python SDK.
 ---
 
 # 📊 vCon MCP Adapters
 
-**Repo:** [vcon-dev/vcon-mcp-adapters](https://github.com/vcon-dev/vcon-mcp-adapters) · **v0.2 released:** May 2026
+**Repo:** [vcon-dev/vcon-mcp-adapters](https://github.com/vcon-dev/vcon-mcp-adapters) (default branch `claude/vcon-mcp-adapters-M1Oie`) · **Status:** pre-release, `0.1.0` in `pyproject.toml`
 
-A collection of observability adapters for the [vCon MCP server](../mcp-server/README.md). The flagship is an OpenTelemetry tracing integration that emits spans for every tool call, capturing:
+vcon-mcp-adapters turns traces from AI agent frameworks into vCons. It is not an OpenTelemetry tracer and does not instrument the [vCon MCP server](../mcp-server/README.md). It reads a trace after the fact, normalizes it into an `MCPSession` object (turns, tool calls, tool results, usage, artifacts), and attaches that object to a vCon as `attachments[0]` with `purpose: "mcp_session"`.
 
-- Tool name, arguments (with optional redaction)
-- Latency, cache hits/misses
-- Errors and validation failures
-- The client identity (model, agent name) when the MCP transport surfaces it
+## Supported inputs
 
-## When to use it
-
-- You're running the MCP server in production and want trace data flowing into your existing observability stack (Datadog, Honeycomb, Grafana Tempo, etc.).
-- You're debugging an LLM client that's making a lot of MCP calls and want to see which ones, in what order, with what arguments.
-- You're tracking model-by-model usage of vCon tools for capacity planning or cost attribution.
+- Anthropic Messages API responses
+- OpenAI Responses API calls and OpenAI Agents SDK sessions
+- Claude Code session JSONL files
+- Exports from Helicone, Langfuse and LangSmith, as files or fetched live from their APIs
 
 ## Install
 
-See the repo README. The typical deployment is a small wrapper around the MCP server's tool dispatch path that emits OTLP spans to whatever collector you're already running.
+```bash
+pip install vcon-mcp-adapters
+pip install "vcon-mcp-adapters[anthropic]"   # or [openai], [agents]
+```
 
-## What's new in v0.2 (May 2026)
+The CHANGELOG lists the Helicone, Claude Code, Langfuse and LangSmith adapters under `0.2.0` to `0.2.2`, all marked Unreleased. Check the repo before relying on them.
 
-- Spans now include the May 2026 contract-tool family (`vcon_fetch`, `vcon_search`, `vcon_capabilities`, `vcon_taxonomy`, `describe_response_shape`).
-- Argument redaction is now configurable per-tool, so you can keep argument payloads out of trace storage for tools that touch personal data.
-- Cache attributes (hit, miss, bypass) are now emitted for tools that have caching.
+## Convert a trace
+
+```bash
+trace-to-vcon anthropic response.json --out session.vcon.json \
+  --user-name "Alice" --assistant-name "Claude" --model claude-opus-4-7
+
+trace-to-vcon claude-code ~/.claude/projects/<encoded-cwd>/<session>.jsonl \
+  --user-name "Alice" --out cc.vcon.json
+
+trace-to-vcon helicone helicone-export.json --user-name "Alice" --out-dir ./out/
+trace-to-vcon fetch langsmith --project my-app --out-dir ./out/
+
+trace-to-vcon validate session.vcon.json
+```
+
+Live fetches read `HELICONE_API_KEY`, the Langfuse key variables, or `LANGSMITH_API_KEY` from the environment. Export files produce one vCon per record or trace.
+
+## Python SDK
+
+```python
+from vcon_mcp_adapters import to_vcon
+from vcon_mcp_adapters.adapters.anthropic import from_trace
+from vcon_mcp_adapters.parties import user_party, ai_agent_party
+
+session = from_trace(open("messages_response.json").read())
+vcon = to_vcon(session, parties=[
+    user_party(name="Alice", email="alice@example.com"),
+    ai_agent_party(provider="anthropic", model="claude-opus-4-7"),
+])
+```
+
+## Lawful basis
+
+The adapters emit vCons with syntax `0.4.0` and no `lawful_basis` attachment. Add one before storing or sharing the output if the conversation involves personal data. See [Lawful Basis](../extensions/lawful-basis.md).
 
 ## See also
 
 - [vCon MCP Server overview](../mcp-server/README.md)
-- [Tool Reference](../mcp-server/tool-reference.md) — what the spans are tracing
+- [vCon Anthropic Chats](vcon-anthropic-chats.md), a narrower converter for Claude Code and claude.ai history

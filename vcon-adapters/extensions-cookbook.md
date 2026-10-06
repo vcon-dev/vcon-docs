@@ -1,292 +1,221 @@
 ---
 description: >-
-  Worked examples for the extensions adapters use most — WTF transcription,
+  Worked examples for the extensions adapters use most: WTF transcription,
   lawful basis, SIP signaling, agent session.
 ---
 
 # 📚 Extensions Cookbook
 
-The vCon core spec is intentionally small. Most of what adapters actually care about — transcripts, recording consent, SIP signaling provenance, AI-agent session tracking — lives in **extensions**. This page is a recipe book for the four extensions adapters use in practice.
+Most of what adapters care about beyond the core spec (transcripts, recording consent, SIP signaling, AI-agent sessions) lives in extensions. Each recipe below shows the library or template call and the resulting JSON. The draft is the authority for every field; the field rules and spec target are on the [Spec Compliance Checklist](spec-compliance-checklist.md), and the field definitions are in the [vCon field reference](../vcons/field-reference.md).
 
-Each recipe shows the exact `vcon` library call, the resulting JSON shape, and links to the corresponding extension page for the full spec.
-
-**Spec target:** [`draft-ietf-vcon-vcon-core-04`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), syntax `"0.4.0"`. Library: [`vcon`](https://pypi.org/project/vcon/) ≥0.9.4.
-
-Under `-04`, a JSON-encoded `body` (`encoding="json"`) is the parsed JSON value itself, an object or array, not a `json.dumps()` string. The recipes below write the new form; a reader should still accept the older stringified form on vCons built against earlier drafts.
+The recipes use the template's `new_vcon()` and `vcon` library 0.10.0 or later. `add_party()` and `add_dialog()` take `Party` and `Dialog` objects (`from vcon.party import Party`, `from vcon.dialog import Dialog`); `add_attachment()` and `add_analysis()` take keyword arguments. JSON bodies are written as values, not `json.dumps()` strings.
 
 ***
 
 ## WTF Transcription
 
-📄 **Spec:** [WTF Transcription Extension](../extensions/wtf-transcription.md) · [`draft-howe-vcon-wtf-extension`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/) · **Extension name:** `"wtf"` (older code uses `"wtf_transcription"`)
+**Spec:** [WTF Transcription Extension](../extensions/wtf-transcription.md) and [`draft-howe-vcon-wtf-extension`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/). **Extension token and analysis type:** `wtf_transcription`.
 
-Use WTF when your adapter calls a speech-to-text provider — Whisper, Deepgram, AssemblyAI, ElevenLabs, AWS, Azure, Google. The point is that downstream tooling shouldn't have to special-case each provider's output.
-
-**Transcripts go in `analysis[]`, not `attachments[]`.** They're derived data, not supplied data.
-
-### Recipe
+Use it when your adapter calls a speech-to-text provider. Transcripts are derived data, so they go in `analysis[]`, never `attachments[]`.
 
 ```python
+from vcon.dialog import Dialog
+from vcon.party import Party
+
 from foo_adapter.vcon_builder import new_vcon
 
-v = new_vcon(subject="Sales call", extensions=["wtf"])
-v.add_party(tel="+15555550100", role="caller")
-v.add_party(tel="+15555550200", role="agent")
-v.add_dialog(
+v = new_vcon(subject="Support call", extensions=["wtf_transcription"])
+v.add_party(Party(tel="+15555550100", role="caller"))
+v.add_party(Party(tel="+15555550200", role="agent"))
+v.add_dialog(Dialog(
     type="recording",
     start="2026-05-19T14:32:00Z",
     parties=[0, 1],
-    url="https://recordings.example/abc.wav",
+    url="https://recordings.example.com/abc.wav",
     content_hash="sha512-...",
     mediatype="audio/wav",
-)
-
-wtf_document = {
-    "transcript": {"text": "Hello, this is Foo Corp..."},
-    "segments": [
-        {"start": 0.0, "end": 2.3, "speaker": 0, "text": "Hello, this is Foo Corp."},
-        {"start": 2.3, "end": 5.1, "speaker": 1, "text": "Hi, I'm calling about my account."},
-    ],
-    "language": "en-US",
-}
+))
 
 v.add_analysis(
-    type="transcript",
+    type="wtf_transcription",
     dialog=0,
     vendor="openai-whisper",
     product="whisper-large-v3",
-    body=wtf_document,
+    body={
+        "transcript": {"text": "Hello, this is Example Corp."},
+        "segments": [
+            {"start": 0.0, "end": 2.3, "speaker": 0, "text": "Hello, this is Example Corp."},
+        ],
+        "language": "en-US",
+    },
     encoding="json",
     schema="https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/",
 )
 ```
 
-### Resulting `analysis[]` entry
-
-```json
-{
-  "type": "transcript",
-  "dialog": 0,
-  "vendor": "openai-whisper",
-  "product": "whisper-large-v3",
-  "encoding": "json",
-  "schema": "https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/",
-  "body": {"transcript": {"text": "Hello, this is Foo Corp..."}}
-}
-```
-
-### Common mistakes
-
-* ❌ Putting the transcript in `attachments[]` instead of `analysis[]`
-* ❌ Serializing the WTF document with `json.dumps()` before assigning it to `body`: under `-04`, `body` is the JSON value itself, paired with `encoding="json"`
-* ❌ Adding a separate plain-text transcript analysis — the WTF document already carries `transcript.text`
-* ❌ Forgetting `vendor` (the library will raise `TypeError`)
-* ❌ Writing `schema_version` instead of `schema`
+The `analysis[]` entry carries `type`, `dialog`, `vendor`, `product`, `encoding: "json"`, `schema` and the document in `body`. Check the segment and word shapes against the draft before relying on them. Do not add a second plain-text transcript analysis; the WTF document already carries `transcript.text`.
 
 ***
 
-## Lawful Basis (recording consent)
+## Lawful Basis
 
-⚖️ **Spec:** [Lawful Basis Extension](../extensions/lawful-basis.md) · [`draft-howe-vcon-lawful-basis`](https://datatracker.ietf.org/doc/draft-howe-vcon-lawful-basis/) · **Extension name:** `"lawful_basis"`
+**Spec:** [Lawful Basis Extension](../extensions/lawful-basis.md) and [`draft-howe-vcon-lawful-basis`](https://datatracker.ietf.org/doc/draft-howe-vcon-lawful-basis/). **Extension token:** `lawful_basis`.
 
-Use this when your adapter handles conversations covered by GDPR, CCPA, HIPAA, TCPA, state-by-state recording consent laws, or when you're generating synthetic data for which you want auditable origin tracking.
-
-**Field name:** new code writes `purpose: "lawful_basis"`, the same field every other core attachment uses. A reader should still accept the legacy `type: "lawful_basis"` field on vCons built against earlier drafts.
-
-### Recipe — consent-based (GDPR Article 6(1)(a))
-
-The library's `add_lawful_basis_attachment` helper requires model objects for `purpose_grants` and `proof_mechanisms`. For most adapters it's easier to build the attachment dict directly and append it:
+Use it for any conversation covered by GDPR, CCPA, HIPAA, TCPA or a recording-consent law. Build the attachment with the template's helper, not by hand, and never default the basis in code. What the basis is, and what evidence supports it, is a decision for the operator of the deployment. The adapter only records it.
 
 ```python
-from foo_adapter.vcon_builder import new_vcon
+from datetime import datetime, timezone
 
-v = new_vcon(extensions=["lawful_basis"])
-v.add_party(tel="+15555550100", role="caller", validation="self-reported")
+from foo_adapter.vcon_builder import LawfulBasisConfig, add_lawful_basis, new_vcon
 
-lawful_basis_attachment = {
-    "purpose": "lawful_basis",
-    "start": "2026-05-19T14:32:00Z",
-    "encoding": "json",
-    "mediatype": "application/json",
-    "party": 0,
-    "dialog": 0,
-    "body": {
-        "lawful_basis": "consent",
-        "regulation": "GDPR",
-        "expiration": "2027-05-19T00:00:00Z",
-        "purpose_grants": [
-            {"purpose": "call_recording", "granted_at": "2026-05-19T14:32:00Z"},
-            {"purpose": "transcription", "granted_at": "2026-05-19T14:32:00Z"},
-            {"purpose": "analysis", "granted_at": "2026-05-19T14:32:00Z"},
-        ],
-        "proof_mechanisms": [
-            {
-                "type": "audio_prompt",
-                "description": "Caller responded 'yes' to IVR prompt",
-                "captured_at": "2026-05-19T14:32:00Z",
-            }
-        ],
-    },
-}
-v.vcon_dict["attachments"].append(lawful_basis_attachment)
+# Reads LAWFUL_BASIS, LAWFUL_BASIS_PURPOSE, LAWFUL_BASIS_JURISDICTION,
+# LAWFUL_BASIS_EXPIRATION, LAWFUL_BASIS_PROOF_MECHANISM from the environment.
+# `load_config()` already does this merge with the YAML block as Config.lawful_basis.
+cfg = LawfulBasisConfig.from_env()
+
+v = new_vcon()
+v.add_party(Party(tel="+15555550100", role="caller"))
+add_lawful_basis(v, cfg, granted_at=datetime.now(timezone.utc).isoformat(), party=0, dialog=0)
 ```
 
-### Recipe — synthetic data
+If `LAWFUL_BASIS` is unset, `add_lawful_basis()` returns `False`, logs one warning per process and adds nothing. An invalid value raises `ValueError` when the config loads. Do not use `Vcon.add_lawful_basis_attachment()` from the library; the template's notes record that its output lacks `start` and `mediatype`.
 
-When generating synthetic conversations (test fixtures, training data, demos), document the synthetic origin rather than forging a real consent record:
+With `LAWFUL_BASIS=consent`, `LAWFUL_BASIS_PURPOSE=recording,transcription` and an expiration set, the helper writes this attachment and adds `lawful_basis` to `extensions[]`:
 
-```python
-lawful_basis_attachment = {
-    "purpose": "lawful_basis",
-    "start": "2026-05-19T14:32:00Z",
-    "encoding": "json",
-    "mediatype": "application/json",
-    "party": 0,
-    "dialog": 0,
-    "body": {
-        "lawful_basis": "legitimate_interests",
-        "expiration": None,
-        "purpose_grants": [
-            {"purpose": "recording"},
-            {"purpose": "transcription"},
-            {"purpose": "analysis"},
-            {"purpose": "redistribution"},
-        ],
-        "proof_mechanisms": [
-            {
-                "type": "external_system",
-                "description": "Synthetic data generated by vcon-faker v2.3 on 2026-05-19",
-            }
-        ],
-    },
+```json
+{
+  "purpose": "lawful_basis",
+  "start": "2026-05-19T14:32:00+00:00",
+  "party": 0,
+  "dialog": 0,
+  "encoding": "json",
+  "mediatype": "application/json",
+  "body": {
+    "lawful_basis": "consent",
+    "expiration": "2027-05-19T00:00:00Z",
+    "purpose_grants": [
+      {"purpose": "recording", "granted": true, "granted_at": "2026-05-19T14:32:00+00:00"},
+      {"purpose": "transcription", "granted": true, "granted_at": "2026-05-19T14:32:00+00:00"}
+    ]
+  }
 }
-v.vcon_dict["attachments"].append(lawful_basis_attachment)
 ```
 
-Also mark each synthetic party with `validation: "synthetic"`. See the [synthetic data section of the compliance checklist](spec-compliance-checklist.md#synthetic-test-data).
+The draft also defines `proof_mechanisms[]`, each with `proof_type`, `timestamp` and `proof_data`, with `proof_type` values `verbal_confirmation`, `signed_document`, `cryptographic_signature` and `external_system`. The draft requires `expiration` in the body, as a timestamp or `null`. The template currently omits it when unset and writes proof entries with `mechanism_type` and `description` instead; compare the helper's output with the draft before you depend on either.
 
-### Common mistakes
-
-* ❌ Writing the legacy `type: "lawful_basis"` field in new code instead of `purpose: "lawful_basis"` (still fine to read on older vCons, not fine to write)
-* ❌ Serializing the body with `json.dumps()` instead of assigning the raw dict, now that `-04` treats `body` as the JSON value itself
-* ❌ Inventing an ad-hoc `synthetic_data_consent` attachment shape instead of using lawful\_basis with `legitimate_interests` + `external_system` proof
-* ❌ Omitting `"lawful_basis"` from top-level `extensions[]`
-* ❌ Treating `expiration` as optional for consent-based grounds. GDPR consent without an expiry is brittle
+For synthetic data (fixtures, training sets, demos), mark each party `validation: "synthetic"`. If you choose to attach a basis, record the synthetic origin through an `external_system` proof, and never present it as a real consent. See the [checklist](spec-compliance-checklist.md#synthetic-test-data).
 
 ***
 
 ## SIP Signaling
 
-📞 **Spec:** [SIP Signaling Extension](../extensions/sip-signaling.md) · [`draft-howe-vcon-sip-signaling`](https://datatracker.ietf.org/doc/draft-howe-vcon-sip-signaling/) · **Extension name:** `"sip-signaling"`
+**Spec:** [SIP Signaling Extension](../extensions/sip-signaling.md) and [`draft-howe-vcon-sip-signaling`](https://datatracker.ietf.org/doc/draft-howe-vcon-sip-signaling/). **Extension token:** `sip-signaling`.
 
-Use this when your adapter handles telephony — SignalWire, Twilio, Sippy, SIPREC streams, FreeSWITCH. The extension records the SIP-level facts (Call-ID, From/To URIs, P-Asserted-Identity, SDP fingerprints, signaling timestamps) that don't fit cleanly into a generic vCon party/dialog shape.
+Use it for telephony adapters (SIPREC, FreeSWITCH, Twilio and similar). The draft puts SIP identifiers on parties and dialogs, and puts message data in attachments with registered `purpose` values.
 
-### Recipe
+Party fields: `sip_contact`, `sip_user_agent`, `sip_display_name`. Dialog fields: `sip_call_id`, `sip_from_tag`, `sip_to_tag`, `sip_cseq`. Attachment purposes: `sip-invite`, `sip-response`, `sip-ack`, `sip-bye`, `sip-cancel`, `sip-update`, `sip-refer` (media type `message/sip`), `sip-message-trace`, `sip-headers` (JSON), `sip-sdp` (`application/sdp`), `stir-certificate`, `stir-verification-report` and `stir-passport-extended`.
 
 ```python
 v = new_vcon(extensions=["sip-signaling"])
-v.add_party(tel="+15555550100", sip="sip:caller@example.com", role="caller")
-v.add_party(tel="+15555550200", sip="sip:agent@example.com", role="agent")
-v.add_dialog(
+v.add_party(Party(tel="+15555550100", sip="sip:alice@example.com", role="caller",
+                 sip_user_agent="ExamplePhone/2.1"))
+v.add_party(Party(tel="+15555550200", sip="sip:bob@example.com", role="agent"))
+
+v.add_dialog(Dialog(
     type="recording",
     start="2026-05-19T14:32:00Z",
     parties=[0, 1],
-    duration=125.3,
-    url="https://recordings.example/abc.wav",
+    url="https://recordings.example.com/abc.wav",
     content_hash="sha512-...",
     mediatype="audio/wav",
-)
+    sip_call_id="a84b4c76e66710@pc33.example.com",
+    sip_from_tag="1928301774",
+    sip_to_tag="a6c85cf",
+))
 
 v.add_attachment(
-    purpose="sip_signaling",
-    body={
-        "call_id": "abc123@signalwire.com",
-        "from": "sip:caller@example.com",
-        "to": "sip:agent@example.com",
-        "p_asserted_identity": "+15555550100",
-        "invite_at": "2026-05-19T14:31:55Z",
-        "answer_at": "2026-05-19T14:32:00Z",
-        "bye_at": "2026-05-19T14:34:05Z",
-        "sdp_fingerprint": "sha-256 AB:CD:...",
-    },
-    encoding="json",
+    purpose="sip-message-trace",
+    start="2026-05-19T14:31:55Z",
     party=0,
     dialog=0,
+    mediatype="application/json",
+    encoding="json",
+    body={
+        "version": "1.0",
+        "call_id": "a84b4c76e66710@pc33.example.com",
+        "messages": [
+            {"timestamp": "2026-05-19T14:31:55.001+00:00", "direction": "sent",
+             "party": 0, "method": "INVITE"},
+            {"timestamp": "2026-05-19T14:31:55.050+00:00", "direction": "received",
+             "party": 1, "status_code": 180, "status_text": "Ringing"},
+        ],
+    },
 )
 ```
 
-Note this uses `purpose=`, the standard core attachment field name that `lawful_basis` now writes too.
+`Party` and `Dialog` pass the `sip_*` keywords through to the output (checked against `vcon` 0.10.0). The trace `call_id` must match the dialog's `sip_call_id`. Where both exist, include the RFC 7989 `session_id` as well as `sip_call_id`.
 
 ***
 
 ## Agent Session
 
-🤖 **Spec:** [Agent Session Extension](../extensions/agent-session.md) · [`draft-howe-vcon-agent-session`](https://datatracker.ietf.org/doc/draft-howe-vcon-agent-session/) · **Extension name:** `"agent_session"`
+**Spec:** [Agent Session Extension](../extensions/agent-session.md) and [`draft-howe-vcon-agent-session`](https://datatracker.ietf.org/doc/draft-howe-vcon-agent-session/). **Extension token:** `agent_session`.
 
-Use this when your adapter handles AI-agent conversations — Claude AI exports, LLM tool-use traces, voice-agent sessions. The extension carries the session-level facts the core spec doesn't model: model identity, tool invocations, system-prompt fingerprints, token counts.
-
-### Recipe
+Use it for AI-agent conversations. The draft puts the agent's identity on its party in `meta.agent_session`, the user and assistant turns in ordinary `dialog[]` entries, and the internal trace (tool calls, results, reasoning) in one `agent_trace` analysis.
 
 ```python
 v = new_vcon(extensions=["agent_session"])
-v.add_party(name="User", role="user")
-v.add_party(name="Claude Sonnet 4.6", role="agent", validation="ai_agent")
+v.add_party(Party(name="User", role="user"))
+v.add_party(Party(
+    name="Example Agent",
+    role="agent",
+    validation="system",
+    meta={"agent_session": {
+        "model_id": "example-model-1",
+        "provider": "example-provider",
+        "recording_agent": "example-harness/1.0",
+    }},
+))
 
-v.add_dialog(
-    type="text",
-    start="2026-05-19T14:32:00Z",
-    parties=[0],
-    originator=0,
-    body="Help me debug this Python function",
-    mimetype="text/plain",
-)
-v.add_dialog(
-    type="text",
-    start="2026-05-19T14:32:02Z",
-    parties=[1],
-    originator=1,
-    body="Sure — paste the function and a sample of the failing input.",
-    mimetype="text/plain",
-)
+v.add_dialog(Dialog(type="text", start="2026-05-19T14:32:00Z", parties=[0], originator=0,
+                    mediatype="text/plain", encoding="none",
+                    body="Help me debug this function"))
+v.add_dialog(Dialog(type="text", start="2026-05-19T14:32:02Z", parties=[1], originator=1,
+                    mediatype="text/plain", encoding="none",
+                    body="Paste the function and a failing input."))
 
-v.add_attachment(
-    purpose="agent_session",
-    body={
-        "model": "claude-sonnet-4-6",
-        "model_id": "claude-sonnet-4-6-20260319",
-        "system_prompt_hash": "sha256:7b8a2f0e...",
-        "tools_available": ["Read", "Edit", "Bash"],
-        "tool_calls": [],
-        "total_input_tokens": 1247,
-        "total_output_tokens": 89,
-        "session_id": "session_abc123",
-    },
+v.add_analysis(
+    type="agent_trace",
+    dialog=[0, 1],
+    vendor="example-provider",
+    product="example-model-1",
+    schema="https://datatracker.ietf.org/doc/draft-birkholz-verifiable-agent-conversations/",
     encoding="json",
-    party=0,
-    dialog=0,
+    body=vac_record,  # the verifiable-agent-record, as a JSON value
 )
 ```
 
-The [`vcon-anthropic-chats`](../tools/vcon-anthropic-chats.md) adapter is a reference implementation if you're building an LLM-export adapter.
+`model_id` and `provider` are required on the party; `recording_agent` is recommended; `environment` is optional. The analysis `vendor` mirrors `provider`, and `product` mirrors `model_id`. The draft's own example shows the trace `body` as a JSON string; under core-04 write the value. File changes go in attachments with `purpose` `agent_file_change`, `agent_artifact` or `agent_environment`. The draft asks that an agent session have a lawful basis whose `purpose_grants` cover `agent_session_recording` and `agent_session_analysis`, and `agent_session_redistribution` where it applies; pass those through `LAWFUL_BASIS_PURPOSE`.
+
+For a working converter, see [`vcon-vac-adapter`](https://github.com/vcon-dev/vcon-vac-adapter).
 
 ***
 
 ## Combining extensions
 
-Most production adapters combine three or more. A contact-center adapter typically ships SIP signaling + WTF + lawful basis on every vCon. A voice-AI adapter combines agent session + WTF + lawful basis. Just list every extension you emit in the top-level `extensions[]`:
+List every extension you emit in top-level `extensions[]`. There is no ordering rule.
 
 ```python
-v = new_vcon(extensions=["sip-signaling", "wtf", "lawful_basis"])
+v = new_vcon(extensions=["sip-signaling", "wtf_transcription"])
+add_lawful_basis(v, cfg, granted_at=...)  # adds "lawful_basis" for you
 ```
 
-There's no ordering constraint and no limit. List them all, then add the corresponding attachments and analyses below.
+## The drafts
 
-## Where to read the actual specs
+When you need an authoritative answer, read the draft, not this page:
 
-When you need authoritative answers, read the drafts — not this cookbook:
-
-* [WTF Transcription](../extensions/wtf-transcription.md) → [`draft-howe-vcon-wtf-extension`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/)
-* [Lawful Basis](../extensions/lawful-basis.md) → [`draft-howe-vcon-lawful-basis`](https://datatracker.ietf.org/doc/draft-howe-vcon-lawful-basis/)
-* [SIP Signaling](../extensions/sip-signaling.md) → [`draft-howe-vcon-sip-signaling`](https://datatracker.ietf.org/doc/draft-howe-vcon-sip-signaling/)
-* [Agent Session](../extensions/agent-session.md) → [`draft-howe-vcon-agent-session`](https://datatracker.ietf.org/doc/draft-howe-vcon-agent-session/)
-* [Lifecycle (SCITT)](../extensions/lifecycle.md) → [`draft-howe-vcon-lifecycle`](https://datatracker.ietf.org/doc/draft-howe-vcon-lifecycle/)
+* [WTF Transcription](../extensions/wtf-transcription.md): [`draft-howe-vcon-wtf-extension`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/)
+* [Lawful Basis](../extensions/lawful-basis.md): [`draft-howe-vcon-lawful-basis`](https://datatracker.ietf.org/doc/draft-howe-vcon-lawful-basis/)
+* [SIP Signaling](../extensions/sip-signaling.md): [`draft-howe-vcon-sip-signaling`](https://datatracker.ietf.org/doc/draft-howe-vcon-sip-signaling/)
+* [Agent Session](../extensions/agent-session.md): [`draft-howe-vcon-agent-session`](https://datatracker.ietf.org/doc/draft-howe-vcon-agent-session/)
+* [Lifecycle](../extensions/lifecycle.md): [`draft-howe-vcon-lifecycle`](https://datatracker.ietf.org/doc/draft-howe-vcon-lifecycle/)

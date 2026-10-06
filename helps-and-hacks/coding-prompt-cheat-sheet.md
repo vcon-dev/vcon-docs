@@ -1,345 +1,227 @@
 ---
-description: For when you need to tell cursor or replit what a vCon is in a prompt...
+description: >-
+  A block of vCon context you can paste into Cursor, Claude Code or Replit so
+  the assistant writes vCons that match draft-ietf-vcon-vcon-core-04.
 ---
 
 # Coding Prompt Cheat Sheet
 
-> **Spec target:** [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) · syntax parameter `"vcon": "0.4.0"`.
->
-> **Field-name migration (read this first if you have pre-0.9.1 code):**
-> - `appended` → `amended`
-> - `must_support` → `critical`
-> - Attachment field is `purpose` (REQUIRED), never `type` (the one documented exception is the `lawful_basis` extension).
-> - Analysis field is `schema` (never `schema_version`); `vendor` is REQUIRED on every analysis entry.
+Paste everything below the line into your coding assistant's context. It is a condensed copy of the [field reference](../vcons/field-reference.md), which is the page to check when the two differ. If you are building an adapter, also give the assistant the [Spec Compliance Checklist](../vcon-adapters/spec-compliance-checklist.md).
 
-## vCon (Virtual Conversation) Standard - LLM Context
+***
 
-### What is a vCon?
+## vCon context for code generation
 
-A vCon is a standardized JSON container for storing and exchanging real-time human conversation data. It supports multiple communication types: phone calls, video conferences, SMS, MMS, emails, web chat, and more. vCons enable consistent storage, analysis, and interchange of conversational data across different platforms and services.
+**Spec:** IETF `draft-ietf-vcon-vcon-core-04` (https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/). Write `"vcon": "0.4.0"`.
 
-### Core Structure
+**Never write these legacy names:**
 
-Every vCon has exactly 5 main sections:
+* `appended` (use `amended`)
+* `must_support` or `must_understand` (use `critical`; `must_understand` never existed in any draft)
+* `type` on an attachment (use `purpose`, including `"purpose": "lawful_basis"`)
+* `mimetype` (use `mediatype`)
+* `schema_version` (use `schema`)
+* a `session_id` string (use an object `{"local": "<uuid>", "remote": "<uuid>"}`)
+* `group` (reserved; do not emit)
 
-1. **metadata** - conversation context and identifiers
-2. **parties** - participant information
-3. **dialog** - actual conversation content
-4. **analysis** - derived insights (transcripts, sentiment, etc.)
-5. **attachments** - supplemental files
+### What a vCon is
 
-### vCon States
+A JSON object holding one conversation (call, video meeting, SMS, chat, email thread). Three forms: unsigned (plain JSON), signed (JWS wrapping the unsigned form), encrypted (JWE wrapping the signed form). Indexes into `parties`, `dialog` and `attachments` are zero-based array positions.
 
-* **unsigned** - initial/intermediate state during collection
-* **signed** - verified with JWS digital signature for immutability
-* **encrypted** - secured with JWE for sensitive data
-
-### Complete JSON Schema
-
-#### Top-Level vCon Object Properties
+### Top-level object
 
 ```json
 {
-  "vcon": "0.4.0",                    // REQUIRED: syntax version
-  "uuid": "string",                   // REQUIRED: globally unique identifier
-  "created_at": "Date",               // REQUIRED: creation timestamp (RFC3339)
-  "updated_at": "Date",               // OPTIONAL: last modification timestamp
-  "subject": "string",                // OPTIONAL: conversation topic/subject
-  "extensions": [],                   // OPTIONAL: array of extension names this vCon uses (e.g. "lawful_basis", "wtf")
-  "must_understand": [],              // OPTIONAL: subset of extensions[] that consumers MUST support to safely process this vCon
-  "parties": [],                      // REQUIRED: array of Party objects
-  "dialog": [],                       // OPTIONAL: array of Dialog objects
-  "analysis": [],                     // OPTIONAL: array of Analysis objects
-  "attachments": [],                  // OPTIONAL: array of Attachment objects
-  "redacted": {},                     // OPTIONAL: Redacted object (mutually exclusive with amended/group)
-  "amended": {}                       // OPTIONAL: Amended object (mutually exclusive with redacted/group)
-  // NOTE: `group` is reserved in draft-ietf-vcon-vcon-core-02; do not emit an empty `group: []`.
+  "vcon": "0.4.0",          // write this; deprecated once the draft is an RFC
+  "uuid": "string",         // REQUIRED; SHOULD be a version 8 UUID (see Python notes)
+  "created_at": "Date",     // REQUIRED; RFC 3339 with timezone
+  "updated_at": "Date",     // optional
+  "subject": "string",      // optional
+  "extensions": ["string"], // SHOULD list every extension used, e.g. "lawful_basis", "wtf_transcription"
+  "critical": ["string"],   // optional; extensions a reader MUST support or else reject the vCon
+  "redacted": {},           // optional; mutually exclusive with amended
+  "amended": {},            // optional; mutually exclusive with redacted
+  "parties": [],            // optional
+  "dialog": [],             // optional
+  "analysis": [],           // optional
+  "attachments": []         // optional
 }
 ```
 
-#### Party Object Properties
+Include at least one of `parties`, `dialog`, `analysis`, `attachments`.
+
+### Party object (all fields optional)
 
 ```json
 {
-  "tel": "string",                    // OPTIONAL: telephone number (E.164 format preferred)
-  "stir": "string",                   // OPTIONAL: STIR PASSporT in JWS Compact form
-  "mailto": "string",                 // OPTIONAL: email address
-  "name": "string",                   // OPTIONAL: participant name
-  "validation": "string",             // OPTIONAL: identity validation method used
-  "jcard": "object",                  // OPTIONAL: jCard object for contact info
-  "gmlpos": "string",                 // OPTIONAL: GML position (lat/long)
-  "civicaddress": {                   // OPTIONAL: civic address object
-    "country": "string",              // OPTIONAL: country code
-    "a1": "string",                   // OPTIONAL: national subdivision (state/province)
-    "a2": "string",                   // OPTIONAL: county/parish/district
-    "a3": "string",                   // OPTIONAL: city/township
-    "a4": "string",                   // OPTIONAL: city division/borough
-    "a5": "string",                   // OPTIONAL: neighborhood/block
-    "a6": "string",                   // OPTIONAL: street/group of streets
-    "prd": "string",                  // OPTIONAL: leading street direction
-    "pod": "string",                  // OPTIONAL: trailing street suffix
-    "sts": "string",                  // OPTIONAL: street suffix
-    "hno": "string",                  // OPTIONAL: house number
-    "hns": "string",                  // OPTIONAL: house number suffix
-    "lmk": "string",                  // OPTIONAL: landmark
-    "loc": "string",                  // OPTIONAL: additional location info
-    "flr": "string",                  // OPTIONAL: floor
-    "nam": "string",                  // OPTIONAL: name/description
-    "pc": "string"                    // OPTIONAL: postal code
-  },
-  "timezone": "string",               // OPTIONAL: timezone identifier
-  "uuid": "string",                   // OPTIONAL: unique participant identifier
-  "role": "string",                   // OPTIONAL: participant role (agent, customer, supervisor, etc.)
-  "contact_list": "string"            // OPTIONAL: reference to contact list
+  "tel": "string",           // tel URL; "tel:" prefix optional
+  "sip": "string",           // SIP addr-spec, e.g. "sip:alice@example.com"
+  "stir": "string",          // STIR PASSporT, JWS compact form
+  "mailto": "string",        // email address, bare or mailto: URL
+  "name": "string",          // "anonymous" for a deliberately unidentified party
+  "did": "string",           // Decentralized Identifier URI
+  "validation": "string",    // label for how identity was checked, e.g. "DOB"; SHOULD be present with name
+  "gmlpos": "string",        // PIDF-LO gml:pos
+  "civicaddress": {},        // keys: country, a1-a6, prd, pod, sts, hno, hns, lmk, loc, flr, nam, pc
+  "uuid": "string",          // stable participant ID, any unique string
+  "type": "string",          // "person", "bot" or "organization"
+  "org": "string",
+  "dept": "string"
 }
 ```
 
-#### Dialog Object Properties
+`role` and `contact_list` belong to the contact center extension (token `CC`), not core.
+
+### Dialog object
 
 ```json
 {
-  "type": "string",                   // REQUIRED: "recording", "text", "transfer", or "incomplete"
-  "start": "Date",                    // REQUIRED: start time (RFC3339)
-  "duration": "number",               // OPTIONAL: duration in seconds (UnsignedInt or UnsignedFloat)
-  "parties": [],                      // REQUIRED: array of party indices or arrays for multi-channel
-  "originator": "number",             // OPTIONAL: index of originating party (if not first in parties)
-  "mediatype": "string",              // OPTIONAL: MIME type (required for inline, optional if in HTTP header)
-  "filename": "string",               // OPTIONAL: original filename
-  
-  // Content (for types other than "incomplete" and "transfer")
-  "body": "string",                   // OPTIONAL: inline content (mutually exclusive with url)
-  "encoding": "string",               // REQUIRED with body: "base64url", "json", or "none"
-  "url": "string",                    // OPTIONAL: external reference (mutually exclusive with body)
-  "content_hash": "string|string[]",  // REQUIRED with url: SHA-512 hash for integrity
-  
-  // Additional properties
-  "disposition": "string",            // REQUIRED for "incomplete" type: reason for failure
-  "party_history": [],               // OPTIONAL: array of party join/leave events
-  "campaign": "string",               // OPTIONAL: campaign identifier
-  "interaction_type": "string",       // OPTIONAL: type of interaction
-  "interaction_id": "string",         // OPTIONAL: interaction identifier
-  "skill": "string",                  // OPTIONAL: required skill for handling
-  "application": "string",            // OPTIONAL: application/platform used
-  "message_id": "string",             // OPTIONAL: unique message identifier
-  
-  // Transfer-specific properties (only for "transfer" type)
-  "transferee": "number",             // Party index for transferee role
-  "transferor": "number",             // Party index for transferor role  
-  "transfer_target": "number",        // Party index for transfer target role
-  "original": "number",               // Dialog index for original conversation
-  "consultation": "number",           // Dialog index for consultation (optional)
-  "target_dialog": "number"           // Dialog index for target conversation
+  "type": "string",          // REQUIRED: "recording", "text", "recording-set", "transfer" or "incomplete"
+  "start": "Date",           // SHOULD
+  "duration": 12.5,          // optional, seconds
+  "parties": [0, 1],         // SHOULD for recording, recording-set, text; forbidden for transfer
+  "originator": 0,           // only when the first listed party is not the originator
+  "mediatype": "string",     // MUST for inline content (recording, text)
+  "filename": "string",
+  "body": "*",               // inline content, with encoding
+  "encoding": "string",      // "none", "base64url" or "json"
+  "url": "string",           // external content (HTTPS), with content_hash
+  "content_hash": "string",  // "sha512-<base64url digest>", or an array of such strings
+  "disposition": "string",   // REQUIRED for incomplete: no-answer, congestion, failed, busy, hung-up, voicemail-no-message
+  "session_id": {},          // {"local": uuid, "remote": uuid}
+  "party_history": [],       // {party, time, event}; events join, drop, hold, unhold, mute, unmute, keydown, keyup (+ button)
+  "recordings": [0],         // recording-set only: indexes of its recording dialogs
+  "recording_set": 0,        // recording only: index of its recording-set
+  "application": "string",
+  "message_id": "string",    // recording and text only
+  "transferee": 0, "transferor": 0, "transfer_target": 0,  // transfer only: party indexes
+  "original": 0, "consultation": 0, "target_dialog": 0     // transfer only: dialog indexes
 }
 ```
 
-#### Analysis Object Properties
+`recording-set`, `transfer` and `incomplete` dialogs carry no content: no `body`, `url`, `mediatype` or `filename`. There is no `transcript` dialog type; transcripts are analysis.
+
+### Analysis object
 
 ```json
 {
-  "type": "string",                   // REQUIRED: "summary", "transcript", "translation", "sentiment", "tts"
-  "dialog": "number|number[]",        // OPTIONAL: index(es) of related dialog objects
-  "mediatype": "string",              // OPTIONAL: MIME type of analysis data
-  "filename": "string",               // OPTIONAL: filename for analysis data
-  "vendor": "string",                 // OPTIONAL: vendor/product name that generated analysis
-  "product": "string",                // OPTIONAL: specific product name
-  "schema": "string",                 // OPTIONAL: data format/schema identifier
-  
-  // Content
-  "body": "string",                   // OPTIONAL: inline analysis data (mutually exclusive with url)
-  "encoding": "string",               // REQUIRED with body: encoding method
-  "url": "string",                    // OPTIONAL: external reference (mutually exclusive with body)
-  "content_hash": "string|string[]"   // REQUIRED with url: integrity hash
+  "type": "string",          // REQUIRED; SHOULD be report, sentiment, summary, transcript, translation or tts; extensions add e.g. wtf_transcription
+  "dialog": 0,               // index or array; required when derived from dialog
+  "attachment": 0,           // index or array; required when derived from attachments
+  "vendor": "string",        // REQUIRED
+  "product": "string",       // optional
+  "schema": "string",        // optional; names the body format
+  "mediatype": "string",     // SHOULD for inline content
+  "filename": "string",
+  "encoding": "json",
+  "body": {}                 // or url + content_hash
 }
 ```
 
-#### Attachment Object Properties
+### Attachment object
 
 ```json
 {
-  "purpose": "string",                // REQUIRED: purpose of the attachment (e.g. "contract", "screenshot", "synthetic_data_consent")
-  "start": "Date",                    // REQUIRED: timestamp when attachment was exchanged
-  "party": "number",                  // REQUIRED: index of party who contributed attachment (use 0 for vCon-level attachments)
-  "dialog": "number",                 // REQUIRED: index of related dialog (use 0 for vCon-level attachments)
-  "mediatype": "string",              // OPTIONAL: MIME type
-  "filename": "string",               // OPTIONAL: original filename
-  
-  // Content
-  "body": "string",                   // OPTIONAL: inline attachment data (mutually exclusive with url)
-  "encoding": "string",               // REQUIRED with body: encoding method
-  "url": "string",                    // OPTIONAL: external reference (mutually exclusive with body)
-  "content_hash": "string|string[]"   // REQUIRED with url: integrity hash
+  "purpose": "string",       // what the attachment is; extensions define values such as "lawful_basis"
+  "start": "Date",           // REQUIRED
+  "party": 0,                // REQUIRED; contributing party (use 0 when none applies)
+  "dialog": 0,               // REQUIRED; related dialog (use 0 when none applies)
+  "mediatype": "string",     // MUST for inline content
+  "filename": "string",
+  "encoding": "string",
+  "body": "*"                // or url + content_hash
 }
 ```
 
-#### Redacted Object Properties
+### Redacted and amended objects
 
 ```json
-{
-  "uuid": "string",                   // REQUIRED: UUID of unredacted version
-  "type": "string",                   // REQUIRED: type of redaction performed
-  "body": "string",                   // OPTIONAL: inline unredacted vCon (encrypted)
-  "encoding": "string",               // REQUIRED with body: encoding method
-  "url": "string",                    // OPTIONAL: external reference to unredacted vCon
-  "content_hash": "string|string[]"   // REQUIRED with url: integrity hash
-}
+{ "uuid": "string", "type": "string", "url": "string", "content_hash": "string" }  // redacted: uuid SHOULD, type = kind of redaction
+{ "uuid": "string", "url": "string", "content_hash": "string" }                   // amended: uuid optional only if url given
 ```
 
-#### Amended Object Properties
+`content_hash` is required whenever `url` is present. Neither object carries a `body`.
 
-> **Spec note:** This object was renamed from `appended` to `amended` in `draft-ietf-vcon-vcon-core-02`. If you are reading legacy code or vCons that use `appended`, treat the name as a synonym and migrate.
+### Content encoding
 
-```json
-{
-  "uuid": "string",                   // OPTIONAL: UUID of original vCon version
-  "body": "string",                   // OPTIONAL: inline original vCon
-  "encoding": "string",               // REQUIRED with body: encoding method
-  "url": "string",                    // OPTIONAL: external reference to original vCon
-  "content_hash": "string|string[]"   // OPTIONAL with url: integrity hash
-}
-```
+* `none`: body is a plain JSON string (text).
+* `base64url`: body is Base64url (RFC 7515), for binary. Not plain base64.
+* `json`: body is any JSON value. Write the object or array itself, not `json.dumps(...)`. Readers should still accept a stringified body.
 
-#### Group Object Properties
+`encoding` MUST accompany a non-empty `body`. External `url` MUST be HTTPS.
 
-```json
-{
-  "uuid": "string",                   // REQUIRED: UUID of vCon to aggregate
-  "body": "string",                   // OPTIONAL: inline vCon (JSON form)
-  "encoding": "string",               // REQUIRED with body: must be "json"
-  "url": "string",                    // OPTIONAL: external reference to vCon
-  "content_hash": "string|string[]"   // REQUIRED with url: integrity hash
-}
-```
+### Common extensions
 
-#### Party History Object Properties (for Dialog.party\_history)
+* Lawful basis: `extensions: ["lawful_basis"]`; attachment `{"purpose": "lawful_basis", "encoding": "json", "body": {"lawful_basis": "consent", "expiration": "<Date or null>", "purpose_grants": [{"purpose": "recording", "granted": true, "granted_at": "<Date>"}]}}`. Optional `proof_mechanisms[]` entries have `proof_type`, `timestamp`, `proof_data`. Not required in `critical`.
+* WTF transcript: `extensions: ["wtf_transcription"]`; analysis `{"type": "wtf_transcription", "vendor": "...", "encoding": "json", "body": {"transcript": {...}, "segments": [...], "metadata": {...}}}`.
+* SIP signaling: token `sip-signaling` (hyphen). MUST NOT be in `critical`.
+
+### Signed form (JWS)
 
 ```json
 {
-  "party": "number",                  // REQUIRED: index of party
-  "event": "string",                  // REQUIRED: "join", "drop", "hold", "unhold", "mute", "unmute"
-  "time": "Date"                      // REQUIRED: timestamp of event
-}
-```
-
-### Security Features
-
-* **JWS Signing** - ensures integrity and authenticity using RS256 (recommended)
-* **JWE Encryption** - protects sensitive content using RSA-OAEP + A256CBC-HS512 (recommended)
-* **Content Hashing** - SHA-512 hashes for external file integrity (mandatory for external refs)
-* **Versioning** - maintains history of changes and redactions via uuid references
-
-### Signed vCon Structure (JWS)
-
-```json
-{
-  "payload": "string",                // Base64url encoded unsigned vCon
-  "signatures": [{                    // Array of signature objects
-    "header": {                       // Unprotected header
-      "alg": "RS256",                 // SHOULD be RS256
-      "x5c": ["string"],              // REQUIRED: certificate chain OR x5u
-      "x5u": "string",                // REQUIRED: cert chain URL OR x5c
-      "uuid": "string"                // SHOULD be provided: vCon UUID for convenience
-    },
-    "protected": "string",            // Base64url encoded protected header
-    "signature": "string"             // Base64url encoded signature
+  "payload": "base64url of the unsigned vCon",
+  "signatures": [{
+    "header": { "alg": "RS256", "x5c": ["..."], "uuid": "vCon uuid" },  // alg SHOULD be RS256; x5c or x5u MUST
+    "protected": "base64url",
+    "signature": "base64url"
   }]
 }
 ```
 
-### Encrypted vCon Structure (JWE)
+### Encrypted form (JWE)
+
+Sign first, then encrypt the whole signed vCon.
 
 ```json
 {
-  "unprotected": {                    // Unprotected header
-    "cty": "application/vcon+json",   // SHOULD be application/vcon+json
-    "enc": "A256CBC-HS512",           // SHOULD be A256CBC-HS512
-    "uuid": "string"                  // SHOULD be provided: vCon UUID
-  },
-  "recipients": [{                    // Array of recipient objects
-    "header": {                       // Per-recipient header
-      "alg": "RSA-OAEP"               // SHOULD be RSA-OAEP
-    },
-    "encrypted_key": "string"         // Base64url encoded encrypted key
-  }],
-  "iv": "string",                     // Base64url encoded initialization vector
-  "ciphertext": "string",             // Base64url encoded encrypted signed vCon
-  "tag": "string"                     // Base64url encoded authentication tag
+  "unprotected": { "cty": "application/vcon", "enc": "A256CBC-HS512", "uuid": "vCon uuid" },
+  "recipients": [{ "header": { "alg": "RSA-OAEP" }, "encrypted_key": "base64url" }],
+  "iv": "base64url",
+  "ciphertext": "base64url of the signed vCon",
+  "tag": "base64url"
 }
 ```
 
-### Common Media Types
+Nothing is signed automatically. A vCon SHOULD be signed or encrypted before it leaves the security domain that built it.
 
-#### Dialog
+### Python notes
 
-* `text/plain` - plain text messages
-* `audio/x-wav` - WAV audio files
-* `audio/x-mp3` - MP3 audio files
-* `audio/x-mp4` - MP4 audio files
-* `audio/ogg` - OGG audio files
-* `video/x-mp4` - MP4 video files
-* `video/ogg` - OGG video files
-* `multipart/mixed` - multipart content (emails)
+Timestamps must carry a timezone: `datetime.now(timezone.utc).isoformat()`, never `datetime.utcnow()`.
 
-#### Content Encoding Options
-
-* `base64url` - Base64url encoded binary data
-* `json` - Valid JSON object
-* `none` - Valid JSON string, no encoding needed
-
-### Implementation Guidelines
-
-* Follow JSON schema strictly for compliance
-* Use proper timestamps (RFC3339/ISO 8601 format)
-* Ensure UUIDs are globally unique (prefer version 8 with domain-based generation)
-* Implement proper signing/encryption for production use
-* Maintain referential integrity between sections
-* Always use HTTPS for external file references
-* Validate content hashes for external files using SHA-512
-
-### Python Development Notes
-
-* Use `uuid` library for generating UUIDs (version 8 recommended)
-* `datetime.isoformat()` for RFC3339 timestamps
-* `json` module for serialization/deserialization
-* `cryptography` library for JWS/JWE operations
-* `hashlib` for SHA-512 content hash generation
-* Validate against vCon JSON schema before processing
-* Use `requests` with SSL verification for external file retrieval
-
-### Key Considerations
-
-* vCons can reference previous versions (redaction/amendment history via uuid)
-* Media content can be embedded (body + encoding) or referenced externally (url + content\_hash)
-* Privacy and compliance requirements vary by jurisdiction
-* Large media files should typically be stored as external references
-* Ensure proper escaping of JSON content in dialog sections
-* Support both single-channel and multi-channel audio recordings
-* Handle participant join/leave events in party\_history for complex conversations
-* Maintain chain of custody through signing and encryption across security domains
-
-### Validation Rules
-
-* At most one of: redacted, amended, or group parameters in top-level object
-* Dialog objects of type "incomplete" or "transfer" MUST NOT have body/url content
-* Dialog objects of other types SHOULD have body+encoding OR url+content\_hash
-* External references (url) MUST include content\_hash for integrity
-* Signed vCons MUST include x5c OR x5u in header for certificate chain
-* Party indices in dialog.parties must reference valid parties array elements
-* Dialog indices in analysis.dialog must reference valid dialog array elements
-
-### UUID Generation (Version 8 Recommended)
+The core draft recommends a version 8 UUID laid out like version 7 (millisecond timestamp first) with its final 62 bits set to the high 62 bits of the SHA-1 hash of a host name you control:
 
 ```python
-# Recommended UUID generation approach
-import hashlib
-import uuid
-from datetime import datetime
+import hashlib, os, time, uuid
 
-def generate_vcon_uuid(domain="example.com"):
-    """Generate version 8 UUID for vCon with domain-based uniqueness"""
-    timestamp = int(datetime.utcnow().timestamp() * 1000)  # milliseconds
-    domain_hash = hashlib.sha1(domain.encode()).digest()[:8]  # 62 bits
-    
-    # Construct version 8 UUID (implementation details vary)
-    # Use standard uuid library with custom generation
-    return str(uuid.uuid4())  # Fallback to uuid4 if version 8 not available
+def vcon_uuid(fqhn: str) -> str:
+    """Version 8 UUID per draft-ietf-vcon-vcon-core-04 Section 4.1.2."""
+    unix_ts_ms = time.time_ns() // 1_000_000
+    rand_a = int.from_bytes(os.urandom(2), "big") & 0xFFF
+    custom_c = int.from_bytes(hashlib.sha1(fqhn.encode()).digest()[:8], "big") >> 2
+    n = (unix_ts_ms & (2**48 - 1)) << 80 | 0x8 << 76 | rand_a << 64 | 0b10 << 62 | custom_c
+    return str(uuid.UUID(int=n))
+
+u = uuid.UUID(vcon_uuid("example.com"))
+assert u.version == 8 and u.variant == uuid.RFC_4122
 ```
+
+Content hash for external files:
+
+```python
+import base64, hashlib
+
+def content_hash(data: bytes) -> str:
+    return "sha512-" + base64.urlsafe_b64encode(hashlib.sha512(data).digest()).rstrip(b"=").decode()
+```
+
+The [`vcon`](../vcon-library/README.md) library (0.10.0 or later) does most of this: `Vcon.build_new()` sets `"vcon": "0.4.0"` and a version 8 `uuid`, and `add_analysis()` takes keyword arguments and requires `vendor`.
+
+### Validation rules
+
+* `redacted` and `amended` are mutually exclusive.
+* Every index must point at an existing array element.
+* `url` always comes with `content_hash`.
+* `incomplete` dialogs need `disposition`; `recording-set` dialogs need `recordings`.
+* Every attachment has `start`, `party` and `dialog`; every analysis has `vendor`.
+* A reader that finds an unsupported name in `critical` rejects the vCon.

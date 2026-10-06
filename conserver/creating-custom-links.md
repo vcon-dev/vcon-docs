@@ -1,471 +1,276 @@
 ---
-description: How to create custom processing links
+description: How to write a conserver link, with the Vcon helper methods, the return and error rules, metrics, packaging and tests, checked against vcon-server.
 ---
 
 # 🧩 Creating Custom Links
 
-Links are the modular processing units of the Conserver. This guide explains how to create your own custom links to extend the system's functionality.
+A link is a Python module with a `run` function. The conserver imports it by name from `config.yml` and calls `run` once for each vCon that reaches it. This page shows how to write one. For what the return value does to a chain, see [Concepts](concepts.md#link).
 
-## Link Interface
-
-Every link must implement a `run` function with this signature:
+## The interface
 
 ```python
-def run(
-    vcon_uuid: str,
-    link_name: str,
-    opts: dict = default_options
-) -> str | None:
-    """
-    Process a vCon through this link.
-
-    Args:
-        vcon_uuid: UUID of the vCon to process
-        link_name: Name of this link instance in config
-        opts: Configuration options merged with defaults
-
-    Returns:
-        str: vCon UUID to continue chain (usually same as input)
-        None: Stop chain processing for this vCon
-    """
+def run(vcon_uuid: str, link_name: str, opts: dict | None) -> str | None:
+    ...
 ```
 
-## Basic Link Template
+* `vcon_uuid` is the UUID of the vCon. The link loads the vCon itself.
+* `link_name` is the name of the entry under `links:`, so one module can serve several entries.
+* `opts` is the `options:` block from that entry. It is `None` when the entry has no `options`, so merge it into your defaults with `opts or {}`.
+
+| Return | Effect |
+| ------ | ------ |
+| The same UUID | The chain continues. |
+| A different UUID | The chain continues with that vCon. |
+| `None` or any falsy value | The chain stops for this vCon. Nothing is stored. |
+| Raise an exception | The chain stops and the UUID goes to `DLQ:<ingress_list>`. |
+
+Return `None` to filter on purpose, and raise to report a failure that someone should replay. A link that catches an error and returns the UUID hides the failure from the dead letter queue.
+
+## A template
 
 ```python
 from lib.logging_utils import init_logger
 from lib.vcon_redis import VconRedis
 
-# Initialize logger
 logger = init_logger(__name__)
 
-# Default options - these can be overridden in config
 default_options = {
-    "enabled": True,
-    "api_key": "",
-    "timeout": 30,
+    "threshold": 0.5,
+    "tag_name": "processed_by",
 }
 
 
-def run(vcon_uuid, link_name, opts=default_options):
-    """Main entry point for the link."""
+def run(vcon_uuid, link_name, opts=None):
+    options = {**default_options, **(opts or {})}
 
-    # Merge config options with defaults
-    merged_opts = default_options.copy()
-    merged_opts.update(opts)
-    opts = merged_opts
-
-    logger.info(f"Starting {link_name} for vCon: {vcon_uuid}")
-
-    # Check if link is enabled
-    if not opts.get("enabled", True):
-        logger.info(f"Link {link_name} is disabled, skipping")
-        return vcon_uuid
-
-    try:
-        # Get vCon from Redis
-        vcon_redis = VconRedis()
-        vcon = vcon_redis.get_vcon(vcon_uuid)
-
-        if not vcon:
-            logger.error(f"vCon not found: {vcon_uuid}")
-            return None  # Stop chain processing
-
-        # ========================================
-        # YOUR PROCESSING LOGIC HERE
-        # ========================================
-
-        # Example: Add an analysis
-        vcon.add_analysis(
-            type="my_analysis",
-            dialog=0,
-            vendor="my_company",
-            body={"result": "processed"},
-        )
-
-        # Example: Add a tag
-        vcon.add_tag(tag_name="processed_by", tag_value=link_name)
-
-        # ========================================
-        # END PROCESSING LOGIC
-        # ========================================
-
-        # Save updated vCon back to Redis
-        vcon_redis.store_vcon(vcon)
-
-        logger.info(f"Completed {link_name} for vCon: {vcon_uuid}")
-        return vcon_uuid  # Continue chain
-
-    except Exception as e:
-        logger.error(f"Error in {link_name}: {e}", exc_info=True)
-        raise  # Re-raise to move vCon to DLQ
-```
-
-## Working with vCon Objects
-
-### Reading vCon Data
-
-```python
-# Get the vCon object
-vcon_redis = VconRedis()
-vcon = vcon_redis.get_vcon(vcon_uuid)
-
-# Access vCon properties
-print(vcon.uuid)        # vCon UUID
-print(vcon.created_at)  # Creation timestamp
-print(vcon.parties)     # List of parties
-print(vcon.dialog)      # List of dialog entries
-print(vcon.analysis)    # List of analysis results
-print(vcon.attachments) # List of attachments
-print(vcon.tags)        # Dictionary of tags
-```
-
-### Processing Dialogs
-
-```python
-for index, dialog in enumerate(vcon.dialog):
-    # Check dialog type
-    if dialog["type"] != "recording":
-        logger.info(f"Skipping non-recording dialog {index}")
-        continue
-
-    # Check for URL
-    if not dialog.get("url"):
-        logger.info(f"Dialog {index} has no URL")
-        continue
-
-    # Get duration
-    duration = dialog.get("duration", 0)
-    if duration < 30:
-        logger.info(f"Skipping short dialog {index}")
-        continue
-
-    # Process the dialog
-    result = process_audio(dialog["url"])
-
-    # Add analysis result
-    vcon.add_analysis(
-        type="my_analysis",
-        dialog=index,
-        vendor="my_vendor",
-        body=result,
-    )
-```
-
-### Checking Existing Analysis
-
-```python
-def get_analysis_for_type(vcon, dialog_index, analysis_type):
-    """Check if analysis already exists for a dialog."""
-    for analysis in vcon.analysis:
-        if (analysis.get("dialog") == dialog_index and
-            analysis.get("type") == analysis_type):
-            return analysis
-    return None
-
-# Skip if already processed
-if get_analysis_for_type(vcon, index, "my_analysis"):
-    logger.info(f"Dialog {index} already has my_analysis")
-    continue
-```
-
-### Adding Results
-
-```python
-# Add analysis
-vcon.add_analysis(
-    type="summary",           # Analysis type
-    dialog=0,                 # Dialog index
-    vendor="openai",          # Vendor name
-    body="Summary text...",   # Analysis content
-    encoding="none",          # Encoding (none, json, base64)
-    extra={                   # Additional metadata
-        "model": "gpt-4",
-        "prompt": "Summarize this",
-    },
-)
-
-# Add tag
-vcon.add_tag(tag_name="category", tag_value="sales")
-
-# Add attachment
-vcon.add_attachment(
-    type="application/json",
-    body={"key": "value"},
-    encoding="json",
-)
-```
-
-## Filtering and Routing
-
-### Stopping Chain Processing
-
-Return `None` to stop processing for this vCon:
-
-```python
-def run(vcon_uuid, link_name, opts=default_options):
     vcon_redis = VconRedis()
     vcon = vcon_redis.get_vcon(vcon_uuid)
+    if vcon is None:
+        # In neither Redis nor any storage. None is the "halt" signal.
+        logger.error("%s: vCon %s not found", link_name, vcon_uuid)
+        return None
 
-    # Filter condition
-    if "do_not_process" in vcon.tags:
-        logger.info(f"Filtering out vCon {vcon_uuid}")
-        return None  # Stop chain processing
+    vcon.add_analysis(
+        type="my_analysis",
+        dialog=0,
+        vendor="example",
+        body={"score": 0.9},
+        extra={"vendor_schema": {"threshold": options["threshold"]}},
+    )
+    vcon.add_tag(tag_name=options["tag_name"], tag_value=link_name)
 
-    # Continue processing
+    vcon_redis.store_vcon(vcon)
     return vcon_uuid
 ```
 
-### Routing to Different Queues
+Save it as `conserver/links/my_link/__init__.py` in your build, and configure it:
 
-```python
-import redis
-
-def run(vcon_uuid, link_name, opts=default_options):
-    vcon_redis = VconRedis()
-    vcon = vcon_redis.get_vcon(vcon_uuid)
-
-    # Determine destination based on tags
-    if vcon.tags.get("priority") == "high":
-        destination = "priority_queue"
-    else:
-        destination = "normal_queue"
-
-    # Add to destination queue
-    r = redis.Redis.from_url(os.getenv("REDIS_URL"))
-    r.rpush(destination, vcon_uuid)
-
-    logger.info(f"Routed {vcon_uuid} to {destination}")
-
-    return None  # Stop current chain (routed elsewhere)
+```yaml
+links:
+  my_link:
+    module: links.my_link
+    options:
+      threshold: 0.7
 ```
 
-## External API Integration
+Nothing is saved until you call `store_vcon`. The method stamps `vcon: "0.4.0"`, renames legacy fields to the current spec, and keeps the vCon's existing TTL.
 
-### With Retry Logic
+## Reading a vCon
+
+`VconRedis().get_vcon(uuid)` returns a `Vcon` object, or `None`. On a Redis miss it tries each configured storage, so a vCon that expired from Redis can still load.
+
+| Member | Returns |
+| ------ | ------- |
+| `vcon.uuid`, `vcon.created_at`, `vcon.subject` | Top-level fields |
+| `vcon.parties`, `vcon.dialog`, `vcon.analysis`, `vcon.attachments` | Lists of dicts |
+| `vcon.to_dict()` | The whole vCon as a dict |
+| `vcon.find_attachment_by_purpose("lawful_basis")` | The first attachment with that `purpose`, or `None` |
+| `vcon.get_tag("priority")` | The value of the tag `priority:<value>`, or `None` |
+| `vcon.tags` | The `tags` attachment itself, or `None`. It is not a dict of tags. Use `get_tag` |
+| `Vcon.decoded_body(entry)` | An analysis or attachment body as a Python value, whatever its `encoding` |
+
+Use `decoded_body` before you read a body. With `encoding: "json"` the current spec makes `body` the JSON value itself, and older producers stored a string. The helper returns a value in either case.
 
 ```python
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    wait_exponential,
-    before_sleep_log,
-)
+from vcon import Vcon
+
+for index, dialog in enumerate(vcon.dialog):
+    if dialog.get("type") != "recording" or not dialog.get("url"):
+        continue
+    if (dialog.get("duration") or 0) < 30:
+        continue
+    if any(a["dialog"] == index and a["type"] == "my_analysis" for a in vcon.analysis):
+        continue  # already done, so a replay does no extra work
+    ...
+```
+
+## Writing results
+
+```python
+# Analysis. A dict or list body is stored as JSON, and encoding becomes "json".
+vcon.add_analysis(type="summary", dialog=0, vendor="example",
+                  body="The caller asked about billing.", encoding="none",
+                  extra={"vendor_schema": {"model": "example-model"}})
+
+# Tag. Stored in the attachment with purpose "tags" as "name:value".
+vcon.add_tag(tag_name="category", tag_value="billing")
+
+# Attachment. The argument is named type. The vCon stores it as purpose on store_vcon.
+vcon.add_attachment(type="my_report", body={"items": 3}, encoding="json")
+```
+
+`encoding` is `none`, `json` or `base64url`. A string body with `encoding="json"` must parse as JSON, and a `base64url` body must decode, or the call raises. `extra` is merged into the analysis entry, which is where `vendor_schema` goes. When you record your options, drop credentials first with `from lib.redaction import safe_opts`.
+
+Create new attachments with a `purpose` that names what they are. If your link builds a new vCon, carry across the attachment with `purpose: "lawful_basis"` from the source, or add one that states the basis for the new vCon. Do not invent a basis. See the [Lawful Basis extension](../extensions/lawful-basis.md).
+
+## Filtering and routing
+
+Return `None` to filter:
+
+```python
+def run(vcon_uuid, link_name, opts=None):
+    vcon = VconRedis().get_vcon(vcon_uuid)
+    if vcon is None:
+        return None
+    if vcon.get_tag("do_not_process") is not None:
+        return None
+    return vcon_uuid
+```
+
+To send a vCon to another chain, push its UUID onto that chain's ingress list with `VconQueue`:
+
+```python
+from lib.queue import VconQueue
+
+destination = "priority_in" if vcon.get_tag("priority") == "high" else "normal_in"
+VconQueue().enqueue(destination, vcon_uuid)
+return None  # this chain stops here
+```
+
+`only_if` and `sampling_rate`, the options the analysis links share, are in `lib.links.filters` as `is_included(opts, vcon)` and `randomly_execute_with_sampling(opts)`. Use them to behave the same way.
+
+## Calling external services
+
+Keep the API key in the link's options, because the conserver does not expand `${VAR}` or read provider keys from the environment. Retry transient failures with `tenacity`, and set a timeout on every request. The conserver has no chain timeout, so a call without one can hold a worker indefinitely.
+
+```python
+import logging
+import requests
+from tenacity import before_sleep_log, retry, stop_after_attempt, wait_exponential
+
+from lib.logging_utils import init_logger
+
+logger = init_logger(__name__)
+
 
 @retry(
     wait=wait_exponential(multiplier=2, min=1, max=60),
     stop=stop_after_attempt(5),
     before_sleep=before_sleep_log(logger, logging.INFO),
 )
-def call_external_api(url, data, api_key):
-    """Call external API with retries."""
+def call_service(url, payload, api_key):
     response = requests.post(
-        url,
-        json=data,
-        headers={"Authorization": f"Bearer {api_key}"},
-        timeout=30,
+        url, json=payload, headers={"Authorization": f"Bearer {api_key}"}, timeout=30
     )
     response.raise_for_status()
     return response.json()
-
-
-def run(vcon_uuid, link_name, opts=default_options):
-    vcon_redis = VconRedis()
-    vcon = vcon_redis.get_vcon(vcon_uuid)
-
-    try:
-        result = call_external_api(
-            opts["api_url"],
-            {"vcon": vcon.to_json()},
-            opts["api_key"],
-        )
-
-        vcon.add_analysis(
-            type="external_analysis",
-            dialog=0,
-            vendor="external_service",
-            body=result,
-        )
-        vcon_redis.store_vcon(vcon)
-
-    except Exception as e:
-        logger.error(f"API call failed after retries: {e}")
-        raise
-
-    return vcon_uuid
 ```
 
-## Metrics and Monitoring
+For OpenAI-compatible calls, use `lib.openai_client.get_openai_client(opts)`. It gives your link the same OpenAI, Azure and LiteLLM options as the [standard analysis links](standard-links.md#conventions).
+
+## Metrics
+
+Use the two functions in `lib.metrics`. The older `init_metrics`, `stats_gauge` and `stats_count` log a deprecation warning and record nothing.
 
 ```python
-from lib.metrics import init_metrics, stats_gauge, stats_count
+from lib.metrics import increment_counter, record_histogram
 import time
 
-init_metrics()
-
-def run(vcon_uuid, link_name, opts=default_options):
-    start_time = time.time()
-
-    try:
-        # Your processing logic
-        result = process_vcon(vcon_uuid)
-
-        # Track success
-        stats_count(
-            "conserver.link.my_link.success",
-            tags=[f"link:{link_name}"],
-        )
-
-        return vcon_uuid
-
-    except Exception as e:
-        # Track failure
-        stats_count(
-            "conserver.link.my_link.failure",
-            tags=[f"link:{link_name}", f"error:{type(e).__name__}"],
-        )
-        raise
-
-    finally:
-        # Track processing time
-        elapsed = time.time() - start_time
-        stats_gauge(
-            "conserver.link.my_link.processing_time",
-            elapsed,
-            tags=[f"link:{link_name}"],
-        )
-```
-
-## Project Structure
-
-Organize your link as a Python package:
-
-```
-my_custom_link/
-├── __init__.py      # Contains run() function
-├── utils.py         # Helper functions
-├── models.py        # Data models
-└── tests/
-    ├── __init__.py
-    └── test_link.py
-```
-
-### `__init__.py`
-
-```python
-from lib.logging_utils import init_logger
-from lib.vcon_redis import VconRedis
-from .utils import process_transcript
-
-logger = init_logger(__name__)
-
-default_options = {
-    "model": "default",
-    "threshold": 0.5,
-}
-
-def run(vcon_uuid, link_name, opts=default_options):
-    # Implementation using utils
+started = time.time()
+try:
     ...
+    increment_counter("conserver.link.my_link.success", attributes={"link.name": link_name})
+except Exception:
+    increment_counter("conserver.link.my_link.failure", attributes={"link.name": link_name})
+    raise
+finally:
+    record_histogram(
+        "conserver.link.my_link.processing_time",
+        time.time() - started,
+        attributes={"link.name": link_name},
+    )
 ```
 
-## Configuration
+Do not put the vCon UUID in `attributes`. Every distinct value makes a new time series and breaks percentile queries. The conserver already counts every link in `conserver.link.count` and times it in `conserver.link.execution_time`, and puts the UUID on the trace span. Metrics export only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set. See [Production Deployment](production-deployment.md#metrics).
 
-Configure your link in `config.yml`:
+## Hooks around links
 
-```yaml
-links:
-  my_custom_link:
-    module: links.my_custom_link
-    options:
-      api_key: ${MY_API_KEY}
-      model: "advanced"
-      threshold: 0.7
-      enabled: true
+A link entry can carry an `after_link` block inside `options`. After the link returns or raises, the conserver calls `conserver/after_link_hook.py` with that block, the status and the vCon's party identifiers. Replace the file at image build time to add audit logging or notifications without touching your links. See [Configuring the Conserver](configuring-the-conserver.md#links).
 
-chains:
-  main:
-    links:
-      - transcribe
-      - my_custom_link  # Your link
-      - analyze
-    # ...
-```
+## Packaging
 
-## Distribution
+The conserver imports `module:` as an ordinary Python module, so any importable module works. There is no plugin registry. A `conserver.links` entry point in `pyproject.toml` is not read.
 
-### As a PyPI Package
-
-```toml
-# pyproject.toml
-[project]
-name = "conserver-my-link"
-version = "1.0.0"
-dependencies = [
-    "requests>=2.28.0",
-]
-
-[project.entry-points."conserver.links"]
-my_link = "my_link:run"
-```
-
-### As a GitHub Repository
-
-Reference directly in config:
+* **Built into the image.** Put the package under `conserver/links/`, and use `module: links.my_link`.
+* **Installed from PyPI or GitHub.** Name it under `imports:`. The conserver runs `pip install` when a worker starts.
 
 ```yaml
 imports:
-  my_custom_link:
-    module: my_custom_link
-    pip_name: git+https://github.com/myorg/my-link.git@v1.0.0
+  my_link_pkg:
+    module: my_link_pkg
+    pip_name: git+https://github.com/example/my-link.git@v1.0.0
 
 links:
   my_link:
-    module: my_custom_link
+    module: my_link_pkg
     options:
-      api_key: ${API_KEY}
+      threshold: 0.7
 ```
+
+The package must expose `run` at its top level. Pin the version in `pip_name`, because the install happens in your worker.
 
 ## Testing
 
-```python
-import pytest
-from unittest.mock import Mock, patch
+Run tests inside the image so the imports resolve:
 
-def test_link_processes_vcon():
-    # Mock VconRedis
-    with patch('my_link.VconRedis') as mock_redis:
-        mock_vcon = Mock()
-        mock_vcon.dialog = [{"type": "recording", "url": "http://..."}]
-        mock_vcon.analysis = []
-        mock_redis.return_value.get_vcon.return_value = mock_vcon
-
-        # Run link
-        from my_link import run
-        result = run("test-uuid", "my_link", {"enabled": True})
-
-        # Verify
-        assert result == "test-uuid"
-        mock_vcon.add_analysis.assert_called_once()
-        mock_redis.return_value.store_vcon.assert_called_once()
-
-
-def test_link_filters_when_disabled():
-    with patch('my_link.VconRedis') as mock_redis:
-        from my_link import run
-        result = run("test-uuid", "my_link", {"enabled": False})
-
-        assert result == "test-uuid"
-        mock_redis.return_value.get_vcon.assert_not_called()
+```bash
+docker compose run --rm conserver pytest conserver/links/my_link/ -v
 ```
 
-## Best Practices
+Patch `VconRedis` and check what the link did to the vCon object:
 
-1. **Always merge options with defaults** - Ensures your link works even with partial configuration
-2. **Check if processing already done** - Avoid reprocessing if analysis already exists
-3. **Use structured logging** - Include vCon UUID and link name in all log messages
-4. **Handle errors appropriately** - Raise exceptions to send vCons to DLQ, or return UUID to continue
-5. **Add metrics** - Track processing time, success/failure rates
-6. **Document your options** - Make it clear what configuration your link accepts
-7. **Test thoroughly** - Unit test your processing logic
-8. **Be idempotent** - Running twice should produce the same result
+```python
+from unittest.mock import Mock, patch
+
+def test_run_adds_analysis():
+    vcon = Mock()
+    vcon.dialog = [{"type": "recording", "url": "https://example.com/a.wav", "duration": 60}]
+    vcon.analysis = []
+
+    with patch("links.my_link.VconRedis") as redis_cls:
+        redis_cls.return_value.get_vcon.return_value = vcon
+        from links.my_link import run
+
+        assert run("0192f4f0-7a52-8c3d-9a1b-2c3d4e5f6a7b", "my_link", None) == "0192f4f0-7a52-8c3d-9a1b-2c3d4e5f6a7b"
+
+    vcon.add_analysis.assert_called_once()
+    redis_cls.return_value.store_vcon.assert_called_once_with(vcon)
+
+
+def test_run_halts_when_vcon_missing():
+    with patch("links.my_link.VconRedis") as redis_cls:
+        redis_cls.return_value.get_vcon.return_value = None
+        from links.my_link import run
+
+        assert run("missing", "my_link", {}) is None
+```
+
+## Practices
+
+1. Merge `opts or {}` into your defaults, because `opts` can be `None`.
+2. Check whether the work is already done and skip it. A dead letter replay reruns the chain, and a worker restart can too.
+3. Return `None` for a deliberate filter and raise for a failure.
+4. Put a timeout on every network call.
+5. Keep credentials in `options`, and strip them with `safe_opts` before you log or store options.
+6. Keep the vCon UUID out of metric attributes.
+7. Handle `get_vcon` returning `None`.

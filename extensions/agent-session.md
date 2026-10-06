@@ -1,125 +1,134 @@
 ---
-description: Captures an AI agent's session trace — prompts, tool calls, results, artifacts — alongside the human-facing conversation.
+description: >-
+  Shows how to keep an AI agent's internal session (tool calls, results,
+  reasoning, file changes) in the same vCon as the conversation it served,
+  so one signed record answers what the agent did.
 ---
 
 # 🤖 Agent Session Extension
 
-**Draft:** [`draft-howe-vcon-agent-session`](https://datatracker.ietf.org/doc/draft-howe-vcon-agent-session/) · **Extension name:** `"agent_session"`
+**Draft:** [`draft-howe-vcon-agent-session-00`](https://datatracker.ietf.org/doc/draft-howe-vcon-agent-session/) · **Extension token:** `agent_session`
 
-## What it is
+## Purpose of the extension
 
-A growing number of "conversations" involve an AI agent on at least one side. The human-facing surface of that interaction — the words exchanged, the time, the parties — fits cleanly into a normal vCon. The *agent's* internal session — the prompts it received, the tools it called, the responses those tools returned, the files it touched, the reasoning it produced — does not. That data is just as important for audit, debugging, training, and compliance, but it sits in a different shape.
+When an AI agent takes part in a conversation, two records matter: what was said, and what the agent did internally to produce it. vCon already carries the first. [Verifiable Agent Conversations](https://datatracker.ietf.org/doc/draft-birkholz-verifiable-agent-conversations/) (VAC, `draft-birkholz-verifiable-agent-conversations`) defines a record for the second: the agent's prompts, tool calls, tool results, reasoning and events. The Agent Session extension puts a VAC record inside the vCon, so both share one set of parties, one lawful basis and one signature.
 
-The Agent Session extension brings that data into the vCon as a peer to the human dialog. It uses vCon's existing primitives:
+It uses existing vCon structures:
 
-- The agent is represented as a **party** with `role: "agent"` and structured metadata describing the model.
-- The session trace lives in **analysis** as a Verifiable Agent Conversations (VAC) document.
-- Agent-produced artifacts and environment snapshots live in **attachments**.
+* the agent is a party with `role: "agent"`;
+* the user-facing turns are ordinary `dialog[]` entries;
+* the internal trace is an `analysis[]` entry with `type: "agent_trace"`;
+* files and artifacts the agent produced are `attachments[]` entries.
 
-That means agent sessions inherit everything vCon already has — consent, signing, redaction, lifecycle, SCITT.
+The extension is Compatible (draft Section 3). vCons using it SHOULD list `agent_session` in `extensions`, and SHOULD also list it in `critical` when consumers must process the trace, for example when the only record of an authorizing tool call is in it.
 
-## When to use it
+## Agent party
 
-- Documenting LLM-driven contact-center deflection: the LLM's full prompt-and-tool-call trace is auditable alongside the call recording.
-- Coding-agent sessions (Claude Code, Cursor, etc.) where the conversation, the tool invocations, and the file edits are all part of the same record.
-- AI-assisted workflows where the agent's output needs to be reproducible: the trace tells you exactly what the agent did and why.
-- Bridging vCon and [VAC (Verifiable Agent Conversations)](https://datatracker.ietf.org/doc/draft-howe-vcon-agent-session/) — the two specs are designed to compose.
-
-## Spec surface
-
-Agent Session adds data in three places.
-
-### 1. Party metadata
-
-Each agent participant is a normal party, distinguished by `role: "agent"` and a structured `meta.agent_session` block:
+Section 4. Each distinct agent MUST be its own party with `role: "agent"`. An optional `meta.agent_session` object identifies it:
 
 ```json
 {
-  "parties": [
-    {
-      "name": "Customer",
-      "role": "customer"
-    },
-    {
-      "name": "Claude",
-      "role": "agent",
-      "meta": {
-        "agent_session": {
-          "model_id": "claude-opus-4-7",
-          "provider": "anthropic",
-          "recording_agent": "claude-code/1.5.0",
-          "environment": "production"
-        }
+  "name": "Claude Opus 4.6",
+  "role": "agent",
+  "validation": "system",
+  "meta": {
+    "agent_session": {
+      "model_id": "claude-opus-4-6",
+      "provider": "anthropic",
+      "recording_agent": "claude-code/1.2.0",
+      "environment": {
+        "cwd": "/Users/example/project",
+        "vcs_branch": "main",
+        "vcs_commit": "abc123def456"
       }
     }
-  ]
+  }
 }
 ```
 
-### 2. Session trace in `analysis[]`
+`model_id` and `provider` are required inside `agent_session`; `recording_agent` is recommended; `environment` is optional. `role` and `meta` are not core-04 party parameters. `role` is defined by the contact center extension; `meta` is used by this draft without a registration.
 
-The full VAC session trace is a JSON document stored as an analysis entry with `type: "agent_trace"`:
+## Trace in analysis
+
+Section 6.1. One entry per session is recommended for archival; one per tool call is allowed when you expect to redact single entries.
 
 ```json
 {
-  "analysis": [
-    {
-      "type": "agent_trace",
-      "dialog": 0,
-      "vendor": "anthropic",
-      "product": "claude-opus-4-7",
-      "encoding": "json",
-      "schema": "https://datatracker.ietf.org/doc/draft-howe-vcon-agent-session/",
-      "body": "{\"version\":\"1.0\",\"session_trace\":{\"messages\":[...],\"tool_calls\":[...]}}"
+  "type": "agent_trace",
+  "dialog": [0, 1],
+  "vendor": "anthropic",
+  "product": "claude-opus-4-6",
+  "schema": "https://datatracker.ietf.org/doc/draft-birkholz-verifiable-agent-conversations/",
+  "mediatype": "application/json",
+  "encoding": "json",
+  "body": {
+    "version": "1.0",
+    "id": "3f1c9a52-6a0e-4c1b-9d4e-2b7f0c8e1a55",
+    "session": {
+      "session-id": "session-001",
+      "agent-meta": { "model-id": "claude-opus-4-6", "model-provider": "anthropic" },
+      "entries": [
+        { "type": "user", "id": "e1", "content": "How many open tickets are there?" },
+        { "type": "tool-call", "id": "e2", "name": "list_tickets",
+          "input": { "status": "open" }, "call-id": "c1" },
+        { "type": "tool-result", "id": "e3", "call-id": "c1", "output": { "count": 4 }, "status": "success" },
+        { "type": "assistant", "id": "e4", "parent-id": "e1", "content": "There are 4 open tickets." }
+      ]
     }
-  ]
+  }
 }
 ```
 
-The `body` is the VAC document, encoded as a JSON string. `vendor`, `product`, and `schema` identify the agent and the trace format.
+The draft requires `type: "agent_trace"`, `dialog` as an array of dialog indexes, `vendor` (the model provider), `product` (the model ID), `schema` set to the VAC specification URL, and `encoding: "json"`. The body is a VAC `verifiable-agent-record`: `version`, `id`, and `session`, whose `entries[]` hold message, tool-call, tool-result, reasoning and event entries with their `parent-id` and `children` links kept intact. Member names in the body use VAC's hyphenated spelling.
 
-### 3. Artifacts in `attachments[]`
+The draft's own example shows the body as a JSON string. Core-04 lets `encoding: "json"` carry the object directly, which is what this site recommends. For CBOR-encoded VAC records the draft allows `encoding: "base64url"` with `?encoding=cbor` on the `schema` URL (Section 6.3).
 
-Files the agent produced, environment snapshots, and tool-call payloads go in `attachments[]` with one of these purposes:
+## Agent artifacts in attachments
 
-| Purpose | Meaning |
-|---------|---------|
-| `agent_file_change` | A file the agent created, modified, or deleted |
-| `agent_artifact` | A standalone artifact the agent produced (e.g. a generated document) |
-| `agent_environment` | A snapshot of the agent's runtime environment at the time of the session |
+Section 7. Each file or artifact the agent changed SHOULD be an attachment. `party` MUST be the agent's index; `dialog` SHOULD be the turn whose tool call made the change.
 
 ```json
 {
-  "attachments": [
-    {
-      "purpose": "agent_file_change",
-      "party": 1,
-      "dialog": 0,
-      "filename": "src/payment_handler.py",
-      "mediatype": "text/x-python",
-      "encoding": "none",
-      "body": "def process_payment(amount, ...): ..."
-    }
-  ]
+  "purpose": "agent_file_change",
+  "start": "2026-05-18T14:03:12Z",
+  "party": 1,
+  "dialog": 5,
+  "mediatype": "application/json",
+  "encoding": "json",
+  "body": {
+    "path": "src/foo.py",
+    "contributor": "agent",
+    "line_range": [10, 25],
+    "operation": "edit",
+    "commit": "abc123",
+    "content_hash": "sha512-..."
+  }
 }
 ```
 
-Declare the extension at the top level:
+Purpose values registered by the draft (Sections 7.1 and 8):
 
-```json
-{
-  "vcon": "0.4.0",
-  "extensions": ["agent_session"]
-}
-```
+| `purpose` | Contents |
+| --- | --- |
+| `agent_file_change` | A source file the agent modified |
+| `agent_artifact` | Another artifact, such as a database write, API payload or generated document |
+| `agent_environment` | A snapshot of the agent's environment |
+| `scitt_receipt` | The SCITT receipt for an independently registered VAC record |
+| `agent_trace_cose_sign1` | The COSE_Sign1 envelope of that VAC record |
 
-## Relationship to other extensions
+The draft's attachment example omits `start` and `mediatype`; they are added above because core-04 requires `start` on every attachment and `mediatype` for inline content.
 
-- **Lawful basis.** Agent-session data is personal data when the agent participated in a conversation with a real person. Use the [Lawful Basis extension](lawful-basis.md) the same way you would for the human-only case.
-- **Lifecycle.** Agent traces benefit especially from a [Lifecycle](lifecycle.md) ledger — being able to prove what the agent saw and did, when, is the entire compliance story for AI-assisted workflows.
-- **WTF.** If the agent session also produced spoken output (TTS), that recording is normal vCon dialog, optionally transcribed via [WTF](wtf-transcription.md).
+## Lawful basis
+
+Section 9. An agent session that processes personal data MUST be governed by a documented lawful basis. Implementations SHOULD include a [lawful basis](lawful-basis.md) attachment that names the data subject by party index and grants at least `agent_session_recording` and `agent_session_analysis`, plus `agent_session_redistribution` where it applies.
+
+## Implementations
+
+* [`vcon-vac-adapter`](https://github.com/vcon-dev/vcon-vac-adapter) converts Claude Code sessions, Anthropic Messages API, OpenAI Responses and OpenAI Agents SDK transcripts into vCons with the `agent_session` extension and a VAC record in `analysis[]`.
+* [`vcon-vac`](https://github.com/vcon-dev/vcon-vac) is early scaffolding for VAC CDDL definitions and examples.
+* [`vcon-anthropic-chats`](https://github.com/VCONIC/vcon-anthropic-chats) ([tool page](../tools/vcon-anthropic-chats.md)) converts Claude Code sessions and claude.ai exports into vCons. Its current release keeps tool calls and reasoning as its own attachments and analysis entries and does not emit the `agent_session` extension.
 
 ## See also
 
-- The `vcon-anthropic-chats` adapter (see [Tools](../tools/README.md)) converts Claude AI conversation exports into vCons using this extension.
-- The `vcon-vac` project is the reference implementation tying VAC traces into vCons.
+* [Field reference](../vcons/field-reference.md)
+* [Lifecycle](lifecycle.md) for recording what happened to the vCon after the session.

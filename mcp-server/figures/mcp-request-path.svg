@@ -38,7 +38,7 @@
   <rect x="60.5" y="180.5" width="4" height="42" fill="#0BB81E"/>
   <text class="ph" x="76" y="198">DATABASE</text>
   <text class="ps" x="76" y="209">Redis first, then Postgres</text>
-  <text class="pb" x="220" y="198">Eight tables, joined back into one vCon on the way out.</text>
+  <text class="pb" x="220" y="198">Normalized tables, joined back into one vCon on the way out.</text>
   <text class="pb" x="220" y="210">A cache hit skips Postgres. A miss is cached.</text>
 
   <line x1="34" y1="56" x2="34" y2="216" stroke="#292929" stroke-width="1"/>

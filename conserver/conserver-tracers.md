@@ -1,189 +1,91 @@
 ---
-description: Tracer Functionality in vCon Server
+description: What a conserver tracer is, exactly when it runs, how its errors are handled, and how to configure the JLINC tracer or write your own.
 ---
 
 # 🩻 Conserver Tracers
 
-### Overview
+A tracer is a module that the conserver calls around each link so it can record what happened to a vCon. Tracers are for audit trails. A tracer receives vCon UUIDs, not vCon data, and a well-behaved one reads the vCon from Redis and changes nothing. One tracer ships with vcon-server: `jlinc`. DataTrails and SCITT are available as [links](standard-links.md#audit-links), and SCITT also as a [storage](storage.md#scitt-transparency), not as tracers.
 
-Tracer functionality in the vCon Server provides a powerful mechanism for observability, auditing, and compliance tracking as vCons (virtual conversations) flow through processing chains. Unlike processing links that transform or analyze vCon data, tracers are non-intrusive monitoring components that observe and record data flow without modifying the vCon content itself.
+## Tracers and links
 
-### Key Concepts
+| | Link | Tracer |
+| --- | ---- | ------ |
+| Declared in | `links:`, then named by a chain | `tracers:`, which applies to every chain |
+| Return value | A UUID to continue, or a falsy value to stop | Ignored |
+| Runs | Once per link, in chain order | Before the first link, and after each link |
+| An exception | Sends the vCon to the dead letter queue | Logged and ignored, unless `dlq_vcon_on_error` is `true` |
 
-#### What are Tracers?
+A tracer runs inline in the worker. The chain waits for it. A slow tracer slows every vCon, so a tracer that calls a network service adds its latency to each link.
 
-Tracers are side-effect modules that execute at specific points in the vCon processing pipeline to:
+## When tracers run
 
-* Monitor data flow between processing links
-* Create audit trails for compliance and security
-* Track provenance and data lineage
-* Generate observability metrics without affecting the main processing flow
+For each vCon, in each chain, the conserver calls every configured tracer:
 
-#### Tracers vs. Links
+1. Once before the first link, with `link_index` of `-1`.
+2. After each link that returns, with that link's index (`0`, `1`, `2`, ...). This includes a link that returns a falsy value and stops the chain.
 
-| Aspect            | Links                          | Tracers                             |
-| ----------------- | ------------------------------ | ----------------------------------- |
-| Purpose           | Transform/process vCon data    | Observe/monitor data flow           |
-| Data Modification | Can modify vCon content        | Never modify vCon content           |
-| Execution Timing  | Sequential in processing chain | Execute before/after each link      |
-| Return Value      | Return vCon UUID for chaining  | Return boolean success status       |
-| Failure Impact    | Can stop processing chain      | Failures don't stop main processing |
+A link that raises gets no call. There is no call when the chain finishes. A chain of three links produces four calls per tracer.
 
-### Execution Model
+## Configuration
 
-#### Tracer Invocation Points
+Tracers are defined at the top level of `config.yml`. They are not part of a chain. A `tracers:` key inside a chain, which `example_config.yml` shows in a comment, is not read.
 
-Tracers are executed at three critical points in the processing pipeline:
-
-1. Before First Link (link\_index = -1)
-
-* Executes when a vCon enters the processing chain
-* Records initial state and metadata
-
-2. After Each Link (link\_index = 0, 1, 2, ...)
-
-* Executes after each processing link completes
-* Captures data transformations and flow
-
-3. Chain Completion
-
-* Executes when the entire processing chain finishes
-* Records final state and completion metrics
-
-#### Execution Flow
-
-```
-# Simplified execution flow
-for link_index, link_name in enumerate(links):
-    if link_index == 0:
-        # Execute tracers before first link
-        _process_tracers(vcon_id, vcon_id, links, -1)
-    
-    # Execute the processing link
-    result = execute_link(link_name, vcon_id)
-    
-    # Execute tracers after link completion
-    _process_tracers(result, vcon_id, links, link_index)
-
-```
-
-### Available Tracer Modules
-
-#### 1. JLINC Zero-Knowledge Auditing
-
-The JLINC tracer provides cryptographic signing and zero-knowledge audit capabilities for tamper-proof data provenance.
-
-**Features**
-
-* Cryptographic Signing: Creates tamper-proof signatures for vCon data
-* Zero-Knowledge Auditing: Enables secure third-party auditing without exposing sensitive data
-* Entity Management: Automatically creates and manages JLINC entities for each processing stage
-* Data Hashing: Optionally hash vCon data for privacy-preserving audit trails
-* Archive Integration: Stores audit records in external archive systems
-
-#### Configuration
-
-```
+```yaml
 tracers:
   jlinc:
     module: tracers.jlinc
     options:
       data_store_api_url: http://jlinc-server:9090
-      data_store_api_key: your_data_store_api_key
+      data_store_api_key: "your-data-store-key"
       archive_api_url: http://jlinc-server:9090
-      archive_api_key: your_archive_api_key
-      system_prefix: VCONTest
-      agreement_id: 00000000-0000-0000-0000-000000000000
-      hash_event_data: True
-      dlq_vcon_on_error: True
+      archive_api_key: "your-archive-key"
+      system_prefix: VCONProd
 ```
 
-**How JLINC Tracer Works**
+Give every tracer an `options:` block, even an empty one. When a tracer raises and `options` is missing, the conserver cannot check `dlq_vcon_on_error` and fails the chain. Values are literal. The conserver does not expand `${VAR}`. Like links, a tracer entry can carry a `pip_name` to install its package.
 
-**Entity Creation**: Creates JLINC entities for each processing stage
+## Error handling
 
-* System entity: {system\_prefix}-system@{domain}
-* Link entities: {system\_prefix}-{link\_name}@{domain}
+The conserver wraps each tracer call in a `try`. If the tracer raises, the error is logged with the tracer name, and the chain continues. If the tracer's options set `dlq_vcon_on_error: true`, the conserver re-raises the error instead. The exception stops the chain, and the vCon goes to the ingress `DLQ:<list>` like any failed link. See [Concepts](concepts.md#dead-letter-queues).
 
-**Event Processing**: For each vCon transition:
+A tracer that returns `False` has not raised, so nothing happens. The return value is never read.
 
-* Retrieves vCon data from Redis
-* Creates sender/recipient entities based on link context
-* Optionally hashes vCon data for privacy
-* Sends event to JLINC API for cryptographic signing
+## The JLINC tracer
 
-**Audit Trail**: Creates immutable audit records with:
+The `jlinc` tracer sends an event to a JLINC data store for each transition. The data store signs the event, which gives you an audit trail of which vCon passed between which steps.
 
-* Cryptographic signatures
-* Data hashes (if enabled)
-* Metadata (vCon UUIDs, link information)
-* Timestamps and provenance information
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `data_store_api_url`, `data_store_api_key` | JLINC data store URL and key | `http://jlinc-server:9090`, empty |
+| `archive_api_url`, `archive_api_key` | JLINC archive URL and key, sent with each event | `http://jlinc-server:9090`, empty |
+| `system_prefix` | Prefix for the entity names | `VCONTest` |
+| `agreement_id` | JLINC agreement id. The all-zero value is the general auditing agreement | `00000000-0000-0000-0000-000000000000` |
+| `hash_event_data` | Send the SHA-256 hash of the vCon JSON instead of the vCon | `true` |
+| `dlq_vcon_on_error` | Dead-letter the vCon when the tracer raises. See below | `false` |
 
-### Configuration
+On the first call it asks the data store for its domain and creates a system entity named `<prefix>-system@<domain>`. Each link gets an entity named `<prefix>-<link name>@<domain>`, created on first use and cached per process. For each call it sends an event between two of these entities, with the in and out vCon UUIDs as metadata.
 
-#### Basic Tracer Configuration
+With `hash_event_data: false` the whole vCon goes to the JLINC server, so leave it `true` unless the data store is inside your trust boundary.
 
-```yaml
-tracers:
-  tracer_name:
-    module: tracers.module_name
-    options:
-      # Tracer-specific configuration options
-```
+The tracer catches errors from the JLINC API and logs a warning, so a JLINC outage does not stop a chain, and `dlq_vcon_on_error: true` does not change that. That option matters for tracers that let errors escape.
 
-#### Multiple Tracers
+## Writing a tracer
 
-You can configure multiple tracers to run simultaneously:
-
-```yaml
-tracers:
-  jlinc_audit:
-    module: tracers.jlinc
-    options:
-      # JLINC configuration
-      
-  compliance_logger:
-    module: tracers.compliance
-    options:
-      # Compliance logging configuration
-      
-  metrics_collector:
-    module: tracers.metrics
-    options:
-```
-
-### Tracer Interface
-
-#### Required Function Signature
-
-All tracer modules must implement a run function with this signature:
+A tracer module has a `run` function with this signature:
 
 ```python
 def run(
-    in_vcon_uuid: str,      # Input vCon UUID
-    out_vcon_uuid: str,     # Output vCon UUID  
-    tracer_name: str,       # Name of this tracer instance
-    links: list[str],       # List of all links in the chain
-    link_index: int,        # Current link index (-1 for pre-chain)
-    opts: dict = {}         # Tracer configuration options
+    in_vcon_uuid: str,   # the UUID going into this step
+    out_vcon_uuid: str,  # the UUID coming out of it
+    tracer_name: str,    # the name from tracers: in config.yml
+    links: list[str],    # every link name in the chain, in order
+    link_index: int,     # -1 before the first link, else the link just run
+    opts: dict,          # the tracer's options
 ) -> bool:
-    """
-    Execute tracer logic for a vCon processing step.
-    
-    Args:
-        in_vcon_uuid: UUID of vCon entering the processing step
-        out_vcon_uuid: UUID of vCon exiting the processing step
-        tracer_name: Name of this tracer instance from config
-        links: Complete list of links in the processing chain
-        link_index: Index of current link (-1 for pre-chain execution)
-        opts: Tracer-specific configuration options
-        
-    Returns:
-        bool: True if tracer executed successfully, False otherwise
-    """
+    ...
 ```
 
-#### Implementation Example
+The conserver does not read the return value, but return `True` on success and `False` when you skip, as `jlinc` does.
 
 ```python
 from lib.logging_utils import init_logger
@@ -191,149 +93,25 @@ from lib.vcon_redis import VconRedis
 
 logger = init_logger(__name__)
 
-default_options = {
-    "api_url": "http://example.com/api",
-    "api_key": "",
-    "enabled": True
-}
+default_options = {"dlq_vcon_on_error": False}
+
 
 def run(in_vcon_uuid, out_vcon_uuid, tracer_name, links, link_index, opts=default_options):
-    """Example tracer implementation"""
-    
-    if not opts.get("enabled", True):
-        logger.debug(f"Tracer {tracer_name} is disabled")
-        return True
-    
-    try:
-        # Get vCon data
-        vcon_redis = VconRedis()
-        vcon_obj = vcon_redis.get_vcon(out_vcon_uuid)
-        
-        if not vcon_obj:
-            logger.error(f"Could not retrieve vCon {out_vcon_uuid}")
-            return False
-        
-        # Process tracer logic
-        logger.info(f"Executing {tracer_name} tracer for vCon {out_vcon_uuid}")
-        
-        # Your tracer logic here
-        # - Send data to external systems
-        # - Create audit records
-        # - Generate metrics
-        # - Log compliance information
-        
-        return True
-        
-    except Exception as e:
-        logger.error(f"Tracer {tracer_name} failed: {e}")
+    vcon = VconRedis().get_vcon(out_vcon_uuid)
+    if vcon is None:
+        logger.error("Tracer %s: vCon %s not found", tracer_name, out_vcon_uuid)
         return False
-        
-        
+
+    step = "start" if link_index < 0 else links[link_index]
+    logger.info(
+        "Tracer %s: vCon %s after %s, %d analysis entries",
+        tracer_name, out_vcon_uuid, step, len(vcon.analysis),
+    )
+    return True
 ```
 
-### Use Cases
+Put the module where the worker can import it, as for a [custom link](creating-custom-links.md#packaging). Keep it fast, since it blocks the chain. Never write to the vCon. If an external system is unreliable, catch its errors inside `run`, as the JLINC tracer does, unless you want a failure to dead-letter the vCon.
 
-#### 1. Compliance and Auditing
+## Reading tracer activity
 
-* GDPR Compliance: Track data processing for privacy regulations
-* SOX Compliance: Audit financial conversation processing
-* HIPAA Compliance: Monitor healthcare conversation handling
-
-#### 2. Security and Integrity
-
-* Data Provenance: Track data lineage and transformations
-* Tamper Detection: Cryptographic verification of data integrity
-* Access Logging: Record who accessed what data when
-
-#### 3. Observability and Monitoring
-
-* Performance Metrics: Track processing times and throughput
-* Error Tracking: Monitor failures and exceptions
-* Business Metrics: Count conversations, analyze patterns
-
-#### 4. Data Governance
-
-* Retention Tracking: Monitor data lifecycle and expiration
-* Data Classification: Track sensitive data handling
-* Cross-Border Transfers: Monitor international data flows
-
-### Best Practices
-
-#### 1. Non-Blocking Design
-
-* Tracers should never block the main processing flow
-* Handle errors gracefully without affecting vCon processing
-* Use asynchronous operations where possible
-
-#### 2. Performance Considerations
-
-* Keep tracer execution time minimal
-* Cache frequently accessed data
-* Use efficient data serialization
-
-#### 3. Error Handling
-
-* Log errors but don't raise exceptions
-* Return boolean status for success/failure
-* Implement retry logic for external API calls
-
-#### 4. Privacy and Security
-
-* Hash or encrypt sensitive data before external transmission
-* Follow data minimization principles
-* Implement proper authentication and authorization
-
-#### 5. Configuration Management
-
-* Provide sensible defaults
-* Validate configuration options
-* Support environment-specific settings
-
-### Monitoring and Debugging
-
-#### Logging
-
-Tracers automatically log their execution with structured logging:
-
-```python
-logger.info(
-    "Completed tracer %s (module: %s) for vCon: %s in %s seconds",
-    tracer_name,
-    tracer_module_name,
-    out_vcon_uuid,
-    tracer_processing_time,
-    extra={
-        "tracer_processing_time": tracer_processing_time,
-        "tracer_name": tracer_name,
-        "tracer_module_name": tracer_module_name
-    }
-)
-```
-
-#### Metrics
-
-Tracer execution is automatically tracked with:
-
-* Processing time per tracer
-* Success/failure rates
-* vCon throughput metrics
-
-#### Debugging
-
-* Enable debug logging for detailed tracer execution
-* Use tracer-specific configuration for testing
-* Monitor external API responses and errors
-
-### Future Extensions
-
-The tracer system is designed to be extensible. Potential future tracer modules could include:
-
-* DataTrails Integration: Blockchain-based audit trails
-* SIEM Integration: Security information and event management
-* Custom Analytics: Business intelligence and reporting
-* Data Loss Prevention: Monitor for sensitive data exposure
-* Performance Profiling: Detailed performance analysis
-
-### Conclusion
-
-Tracer functionality provides a powerful, non-intrusive way to add observability, compliance, and security monitoring to vCon processing pipelines. By executing alongside the main processing flow without affecting it, tracers enable comprehensive data governance and audit capabilities while maintaining system performance and reliability.The modular design allows for easy extension with custom tracer implementations, making it possible to integrate with any external system or compliance framework while maintaining the core principle of non-interference with vCon processing.
+The conserver logs each call at debug level with `tracer_name`, `tracer_module_name` and `tracer_processing_time` as structured fields. A tracer error appears at error level as `Error in tracer <name> (module: <module>) for vCon <uuid>`. Tracers add no metrics of their own.

@@ -1,33 +1,46 @@
 ---
-description: Ingest SIPREC-formatted SIP recording streams and produce vCons with full signaling metadata.
+description: Run a SIPREC session recording server that writes each recorded call as a vCon with SIP signaling metadata.
 ---
 
 # 📞 vCon SIPREC Adapter
 
 **Repo:** [vcon-dev/vcon-siprec-adapter](https://github.com/vcon-dev/vcon-siprec-adapter)
 
-SIPREC (RFC 7245 / RFC 7866) is the IETF standard for SIP-based call recording. This adapter consumes a SIPREC stream — both the recorded media and the signaling metadata — and produces a vCon with the [SIP Signaling extension](../extensions/sip-signaling.md) populated.
+A pure-Python asyncio Session Recording Server for SIPREC (RFC 7866) over UDP, TCP and TLS. It receives the recorded RTP and the SIPREC signaling, and writes one vCon per recording session with syntax `0.4.0`. It needs no PJSIP.
 
 ## When to use it
 
-- You're running SIPREC in a contact center or carrier environment and want vCons as the durable output.
-- You need STIR/SHAKEN attestation data, SIP Call-IDs, and SDP preserved alongside the recording for fraud investigation or TRACED Act compliance.
-- You're correlating vCons with carrier-side CDRs.
+- Your session border controller can fork calls to a SIPREC recorder and you want vCons as the output.
+- You need SIP Call-IDs, tags and the SIPREC offer SDP kept with the recording.
 
-## What you get
+## Run it
 
-For each SIPREC session, the adapter produces a vCon with:
+```bash
+pip install -r requirements.txt
+python main.py --config config.yaml
+```
 
-- A `dialog[]` entry of type `recording`, with the media as external (URL + SHA-512 hash) and the SIPREC-specific dialog fields populated (`sip_call_id`, `sip_from_tag`, `sip_to_tag`, `sip_cseq`).
-- A `parties[]` array with `sip`, `sip_contact`, `sip_user_agent`, and `sip_display_name` for each participant.
-- `attachments[]` containing the raw INVITE, the SDP, any STIR PASSporTs, and STIR verification reports — each tagged with the appropriate `purpose:` (`sip-invite`, `sip-sdp`, `stir-passport-extended`, etc.).
-- `extensions: ["sip-signaling"]`.
+The repo also ships a Dockerfile. Set `SIPREC_PUBLIC_IP` when the bind address is not the address you advertise in SDP.
 
-## Spec status
+## What each vCon contains
 
-The adapter is part of the May 2026 post-speckit-re-audit batch (commit history shows the field-name compliance pass on 2026-05-10). Output matches the current [SIP Signaling extension](../extensions/sip-signaling.md) draft.
+- A `recording` dialog per stream, with the audio inline (base64url) or published to a filesystem or S3 and referenced by `url` and a `sha512-` `content_hash`. The converter sets `sip_call_id` on each recording dialog. The helper it uses can also set `sip_from_tag`, `sip_to_tag` and `sip_cseq`, but the converter does not pass them today.
+- Attachments with these purposes: `sip-message-trace`, `siprec_wire` (the offer SDP), `session_metadata`, `stream_provenance` and `tags`.
+- A `lawful_basis` attachment when configured (below).
+- WTF transcripts in `analysis[]` if you plug in a transcription provider. The default is none.
+
+## Signing, delivery and health
+
+- Optional RS256 JWS signing of every vCon with a configured private key.
+- Webhook delivery with HMAC-SHA256 body signing (`X-Hub-Signature-256`), an `Idempotency-Key` header set to the vCon UUID, exponential-backoff retries and an optional dead-letter directory.
+- `/healthz` and Prometheus `/metrics` on port 8080, and an optional token-protected read-only `/vcons` API.
+
+## Lawful basis
+
+The adapter has no default basis. `lawful_basis.enabled` defaults to true, but if `lawful_basis.lawful_basis` is not set the adapter logs a warning and omits the attachment. Set it in `config.yaml` (or `SIPREC_LAWFUL_BASIS`) to the basis that applies to your deployment. This changed on 2026-09-26 (CON-1091); older releases hardcoded `legitimate_interests`.
 
 ## See also
 
-- [SIP Signaling extension](../extensions/sip-signaling.md) — the spec the adapter produces against
-- [Authenticating and Certifying Conversations](../use-cases-studies/authenticating-and-certifying-conversations.md) — the STIR/SHAKEN integration story
+- [SIP Signaling extension](../extensions/sip-signaling.md)
+- [Lawful Basis extension](../extensions/lawful-basis.md)
+- [Authenticating and Certifying Conversations](../use-cases-studies/authenticating-and-certifying-conversations.md)

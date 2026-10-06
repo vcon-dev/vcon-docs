@@ -1,19 +1,22 @@
 ---
 icon: face-glasses
+description: Describes the 43 synthetic TADHack 2025 vCons, where to get them and what they contain.
 ---
 
 # TADHack vCon
 
 ## Conversation Set
 
-For this year's TADHack vCon Hackathon, we've generated a set of synthetic vCons for your use:
+For the TADHack 2025 vCon Hackathon, we've generated a set of synthetic vCons for your use:
 
 * You can download the set at [https://github.com/vcon-dev/tadhack-2025](https://github.com/vcon-dev/tadhack-2025)&#x20;
 * Audio lives in the repo alongside the vCons, in IETF vCon syntax 0.4.0
+* The conversations are synthetic, generated with the vCon Faker pipeline. Each party is marked `"validation": "synthetic"`, and each vCon carries a `lawful_basis` attachment recording that it is demo data with no real data subject. The phone numbers and emails were not checked against real subscribers, so do not dial or email them.
+* The dataset is also listed in [Public vCon Datasets](../tools/vcon-datasets.md), with the `vcon-data` command to load it.
 
 ## Overview
 
-This dataset contains customer service conversation data from Aquidneck Yacht Brokers in VCON (Virtual Call Object Notation) format. The conversations span from May 18-24, 2025, and represent typical customer interactions for a yacht brokerage company.  The dataset includes 43 customer service calls between Aquidneck Yacht Brokers agents and customers, covering various marine industry-specific support scenarios.
+This dataset contains customer service conversation data from Aquidneck Yacht Brokers in vCon (virtual conversation) format. The conversations span from May 18-24, 2025, and represent typical customer interactions for a yacht brokerage company.  The dataset includes 43 customer service calls between Aquidneck Yacht Brokers agents and customers, covering various marine industry-specific support scenarios.
 
 ### Conversation Types
 
@@ -62,7 +65,7 @@ This dataset contains customer service conversation data from Aquidneck Yacht Br
 
 ### Call Characteristics
 
-* **Average Duration**: 50-60 seconds
+* **Duration**: 43 to 77 seconds, about 58 seconds on average
 * **Call Disposition**: All marked as "ANSWERED" with "VM Left" status
 * **Language**: English
 * **Transcription Confidence**: 99%

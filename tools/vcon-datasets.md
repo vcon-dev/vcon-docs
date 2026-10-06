@@ -1,5 +1,6 @@
 ---
 icon: database
+description: Public vCon datasets on GitHub, with counts, and how to load one into a vcon-mcp environment.
 ---
 
 # 📚 Public vCon Datasets
@@ -20,7 +21,7 @@ The SCOTUS and IETF datasets link to external audio; those external links do not
 
 ## Load one
 
-[vcon-data](https://github.com/VCONIC/vconic-datasets) is the CLI for deploying a dataset into a vcon-mcp Supabase environment. Install it:
+`vcon-data` (package `@vconic/vcon-data` 0.1.0, repo [VCONIC/vconic-datasets](https://github.com/VCONIC/vconic-datasets)) is the CLI for deploying a dataset into a vcon-mcp Supabase environment. Install it:
 
 ```
 npm install -g github:VCONIC/vconic-datasets

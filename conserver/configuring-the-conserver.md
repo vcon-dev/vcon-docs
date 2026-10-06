@@ -1,292 +1,172 @@
 ---
-description: A Complete Guide
+description: Every environment variable and every section of config.yml that the conserver reads, with the defaults it applies.
 ---
 
 # 🔧 Configuring the Conserver
 
-The Conserver is configured through two mechanisms:
+Two things configure the conserver. Environment variables set server behavior: Redis, authentication, workers, telemetry. A YAML file, `config.yml`, defines the processing: links, storages, chains, tracers and followers. For what a chain does with a vCon, see [Concepts](concepts.md).
 
-1. **Environment Variables** - Server-level settings (Redis, API keys, paths)
-2. **YAML Configuration File** - Processing configuration (chains, links, storage)
+## Environment variables
 
-## Environment Variables
+Set these in `.env` or the container environment. The `api` and `conserver` services read the same names. Settings are read once at process start, so changing one needs a restart.
 
-Set these in your `.env` file or system environment.
+### Core
 
-### Core Settings
+| Variable | Description | Default |
+| -------- | ----------- | ------- |
+| `REDIS_URL` | Redis connection URL. A `rediss://` URL gives TLS. | `redis://localhost` |
+| `CONSERVER_CONFIG_FILE` | Path to the YAML file. Set it explicitly: `POST /config` writes to this variable and fails if it is unset. | `./example_config.yml` |
+| `LOGGING_CONFIG_FILE` | Python `fileConfig` file for logging. `common/logging.conf` writes JSON. `common/logging_dev.conf` writes plain text. | `common/logging.conf` |
+| `SENTRY_DSN` | Turns on Sentry error reporting when set. `ENV` must also be set, because Sentry uses it as the environment name. | (unset) |
+| `ENV` | Environment name sent to Sentry. Nothing else reads it. | (unset) |
+| `UUID8_DOMAIN_NAME` | Read into a constant in `common/vcon.py`. The `Vcon.build_new()` helper does not use it and hardcodes its own domain, so setting it changes nothing today. | `strolid.com` |
 
-| Variable                | Description                         | Default                 |
-| ----------------------- | ----------------------------------- | ----------------------- |
-| `REDIS_URL`             | Redis connection URL                | `redis://localhost`     |
-| `CONSERVER_CONFIG_FILE` | Path to YAML config file            | `./example_config.yml`  |
-| `HOSTNAME`              | Server hostname                     | `http://localhost:8000` |
-| `ENV`                   | Environment name (dev/staging/prod) | `dev`                   |
-| `LOG_LEVEL`             | Logging level                       | `DEBUG`                 |
+### API
 
-### API Settings
+| Variable | Description | Default |
+| -------- | ----------- | ------- |
+| `CONSERVER_API_TOKEN` | Token that authorizes the main API. With no token and no token file, authentication is off. | (unset) |
+| `CONSERVER_API_TOKEN_FILE` | File of accepted tokens, one per line. Read once when the API starts. This is the only variable with a `_FILE` form. | (unset) |
+| `CONSERVER_HEADER_NAME` | Header that carries the token. | `x-conserver-api-token` |
+| `API_ROOT_PATH` | URL prefix for every route, including `/health`. | `/api` |
 
-| Variable                   | Description                                 | Default                 |
-| -------------------------- | ------------------------------------------- | ----------------------- |
-| `CONSERVER_API_TOKEN`      | Main API authentication token               | (none)                  |
-| `CONSERVER_API_TOKEN_FILE` | Path to file with API tokens (one per line) | (none)                  |
-| `CONSERVER_HEADER_NAME`    | HTTP header name for API token              | `x-conserver-api-token` |
-| `API_ROOT_PATH`            | API URL prefix                              | `/api`                  |
+### Redis and caching
 
-### Redis/Caching Settings
+| Variable | Description | Default |
+| -------- | ----------- | ------- |
+| `VCON_REDIS_EXPIRY` | TTL in seconds for a vCon that the API creates or reloads from storage into Redis. | `3600` |
+| `VCON_STORAGE_FALLBACK_ENABLED` | On a Redis miss, `VconRedis.get_vcon` tries each configured storage in turn and caches the first hit. `false` returns `None` on a miss, which halts the chain. | `true` |
+| `VCON_INDEX_EXPIRY` | TTL in seconds for the party search index keys (`tel:`, `mailto:`, `name:`). | `86400` |
+| `VCON_CONTEXT_EXPIRY` | TTL in seconds for the trace context stored with each queued UUID. | `86400` |
+| `VCON_DLQ_EXPIRY` | TTL in seconds applied to a vCon when it is dead-lettered. `0` leaves the TTL alone. | `604800` |
+| `VCON_SORTED_SET_NAME` | Redis sorted set that backs `GET /vcon`. | `vcons` |
 
-| Variable                  | Description                                                                   | Default            |
-| ------------------------- | ----------------------------------------------------------------------------- | ------------------ |
-| `VCON_REDIS_EXPIRY`       | Cache TTL for vCons fetched from storage back into Redis (seconds)            | `3600` (1 hour)    |
-| `VCON_INDEX_EXPIRY`       | Search index TTL (seconds)                                                    | `86400` (24 hours) |
-| `VCON_CONTEXT_EXPIRY`     | Ingress context (OTEL trace context) TTL (seconds)                            | `86400` (24 hours) |
-| `VCON_DLQ_EXPIRY`         | Dead-letter queue TTL (seconds). Set to `0` to keep DLQ entries indefinitely. | `604800` (7 days)  |
-| `VCON_SORTED_SET_NAME`    | Name of Redis sorted set for vCons                                            | `vcons`            |
-| `VCON_SORTED_FORCE_RESET` | Reset sorted set on startup                                                   | `true`             |
-| `TICK_INTERVAL`           | Processing loop interval (ms)                                                 | `5000`             |
+### Workers
 
-### Worker & Parallelism
+The most vCons in flight is `CONSERVER_WORKERS` times `CONSERVER_VCON_CONCURRENCY`, per container.
 
-These control how many worker processes the conserver runs and how storage writes are dispatched.
+| Variable | Description | Default |
+| -------- | ----------- | ------- |
+| `CONSERVER_WORKERS` | Worker processes per container. Each blocks on the ingress lists with a 15 second timeout. A worker that dies is restarted. | `1` |
+| `CONSERVER_VCON_CONCURRENCY` | vCons one worker runs at once, in threads. Above 1 it suits chains that wait on the network (LLM, transcription, webhooks, storage). | `1` |
+| `CONSERVER_PARALLEL_STORAGE` | Write a vCon to its chain's storages in parallel threads. | `true` |
+| `CONSERVER_START_METHOD` | `fork`, `spawn` or `forkserver`, for more than one worker. Blank uses the platform default. Any other value stops startup. | (unset) |
 
-| Variable                     | Description                                                                                                                                                                                                             | Default |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `CONSERVER_WORKERS`          | Number of worker processes to fork. Each worker independently pulls from configured ingress queues. Scale this with CPU cores and chain CPU-intensity.                                                                  | `1`     |
-| `CONSERVER_PARALLEL_STORAGE` | If `true`, storage writes for a single vCon run concurrently across the configured storages (ThreadPoolExecutor). If `false`, storages run serially.                                                                    | `true`  |
-| `CONSERVER_START_METHOD`     | Multiprocessing start method: `fork`, `spawn`, or `forkserver`. Leave unset to use the platform default (typically `fork` on Linux, `spawn` on macOS). Use `spawn` if you hit fork-safety issues with native libraries. | unset   |
+### Format and telemetry
 
-### External Service API Keys
+| Variable | Description | Default |
+| -------- | ----------- | ------- |
+| `EGRESS_FORMAT_VERSION` | Set to `0.0.1` to emit that legacy shape from every egress point: the `webhook` link, the `s3`, `postgres` and `elasticsearch` storages, and the API read endpoints. It maps `amended` to `appended`, `critical` to `must_support`, `mediatype` to `mimetype`, `schema` to `schema_version`, attachment `purpose` to `type`, and turns native JSON bodies back into strings. The copy in Redis stays on the current spec. | (unset) |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP collector. Blank turns metrics and traces export off. | (unset) |
+| `OTEL_EXPORTER_OTLP_PROTOCOL` | `grpc` or `http/protobuf`, as the OpenTelemetry SDK defines them. | set by compose |
+| `OTEL_EXPORTER_OTLP_HEADERS` | Headers for the collector, for example a vendor auth header. | (unset) |
+| `OTEL_EXPORTER_OTLP_INSECURE` | Plain-text gRPC. | `false` |
+| `OTEL_SERVICE_NAME` | Service name on every metric and span. Compose sets `conserver` and `api`. | `vcon-server` |
+| `OTEL_METRIC_EXPORT_INTERVAL` | Metric export interval in milliseconds. | `5000` |
 
-| Variable         | Description                     |
-| ---------------- | ------------------------------- |
-| `OPENAI_API_KEY` | OpenAI API key                  |
-| `DEEPGRAM_KEY`   | Deepgram speech-to-text API key |
+The containers start under `opentelemetry-instrument`, which reads the `OTEL_EXPORTER_OTLP_*` variables for traces. The conserver's own `conserver.*` metrics are created in `common/lib/metrics.py`, which builds a gRPC exporter against `OTEL_EXPORTER_OTLP_ENDPOINT` and does not consult the protocol variable. [Production Deployment](production-deployment.md) lists the metrics.
 
-### Example .env File
+`LOG_LEVEL`, `HOSTNAME`, `TICK_INTERVAL` and `VCON_SORTED_FORCE_RESET` appear in `common/settings.py`, but nothing reads them. Remove them from older `.env` files.
 
-```bash
-# Core
-REDIS_URL=redis://localhost:6379
-CONSERVER_CONFIG_FILE=./config.yml
-ENV=production
-LOG_LEVEL=INFO
+### Provider keys
 
-# API
-CONSERVER_API_TOKEN=your-secret-token
-API_ROOT_PATH=/api
+The conserver does not read `OPENAI_API_KEY`, `DEEPGRAM_KEY` or `GROQ_API_KEY` from the environment for its links. Put each key in the link's `options`, as described under [Secrets](#secrets). Two links read a variable as a default for an option: `detect_engagement` for `OPENAI_API_KEY`, and `groq_whisper` for `API_KEY` from `GROQ_API_KEY`. Both read it when the module is imported.
 
-# Caching
-VCON_REDIS_EXPIRY=3600
-VCON_INDEX_EXPIRY=86400
+## config.yml
 
-# External APIs
-OPENAI_API_KEY=sk-...
-DEEPGRAM_KEY=...
-```
-
-***
-
-## YAML Configuration File
-
-The YAML configuration file defines processing chains, links, storage backends, and authentication. The Conserver looks for the path specified in `CONSERVER_CONFIG_FILE` (default: `./example_config.yml`).
-
-### Configuration File Structure
+The conserver opens the file named by `CONSERVER_CONFIG_FILE` and parses it with `yaml.safe_load`. It re-reads the file on every pass of the worker loop, so edits apply to the next vCon without a restart. Three things are read once: `imports` (when a worker starts), `followers` (when the process starts) and environment variables.
 
 ```yaml
-# External partner authentication
-ingress_auth:
-  ingress_list_name: "api-key" or ["key1", "key2"]
-
-# Dynamic module imports
-imports:
-  import_name:
-    module: module_name
-    pip_name: package-name
-
-# Processing link definitions
-links:
-  link_name:
-    module: links.module_name
-    options: {}
-
-# Storage backend definitions
-storages:
-  storage_name:
-    module: storage.backend_name
-    options: {}
-
-# Tracer definitions
-tracers:
-  tracer_name:
-    module: tracers.module_name
-    options: {}
-
-# Processing chain definitions
-chains:
-  chain_name:
-    links: [link1, link2]
-    storages: [storage1]
-    ingress_lists: [queue1]
-    egress_lists: [queue2]
-    enabled: 1
-    timeout: 300
-
-# Follower configuration (federation)
-followers:
-  follower_name:
-    url: https://upstream-server
-    egress_list: source_queue
-    follower_ingress_list: target_queue
+ingress_auth: {}
+imports: {}
+links: {}
+storages: {}
+tracers: {}
+chains: {}
+followers: {}
 ```
 
-***
+### Secrets
 
-## Section Reference
+Values in `config.yml` are literal strings. The conserver does not expand `${VAR}`: a link configured with `OPENAI_API_KEY: ${OPENAI_API_KEY}` sends the text `${OPENAI_API_KEY}` to the provider. Write the key into the file, and treat the file as a secret. Keep it out of version control, give it restrictive permissions, and mount it read-only where you can.
 
-### ingress\_auth
+Keys go in the link or storage `options`, under the names that module reads, such as `OPENAI_API_KEY`, `DEEPGRAM_KEY`, `API_KEY` or `api_key`. Each page of [Standard Links](standard-links.md) and [Storage](storage.md) names them. Links that call OpenAI also accept `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_API_VERSION`, or `LITELLM_PROXY_URL` with `LITELLM_MASTER_KEY`. The `_FILE` pattern is not supported for provider keys.
 
-Configures API keys for external partner access to the `/vcon/external-ingress` endpoint.
+`GET /config` returns the whole file, secrets included, to anyone who holds the API token.
+
+### ingress_auth
+
+Maps an ingress list name to the key or keys that may submit to it through `POST /vcon/external-ingress`. Each key opens one list and nothing else. See [API](api.md#external-ingress).
 
 ```yaml
 ingress_auth:
-  # Single key per ingress list
-  customer_data: "customer-api-key"
-
-  # Multiple keys per ingress list
-  partner_ingress:
+  partner_data:
     - "partner-key-1"
     - "partner-key-2"
-    - "partner-key-3"
+  customer_data: "single-key"
 ```
-
-Each key grants access only to its designated ingress list. Partners cannot access other API endpoints.
-
-***
 
 ### imports
 
-Dynamically imports Python packages at runtime. Useful for:
-
-* Installing missing dependencies automatically
-* Using external link/storage packages
-* Managing version requirements
+Names modules to import when a worker starts. A module that is not installed is installed with `pip install` at that moment, so the container needs network access to the package index, and a package named in `imports` runs code in your worker.
 
 ```yaml
 imports:
-  # PyPI package
   custom_analysis:
     module: my_analysis_module
     pip_name: my-analysis-package>=1.0.0
-
-  # GitHub repository
   github_link:
     module: github_link
-    pip_name: git+https://github.com/org/repo.git@v2.0.0
-
-  # GitHub with branch
-  dev_link:
-    module: dev_link
-    pip_name: git+https://github.com/org/repo.git@main
-
-  # Version ranges
-  constrained:
-    module: constrained_module
-    pip_name: package>=1.0.0,<2.0.0
+    pip_name: git+https://github.com/example/github-link.git@v2.0.0
 ```
 
-The Conserver will automatically install missing packages when first referenced.
-
-***
+`pip_name` can be left out when it equals `module`. A bare string value, `legacy: some.module`, also works. A link or tracer entry may carry its own `pip_name` and is installed the first time it runs.
 
 ### links
 
-Links are the processing units of the conserver. Each link is a module that performs a specific operation on a vCon. See [Standard Links](standard-links.md) for built-in options.
+A link entry names a module and its options. The same module can appear under several names.
 
 ```yaml
 links:
-  # Built-in link with options
-  deepgram:
-    module: links.deepgram_link
-    options:
-      DEEPGRAM_KEY: your_key_here
-      minimum_duration: 30
-      api:
-        model: "nova-2"
-        smart_format: true
-        detect_language: true
-
-  # External link (auto-installed via imports)
-  custom_analyzer:
-    module: custom_analysis
-    pip_name: my-analysis-package
-    options:
-      model: "gpt-4"
-
-  # Multiple instances of same link with different configs
-  summary_brief:
+  summarize:
     module: links.analyze
     options:
-      OPENAI_API_KEY: your_key_here
-      prompt: "Summarize in one sentence"
-      analysis_type: "brief_summary"
-
-  summary_detailed:
+      OPENAI_API_KEY: "sk-..."
+      prompt: "Summarize this conversation in three sentences."
+      analysis_type: summary
+  summarize_short:
     module: links.analyze
     options:
-      OPENAI_API_KEY: your_key_here
-      prompt: "Provide a detailed analysis"
-      analysis_type: "detailed_summary"
+      OPENAI_API_KEY: "sk-..."
+      prompt: "Summarize this conversation in one sentence."
+      analysis_type: short_summary
 ```
 
-Each link configuration needs:
+`module` is a dotted Python path. `links.<name>` loads a shipped link. Any importable module with a `run` function works, which is how [custom links](creating-custom-links.md) load. The keys `ingress-lists` and `egress-lists` on a link entry, which appear in `example_config.yml`, are not read.
 
-* A unique name (e.g., 'deepgram', 'analyze')
-* The module path that implements the link functionality
-* An options dictionary containing the link's specific configuration
+A link can also carry an `after_link` block inside `options`. After each link the conserver calls the hook in `conserver/after_link_hook.py` with that block as `link_hook_config`, along with the status, the error if any, and the telephone numbers and email addresses of the vCon's parties. The shipped hook does nothing. Replace the file when you build the image to add audit logging or notifications. `conserver/hook.py` works the same way for `before_processing` and `after_processing`, once per vCon. A `before_processing` that returns a falsy value skips the vCon without dead-lettering it.
 
-***
+The vendor transcription links `links.openai_transcribe`, `links.groq_whisper`, `links.hugging_face_whisper` and `links.deepgram_link` are deprecated. The conserver reroutes each to `links.transcribe` with the matching `vendor` and logs one warning per module. See [Standard Links](standard-links.md#transcribe).
 
 ### storages
-
-Storages define where vCons are saved after processing. See [Storage](storage.md) for all backends.
 
 ```yaml
 storages:
   postgres:
     module: storage.postgres
     options:
-      user: postgres
-      password: your_password
-      host: your_host
+      host: postgres
       port: 5432
+      user: postgres
+      password: "change-me"
       database: postgres
-
-  s3:
-    module: storage.s3
-    options:
-      aws_access_key_id: your_key_id
-      aws_secret_access_key: your_secret
-      aws_bucket: your_bucket
-
-  milvus:
-    module: storage.milvus
-    options:
-      host: localhost
-      port: "19530"
-      api_key: sk-...
-      embedding_model: text-embedding-3-small
 ```
 
-Each storage needs:
-
-* A unique name
-* The storage module implementation
-* Connection and authentication options specific to the storage type
-
-***
+Each storage module has its own options. If a storage entry has no `options` key, the module's defaults apply as a whole. If it has one, the module merges it over its defaults only where the module says so, so give every required option. [Storage](storage.md) lists them.
 
 ### tracers
 
-Defines tracer modules for auditing and compliance tracking.
+Tracers are global. They run for every chain and every link, and a chain cannot select them. A `tracers:` list inside a chain, as `example_config.yml` shows in a comment, is ignored. See [Conserver Tracers](conserver-tracers.md).
 
 ```yaml
 tracers:
@@ -294,221 +174,43 @@ tracers:
     module: tracers.jlinc
     options:
       data_store_api_url: http://jlinc-server:9090
-      data_store_api_key: "key"
+      data_store_api_key: "your-key"
       archive_api_url: http://jlinc-server:9090
-      archive_api_key: "key"
-      system_prefix: "VCONProd"
-      hash_event_data: true
-      dlq_vcon_on_error: true
+      archive_api_key: "your-key"
 ```
-
-***
 
 ### chains
 
-Chains are where you define your processing workflows. They connect links together and specify where the results should be stored:
-
 ```yaml
-chains:
-  transcription_chain:
-    # Links to execute in order
-    links:
-      - deepgram
-      - analyze
-      - webhook_store
-
-    # Input Redis lists where new vCons arrive
-    ingress_lists:
-      - transcription_input
-
-    # Storage backends for processed vCons
-    storages:
-      - postgres
-      - s3
-
-    # Output Redis lists for downstream processing
-    egress_lists:
-      - transcription_output
-
-    # Enable/disable this chain
-    enabled: 1
-
-    # Processing timeout per vCon (seconds)
-    timeout: 300
-```
-
-A chain configuration includes:
-
-* The links to execute, in order
-* Input lists (ingress\_lists) where new vCons arrive
-* Storage locations for the processed vCons
-* Output lists (egress\_lists) for downstream processing
-* An enabled flag and optional timeout
-
-**Chain Processing Flow:**
-
-1. vCon UUID arrives in an ingress list
-2. Links execute sequentially (any can stop processing by returning `None`)
-3. vCon is stored in all configured storage backends
-4. UUID is added to egress lists
-5. If processing fails, UUID moves to DLQ (`DLQ:{ingress_list}`)
-
-***
-
-### followers
-
-Followers allow one conserver to monitor and process vCons from another conserver for federated deployments:
-
-```yaml
-followers:
-  remote_conserver:
-    # Upstream server URL
-    url: "https://remote-conserver.example.com"
-
-    # Authentication token for upstream
-    auth_token: "your_auth_token"
-
-    # Remote egress list to pull from
-    egress_list: "remote_output"
-
-    # Local ingress list to add vCons to
-    follower_ingress_list: "local_input"
-
-    # Polling interval in seconds
-    pulling_interval: 60
-
-    # Number of vCons to fetch per request
-    fetch_vcon_limit: 10
-```
-
-Each follower needs:
-
-* The URL of the remote conserver
-* Authentication credentials
-* The remote list to monitor (egress\_list)
-* The local list to populate (follower\_ingress\_list)
-* Polling configuration (interval and batch size)
-
-***
-
-## Complete Example
-
-```yaml
-# External partner authentication
-ingress_auth:
-  partner_data:
-    - "partner-key-abc"
-    - "partner-key-xyz"
-  internal_systems: "internal-key-123"
-
-# Dynamic imports
-imports:
-  sentiment_analyzer:
-    module: sentiment
-    pip_name: vcon-sentiment>=1.0.0
-
-# Links configuration
-links:
-  transcribe:
-    module: links.deepgram_link
-    options:
-      DEEPGRAM_KEY: ${DEEPGRAM_KEY}
-      minimum_duration: 30
-      api:
-        model: "nova-2"
-        smart_format: true
-
-  summarize:
-    module: links.analyze
-    options:
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      prompt: "Summarize this conversation in 3 bullet points."
-      analysis_type: "summary"
-      model: "gpt-4-turbo"
-
-  detect_complaints:
-    module: links.check_and_tag
-    options:
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      tag_name: "complaint"
-      tag_value: "detected"
-      evaluation_question: "Does this contain a customer complaint?"
-
-# Storage backends
-storages:
-  postgres:
-    module: storage.postgres
-    options:
-      database: "vcons"
-      user: "postgres"
-      password: ${POSTGRES_PASSWORD}
-      host: "postgres"
-      port: 5432
-
-  s3:
-    module: storage.s3
-    options:
-      aws_access_key_id: ${AWS_ACCESS_KEY_ID}
-      aws_secret_access_key: ${AWS_SECRET_ACCESS_KEY}
-      aws_bucket: "vcon-archive"
-
-# Processing chains
 chains:
   main:
-    links:
-      - transcribe
-      - summarize
-      - detect_complaints
-    storages:
-      - postgres
-      - s3
-    ingress_lists:
-      - incoming_calls
-      - partner_data
-    egress_lists:
-      - processed
+    ingress_lists: [incoming_calls]
+    links: [transcribe_audio, summarize]
+    storages: [postgres, s3]
+    egress_lists: [processed]
     enabled: 1
     timeout: 600
 ```
 
-***
+`ingress_lists` and `links` are required. `storages` and `egress_lists` are optional. Two settings are accepted and ignored: `enabled` does not stop a chain, and `timeout` does not stop a link. Remove a chain from the file to stop it. The order of work, the return values of a link, egress before storage and the dead letter queues are all on [Concepts](concepts.md).
 
-## Environment Variable Substitution
+### followers
 
-The configuration supports environment variable substitution using `${VAR_NAME}` syntax:
+A follower pulls finished vCons from another conserver. Every key is required, and `url` must include the remote server's `API_ROOT_PATH`.
 
 ```yaml
-links:
-  analyze:
-    module: links.analyze
-    options:
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
+followers:
+  upstream:
+    url: "https://remote.example.com/api"
+    auth_token: "token-for-the-remote-api"
+    egress_list: remote_output
+    follower_ingress_list: local_input
+    pulling_interval: 60
+    fetch_vcon_limit: 10
 ```
 
-This allows sensitive values to be kept in environment variables rather than the config file.
+Every `pulling_interval` seconds the follower calls `GET /vcon/egress` on the remote server, fetches each returned UUID, writes the vCon into local Redis and pushes the UUID onto `follower_ingress_list`.
 
-***
+## Changing the file at run time
 
-## Configuration Best Practices
-
-1. **Use meaningful names** for your chains, links, and storage configurations to make the system easier to understand and maintain.
-2. **Organize links logically** - arrange links in order where each step builds on the previous ones.
-3. **Use multiple storage backends** when needed - for example, storing in both S3 for long-term storage and Postgres for quick querying.
-4. **Configure appropriate timeouts** for your chains based on the expected processing time of your links.
-5. **Use environment variables** for sensitive values like API keys and passwords.
-6. **Use the follower configuration** when you need to process vCons across multiple conserver instances.
-
-***
-
-## Hot Reloading
-
-The configuration file is loaded at startup and can be updated via the API endpoint `/config`. Changes take effect immediately for new vCon processing:
-
-```bash
-curl -X POST "http://localhost:8000/api/config" \
-  -H "x-conserver-api-token: $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d @new_config.json
-```
-
-Remember that the conserver uses Redis as its working storage, so all the lists referenced in ingress\_lists and egress\_lists are Redis lists.
+Edit `config.yml` in place and the next vCon uses it. `POST /config` replaces the file from a JSON body, through the API container's own copy. That fails on a read-only mount, and it does not reach other hosts unless they share the file. A file that does not parse stops the worker, so validate the YAML before you save it.

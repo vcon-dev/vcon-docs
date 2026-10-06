@@ -1,98 +1,64 @@
 ---
-description: The Machinery of the Conserver
+description: Shows how the conserver runs internally, its processes, Redis keys and processing loop, so you can size, debug and extend a deployment.
 ---
 
 # ❤️ Inside the Conserver
 
-<figure><img src="../.gitbook/assets/Conserver Pictures (7).jpg" alt=""><figcaption><p>The System view of the Conserver</p></figcaption></figure>
+This page describes the runtime as of [vcon-server main](https://github.com/vcon-dev/vcon-server). The rules a chain follows (link return values, egress, storage, dead letter queues, tracer timing) are defined once in [Concepts](concepts.md). This page covers the machinery underneath them.
 
-The Conserver processes vCons, storing them locally, and projecting them into the third party information services. The building blocks of the Conserver are links, which have an interface to accept a single vCon, and can then forward that vCon, or create new ones, to other links for further processing. Links are formed into chains, designed to apply a series of analysis and transformation to the vCons. Chains are executed by the conserver periodically on a timer, or on request from a third party system.
+<figure><img src="../.gitbook/assets/Conserver Internals (4).jpg" alt="A chain: UUIDs from an ingress list pass through three links, each reading the vCon from Redis, then go to an egress list and storage"><figcaption><p>A chain. Only the UUID moves between links. Each link fetches the full vCon from Redis.</p></figcaption></figure>
 
-## Links: The Fundamental Building Block
+## Two kinds of process
 
-The heart of the conserver functionality is the "link". A link is a Python module that takes a single vCon and processes it. Chains are ultimately created by combining links in serial. All links have the same interface. Using links has multiple advantages:
+A deployment runs two programs against one Redis.
 
-* **Configurable**: Uses a flexible options system for customization.
-* **Retry Mechanism**: Implements exponential backoff for API call retries.
-* **Caching**: Avoids redundant analysis by checking existing data.
-* **Metrics**: Tracks performance and error metrics.
-* **Modular**: Designed to be part of a larger system, likely for processing voice conversations.
+The **API** ([api/api.py](https://github.com/vcon-dev/vcon-server/blob/main/api/api.py)) is a FastAPI application served under `/api` by default (`API_ROOT_PATH`). It writes vCons into Redis, pushes UUIDs onto ingress lists, pops egress lists, replays dead letter queues and reads and writes `config.yml`. It runs no links. See [API](api.md).
 
-As an example, let's look at [the analyze link.](https://github.com/vcon-dev/vcon-server/blob/86f26ecb1ec01877586c712921c564f6241b2d6c/server/links/analyze/__init__.py) This link takes a vCon, applies a prompt to it, then adds an analysis to the vCon with the result.
+The **conserver** ([conserver/main.py](https://github.com/vcon-dev/vcon-server/blob/main/conserver/main.py)) runs the chains. It starts `CONSERVER_WORKERS` worker processes (default 1). With one worker the loop runs in the main process; with more, each worker is a separate `multiprocessing.Process`, started with the method in `CONSERVER_START_METHOD` (`fork`, `spawn` or `forkserver`, platform default when unset). Inside each worker, `CONSERVER_VCON_CONCURRENCY` (default 1) sets how many vCons that worker processes at once on a thread pool. The main process also starts any configured [followers](concepts.md#follower) on timer threads.
 
-<figure><img src="../.gitbook/assets/Conserver Internals (1).jpg" alt=""><figcaption><p>A Conserver Link</p></figcaption></figure>
+Workers share nothing but Redis, so scaling out means adding workers or containers. See [Production Deployment](production-deployment.md) for sizing.
 
-### Main Function: run
+## The worker loop
 
-The `run` function is the entry point for links. [For the analysis link](https://github.com/vcon-dev/vcon-server/blob/86f26ecb1ec01877586c712921c564f6241b2d6c/server/links/analyze/__init__.py#L62), it performs the following steps:
+Each worker repeats the same loop ([`worker_loop`](https://github.com/vcon-dev/vcon-server/blob/main/conserver/main.py)):
 
-1. Merges provided options in the "config.yml" file with default options.
-2. Retrieves the vCon (voice conversation) object from Redis.
-3. Applies inclusion filters and sampling.
-4. Iterates through dialog entries in the vCon:
-   * Retrieves the source text for analysis.
-   * Checks if analysis already exists.
-   * Generates new analysis using OpenAI if needed.
-   * Adds the generated analysis to the vCon object.
-5. Stores the updated vCon back in Redis.
+1. Re-read `config.yml` from disk. Configuration is refreshed on every iteration, so a change written by `POST /config` or by hand reaches each worker on its next pass without a restart. The API and the workers must see the same file.
+2. Build a map from every chain's ingress lists to that chain.
+3. Call Redis `BLPOP` on all ingress lists at once with a 15 second timeout. If nothing arrives, go back to step 1. This is also why a config change can take up to 15 seconds to be noticed on an idle conserver.
+4. Run the pre-processing hook. The default [`hook.py`](https://github.com/vcon-dev/vcon-server/blob/main/conserver/hook.py) passes every vCon through. A replacement can return a falsy value to skip a vCon without dead-lettering it.
+5. Run the chain for that UUID, as described in [Concepts](concepts.md#chain). With `CONSERVER_VCON_CONCURRENCY` above 1, the chain runs on the thread pool and the worker goes back to `BLPOP` once a slot is free.
+6. If the chain raised, push the UUID onto `DLQ:<ingress_list>` and extend the vCon's TTL to `VCON_DLQ_EXPIRY`.
+7. Run the post-processing hook, which is a no-op by default.
 
-### Default Options
+`BLPOP` hands each UUID to exactly one waiting worker, so two workers never process the same pop. There is no pub/sub channel and no timer-driven scheduling. Work starts when a UUID lands on an ingress list.
 
-A `default_options` dictionary defines the options for the link, and are overridden by the configuration file. For instance, the analysis link is defined with the following options:
+Inside a chain run, egress lists are written before storages ([`_wrap_up`](https://github.com/vcon-dev/vcon-server/blob/main/conserver/main.py)). Storage writes run in parallel threads when the chain has more than one storage and `CONSERVER_PARALLEL_STORAGE` is true (the default). A failed storage write goes to `DLQ:storage:<name>` and does not affect the other storages.
 
-* Prompt for summarization
-* The value to set as the analysis type when added to the vCon (default: "summary")
-* GPT model (default: "gpt-3.5-turbo-16k")
-* Sampling rate and temperature
-* Source configuration for transcript analysis, for instance "transcript" or "summary"
+## A link at work
 
-### Error Handling and Metrics
+<figure><img src="../.gitbook/assets/Conserver Internals (1).jpg" alt="A link receives a vCon UUID and settings from config.yml, fetches the vCon from Redis, calls an external service, and returns the UUID or None"><figcaption><p>A link takes a UUID and its options, reads the vCon from Redis, and returns a UUID or None.</p></figcaption></figure>
 
-The module includes error handling for API calls and retries. It also tracks metrics such as analysis time and failures using custom metric functions.
+For each link in the chain the worker looks up the link's entry under `links:`, imports its module once per process (installing it with pip first if a `pip_name` is configured and the import fails), and calls `run(vcon_uuid, link_name, options)`. Tracers run before the first link and after each one that returns. A no-op [`after_link_hook.py`](https://github.com/vcon-dev/vcon-server/blob/main/conserver/after_link_hook.py) is also called after every link, on success and on error, for deployments that replace it at build time.
 
-### Return Values
+The legacy transcription modules `links.deepgram_link`, `links.openai_transcribe`, `links.groq_whisper` and `links.hugging_face_whisper` are redirected to `links.transcribe` with the matching `vendor` option, and a deprecation warning is logged once per module.
 
-Links can return one of two kinds of values. Links can return a vCon UUID, or None. Typically, it would be the vCon UUID that was passed in. However, if the link created a new vCon, as would be required for creating a new, redacted vCon, the new UUID would be returned by the link. To stop chain processing, a link could return None. This is useful for links that filter vCons out, only allowing certain ones down the chain, and stopping the processing of links downstream of the chain.
+The [analyze link](https://github.com/vcon-dev/vcon-server/blob/main/conserver/links/analyze/__init__.py) is a typical example. It merges its `default_options` with the options from `config.yml`, loads the vCon from Redis, skips dialogs that already carry an analysis of the configured type, calls the model with the configured prompt for the rest, adds the result to `analysis[]`, writes the vCon back to Redis and returns the UUID. Writing your own is covered in [Creating Custom Links](creating-custom-links.md).
 
-## Chains: Links for Workflow
+## What lives in Redis
 
-The fundamental implementation of workflow is created by a series of links. These chains take vCon uuids from REDIS lists, runs the chain of links on the vCon, stores it, then places the uuids in egress REDIS links.
+| Key | Type | Written by | Purpose |
+| --- | ---- | ---------- | ------- |
+| `vcon:{uuid}` | String (JSON) | API, links, followers | The working copy of each vCon |
+| Each ingress and egress list name | List | API, chains, followers | UUIDs waiting to be processed or collected |
+| `DLQ:<ingress_list>` | List | Workers | UUIDs whose chain raised |
+| `DLQ:storage:<storage_name>` | List | Workers | UUIDs whose write to one storage failed |
 
-<figure><img src="../.gitbook/assets/Conserver Internals (4).jpg" alt=""><figcaption><p>A Chain</p></figcaption></figure>
+vCons are stored as plain JSON strings through ordinary `SET` and `GET`. RedisJSON is not required. Deployments upgrading from a release that used RedisJSON must migrate their data first; see [the Redis migration guide](https://github.com/vcon-dev/vcon-server/blob/main/docs/installation/redis-migration.md). The API also keeps a sorted set of vCons by creation time and short-lived party indexes for search.
 
-### Chain Processing, Link by Link
+Links, chains and storages are not stored in Redis. They exist only in `config.yml`, which every worker re-reads on each loop.
 
-The [main loop of the conserver](https://github.com/vcon-dev/vcon-server/blob/86f26ecb1ec01877586c712921c564f6241b2d6c/server/main.py#L139) processes vCons:
+Redis must run with `maxmemory-policy noeviction`. Under any eviction policy Redis can silently drop queued UUIDs or the vCons they point to.
 
-* Loads configuration and sets up the ingress chain map.
-* Enters a loop that continuously checks for new items in the ingress lists using Redis.
-* When an item (vCon ID) is found, it creates a VconChainRequest and processes it.
-* Handles exceptions by moving problematic vCons to a Dead Letter Queue.
+## Tech stack
 
-Step by step:
-
-1. Processing starts when vCon UUIDs are placed into a ingress list. Chains may have several ingress lists, and have to have at least one to kick off processing. Lists are implemented as REDIS lists, and processing is controlled at the thread layer by blocking until the a new element is placed on the list. UUIDs can be added to the ingress list by other chains, allowing them to be placed in series, from links that can request processing, or from the API. A typical pattern is to create the vCon using the API, then inserting the UUID into the desired ingress list.
-2.  For each vCon taken from the ingress list, it is processed by each link in the chain. This `_process_link` function handles the execution of a single link in the processing chain for a vCon. Here's a summary of its functionality:
-
-    This enables flexible and dynamic execution of different processing steps (links) in the vCon processing chain, with built-in logging and timing measurements.
-
-    1. It logs the start of processing for the specific link and vCon.
-    2. It retrieves the link configuration from the global `config`.
-    3. It dynamically imports the module specified for this link if it hasn't been imported before, caching it for future use.
-    4. It retrieves any options specified for the link.
-    5. It logs the execution of the link's module.
-    6. It measures the execution time of the module's `run` method, which is called with the vCon ID, link name, and options.
-    7. After execution, it logs the completion of the link processing, including the time taken.
-    8. Finally, it returns the result from the module's `run` method, which determines whether the chain should continue processing or stop.
-3. After the links have been processed, assuming that none of the links returned None, the vCon UUID is pushed into the chain's egress lists. Finally, the vCon is then stored in the storages (S3, Mongo, File, etc.) specified for that link.
-4. In case of an error in any of these links, the vCon UUID will be pushed into the dead letter queue of the original ingress list.
-
-## Tech Stack
-
-The Conserver is built off of two core platforms: a python API framework FASTAPI, and a REDIS real time database. The conserver itself is written in Python, and uses the standard vCon Python library to create and modify vCons.
-
-REDIS is responsible for storing the conversations, while FAST API coordinates the application software that manages them. Each conversation is stored as a REDIS JSON object in the standard vCon format. In practice, each vCon is stored in REDIS by the UUID of the vCon, making them easy to discover and fast to process. Instead of copying the conversation as it’s built and transformed, it stays stored in REDIS, and the ID to the vCon is passed, optimizing processing efficiency even at very large data sizes. REDIS also provides inter task communication using a series of PUB/SUB channels, coordinating the activities of the conserver for both local software (that inside the conserver itself) but also for external software such as Lambdas or exporting onto other systems like Apache Kafka. Also, third party and hardware enabled systems can use REDIS as a data interchange system, loading and unloading large media files in coordination with the data pipeline.
-
-Each vcon is stored in REDIS using JSON and named with a regular key: vcon:\{{vcon-uuid\}}, as are chains "chains:\{{name\}}", links "link:\{{name\}}" and storages "storage:\{{name\}}}". REDIS allows for the addition of dedicated hardware to accelerate long running and high compute use cases such as transcription and video redaction, as these systems can connect directly to REDIS relieving scale issues from general purpose hardware, while managing the overhead of moving large amounts of data. Links take a vCon ID as inputs, and bear the responsibility of reading vCons if required, or giving them the option to hand off to optimized hardware.
-
-FAST API provides the application infrastructure for the conserver. The transformation steps are developed as Python modules and loaded as tasks managed by FAST API. As each task finishes, it notifies other system elements by publishing UUID of the vCon. Other tasks wait on these notifications, and when they receive the notification, they can act on that same vCon for whatever purpose they may have. In addition, FAST API provides a REST API to the store of vCons, and a simple UI to manage the conserver.
+Python 3.12, FastAPI for the API, ordinary Redis for state and queues (the Compose file pins 7.4), and the [vCon Python library](../vcon-library/README.md) for reading and writing vCons. The repository ships a Docker Compose file that runs the API, the conserver and Redis, along with Postgres, Elasticsearch and Langfuse services. See [Quick Start](conserver-quick-start.md).

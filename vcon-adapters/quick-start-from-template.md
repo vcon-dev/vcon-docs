@@ -1,31 +1,27 @@
 ---
-description: Scaffold a new vCon adapter in five minutes from the official template repo.
+description: Scaffold a new vCon adapter from the official template repo and get a first vCon delivered.
 ---
 
 # 🚀 Quick Start From Template
 
-The [vcon-adapter-template](https://github.com/vcon-dev/vcon-adapter-template) repo is a GitHub template repository. This page is the shortest path from "I have a source platform that produces conversations" to "I have a running, spec-compliant adapter delivering vCons over a signed webhook."
-
-Spec target: [`draft-ietf-vcon-vcon-core-04`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), syntax `"0.4.0"`.
+The [vcon-adapter-template](https://github.com/vcon-dev/vcon-adapter-template) repo is a GitHub template repository. This page takes you from a source platform that produces conversations to a running adapter delivering vCons over a signed webhook or straight to a conserver. The rules your code must follow are on the [Spec Compliance Checklist](spec-compliance-checklist.md), and the template's tests enforce them.
 
 ## Prerequisites
 
 * Python 3.12+
 * [`uv`](https://docs.astral.sh/uv/) (recommended) or `pip`
-* `gh` CLI (or use the GitHub web UI for step 1)
-* A source platform that exposes conversation data — webhook events, an API to poll, files on a disk, an S3 bucket, anything
+* `gh` CLI, or the GitHub web UI for step 1
+* A source platform that exposes conversation data: webhook events, a pollable API, files on disk, or an S3 bucket
 
-## Step 1 — Create your repo from the template
+## Step 1. Create your repo
 
-Pick three names up front, all referring to the same adapter:
+Pick three names that refer to the same adapter:
 
-| Name                | Form           | Example              |
-| ------------------- | -------------- | -------------------- |
-| **Adapter name**    | kebab-case     | `signalwire`         |
-| **Python package**  | snake\_case    | `signalwire_adapter` |
-| **Source platform** | human-readable | `SignalWire`         |
-
-Then create the repo:
+| Name | Form | Example |
+| --- | --- | --- |
+| Adapter name | kebab-case | `foo` |
+| Python package | snake\_case | `foo_adapter` |
+| Source platform | human-readable | `Foo` |
 
 ```bash
 gh repo create vcon-dev/vcon-foo-adapter \
@@ -36,19 +32,15 @@ gh repo create vcon-dev/vcon-foo-adapter \
 cd vcon-foo-adapter
 ```
 
-## Step 2 — Run find-and-replace on placeholders
-
-The template uses three placeholder tokens. Substitute them in one pass:
+## Step 2. Replace the placeholders
 
 ```bash
 ADAPTER_NAME=foo
 ADAPTER_PACKAGE=foo_adapter
 SOURCE_PLATFORM=Foo
 
-# Rename the package directory
 mv "src/__ADAPTER_PACKAGE__" "src/${ADAPTER_PACKAGE}"
 
-# Substitute placeholders in every relevant file
 find . -type f \( -name "*.py" -o -name "*.toml" -o -name "*.yaml" -o -name "*.yml" -o -name "*.md" -o -name "Dockerfile" \) \
   -not -path "./.git/*" \
   -exec sed -i.bak \
@@ -59,14 +51,9 @@ find . -type f \( -name "*.py" -o -name "*.toml" -o -name "*.yaml" -o -name "*.y
 find . -name "*.bak" -delete
 ```
 
-Then delete the scaffolding boilerplate the template ships with:
+In `README.md`, delete the "What this is" section that explains the template. Keep `USAGE.md` until you have read it: it holds the lawful basis setup and the `finalize_vcon()` and `json_body()` notes.
 
-```bash
-rm USAGE.md
-# In README.md, delete the "## What this is" section explaining the template
-```
-
-## Step 3 — Install and verify the smoke tests pass
+## Step 3. Install and run the tests
 
 ```bash
 uv venv && source .venv/bin/activate
@@ -74,88 +61,97 @@ uv pip install -e ".[dev]"
 pytest
 ```
 
-You should see all 14 spec-compliance smoke tests pass. If anything fails, you have placeholder residue or a Python version mismatch — fix before touching anything else.
+The whole test suite should pass before you change anything. A failure at this point means placeholder residue or a Python version mismatch.
 
-## Step 4 — Wire the source-platform listener
+## Step 4. Wire the source listener
 
-Open `src/<your_package>/cli.py` and find the `# TODO: wire your source-platform listener` comment. Replace it with whatever fits your source:
+Open `src/<your_package>/cli.py` and find `# TODO: wire your source-platform listener`. Pick the shape that fits your source (webhook receiver, polling job, file watcher, batch CLI); the [Development Guide](vcon-adapter-development-guide.md) has a skeleton for each.
 
-* **Webhook receiver:** add `aiohttp.web` routes that consume incoming events
-* **Polling job:** use `asyncio.create_task` to run a loop with `asyncio.sleep(interval)`
-* **File watcher:** import `watchdog` and observe a directory
-* **Batch CLI:** read input files, build vCons in a loop, deliver, exit
-
-The shape of the per-event work is the same regardless:
+The per-event work looks like this:
 
 ```python
-from foo_adapter.vcon_builder import new_vcon
-from foo_adapter.webhook_delivery import WebhookDelivery
+from datetime import datetime, timezone
 
-async def handle_event(event: dict, delivery: WebhookDelivery) -> None:
+from vcon.dialog import Dialog
+from vcon.party import Party
+
+from foo_adapter.vcon_builder import add_lawful_basis, external_media_url, new_vcon
+
+async def handle_event(event: dict, audio: bytes, config, delivery) -> None:
     v = new_vcon(subject=event.get("title"))
-    v.add_party(tel=event["caller"], role="caller")
-    v.add_party(tel=event["agent"], role="agent")
-    v.add_dialog(
-        type="recording",
-        start=event["started_at"],
-        parties=[0, 1],
+    v.add_party(Party(tel=event["caller"], role="caller"))
+    v.add_party(Party(tel=event["agent"], role="agent"))
+
+    media = external_media_url(
         url=event["recording_url"],
+        content=audio,
         mediatype="audio/wav",
+    )
+    v.add_dialog(
+        Dialog(
+            start=event["started_at"],
+            parties=[0, 1],
+            **media,  # type, url, mediatype, content_hash (sha512-<base64url>)
+        )
+    )
+
+    add_lawful_basis(
+        v,
+        config.lawful_basis,
+        granted_at=datetime.now(timezone.utc).isoformat(),
     )
     await delivery.deliver(v.vcon_dict)
 ```
 
-`new_vcon()` handles the four [`Vcon.build_new()` quirks](spec-compliance-checklist.md) (syntax param, dropped empty `group`/`redacted`, `subject` setter, extensions list) for you. Use the library's `add_party` / `add_dialog` / `add_attachment` / `add_analysis` / `add_tag` helpers for everything else — they're spec-correct out of the box.
+`external_media_url()` computes `content_hash` with `sha512_b64url()`. Replace `datetime.now()` with the time your source says the basis was established when it tells you. If `LAWFUL_BASIS` is unset, `add_lawful_basis()` logs one warning and adds nothing; it never invents a basis. See the [Extensions Cookbook](extensions-cookbook.md#lawful-basis) for what the attachment looks like.
 
-## Step 5 — Configure
+`deliver()` calls `finalize_vcon()` for you. If you serialize a vCon anywhere else, such as straight to local storage, call `finalize_vcon(v.vcon_dict)` first.
 
-Copy `config.example.yaml` to `config.yaml` and set the values. Required env vars:
+## Step 5. Configure
 
-| Env var                    | Purpose                              |
-| -------------------------- | ------------------------------------ |
-| `<PACKAGE>_API_KEY`        | Credentials for your source platform |
-| `VCON_WEBHOOK_URL`         | Where to POST vCons                  |
-| `VCON_WEBHOOK_HMAC_SECRET` | Shared secret for body signing       |
+Copy `config.example.yaml` to `config.yaml`. The file substitutes `${ENV_VAR}` at startup, so secrets stay out of it.
 
-The config file uses `${ENV_VAR}` substitution at startup, so you never commit secrets.
+| Env var | Purpose |
+| --- | --- |
+| `<PACKAGE>_API_KEY` | Credentials for your source platform |
+| `VCON_WEBHOOK_URL` | Where to POST vCons (`delivery.mode: webhook`) |
+| `VCON_WEBHOOK_HMAC_SECRET` | Shared secret for body signing (`delivery.mode: webhook`) |
+| `CONSERVER_URL` | Base URL of a vcon-server (`delivery.mode: conserver`) |
+| `CONSERVER_API_TOKEN` | Sent as `x-conserver-api-token` (`delivery.mode: conserver`) |
+| `LAWFUL_BASIS` | One of `consent`, `contract`, `legal_obligation`, `vital_interests`, `public_task`, `legitimate_interests`. Unset means no attachment |
+| `LAWFUL_BASIS_PURPOSE` | Comma-separated purposes, default `recording` |
+| `LAWFUL_BASIS_JURISDICTION` | Optional, for example `US-MA` |
+| `LAWFUL_BASIS_EXPIRATION` | Optional ISO 8601 timestamp |
+| `LAWFUL_BASIS_PROOF_MECHANISM` | Optional, for example `external_system` |
+| `LAWFUL_BASIS_PROOF_DESCRIPTION` | Optional free text for the proof |
 
-## Step 6 — Run it
+Set `delivery.mode` to `webhook` (the default) or `conserver`. Conserver mode POSTs to `{CONSERVER_URL}/vcon` with the token header and an `ingress_lists` query parameter per configured list. Both modes share the retry and dead-letter code ([Operational Patterns](operational-patterns.md)). Each `LAWFUL_BASIS*` variable overrides the matching `vcon.lawful_basis` YAML field.
 
-```bash
-python -m foo_adapter
-```
-
-Or via Docker:
-
-```bash
-docker compose up
-```
-
-Then in another terminal:
+## Step 6. Run it
 
 ```bash
-curl localhost:8000/healthz   # → {"status":"ok"}
-curl localhost:8000/metrics   # → Prometheus exposition
+python -m foo_adapter     # or: docker compose up
+curl localhost:8000/healthz   # {"status":"ok"}
+curl localhost:8000/metrics   # Prometheus exposition
 ```
 
-## Step 7 — Verify a real vCon end-to-end
+## Step 7. Verify a real vCon
 
-Trigger an event from your source platform (or simulate one) and watch:
+Trigger or simulate an event and check:
 
-* Logs show `delivered url=... uuid=...` from `webhook_delivery.py`
-* The `vcons_delivered_total` Prometheus counter increments
-* The receiving end sees `Idempotency-Key: <uuid>` and `X-Hub-Signature-256: sha256=…` headers
-* If you forcibly take the receiver down, vCons should land in `dlq/` after retries exhaust
+* The log shows `delivered url=... uuid=...`
+* `vcons_delivered_total` increments
+* A webhook receiver sees `Idempotency-Key: <uuid>` and `X-Hub-Signature-256: sha256=...`; a conserver sees the `x-conserver-api-token` header
+* With the receiver down, vCons land in `dlq/` after retries run out
+* The delivered vCon has a `purpose: "lawful_basis"` attachment, or you saw the one-time warning that says why not
 
-## Step 8 — Publish
+## Step 8. Publish
 
-1. Push your repo: `git push -u origin main`
-2. (Optional) Add to the [vcon super repo](https://github.com/vcon-dev/vcon) as a submodule
-3. (Optional) Publish to PyPI — CI will do this on tag push if `PYPI_API_TOKEN` is set
+Push the repo with `git push -u origin main`. The template ships one workflow, `test.yml` (lint, type check, tests on Python 3.12 and 3.13). It has no PyPI publish step, so adding one is up to you.
 
 ## What to read next
 
-* [Spec Compliance Checklist](spec-compliance-checklist.md) — the must/never list every PR needs to pass
-* [Operational Patterns](operational-patterns.md) — what the template's delivery layer is actually doing under the hood
-* [Extensions Cookbook](extensions-cookbook.md) — attaching transcripts, consent records, and SIP signaling
-* [vCon Adapter Development Guide](vcon-adapter-development-guide.md) — when the template's shape isn't enough
+* [Spec Compliance Checklist](spec-compliance-checklist.md)
+* [Operational Patterns](operational-patterns.md)
+* [Extensions Cookbook](extensions-cookbook.md)
+* [vCon Adapter Development Guide](vcon-adapter-development-guide.md)

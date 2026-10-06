@@ -1,537 +1,272 @@
 ---
-description: Deploying the Conserver in Production
+description: How to run the conserver in production, covering images, Redis, scaling, the reverse proxy, secrets, metrics and shutdown, as the code behaves today.
 ---
 
 # 🏭 Production Deployment
 
-This guide covers deploying the Conserver in production environments with considerations for scalability, reliability, and security.
+The conserver is two processes that share one Redis. The API accepts and serves vCons. The workers run the chains. Redis holds the queues and the working copy of every vCon. This page covers the deployment choices that follow from that. For the file format see [Configuring the Conserver](configuring-the-conserver.md). For symptoms and fixes see [Troubleshooting](troubleshooting.md).
 
-## Prerequisites
+## Images
 
-* Docker and Docker Compose
-* Redis server (or Redis cluster for high availability)
-* Storage backends configured (PostgreSQL, S3, etc.)
-* Domain name and TLS certificates
-* Monitoring infrastructure (optional but recommended)
+vcon-server has three Dockerfiles under `docker/`.
 
-## Image strategy: two Dockerfiles
+| File | Contents | Use |
+| ---- | -------- | --- |
+| `Dockerfile.api` | FastAPI, uvicorn and the storage client libraries. No audio or ML packages. | The API tier. |
+| `Dockerfile.conserver` | The above plus the link dependencies and `ffmpeg` and `sox`. | The worker tier. |
+| `Dockerfile` | Everything, plus the test tools. | Development and CI. The checked-in `docker-compose.yml` uses it. |
 
-As of the May 2026 image optimization (`docker/Dockerfile.api` and `docker/Dockerfile.conserver`), the conserver ships **two separate images**:
+All three install with `uv` into `/opt/venv`, so a bind mount over `/app` does not hide the packages. Each image starts through `docker/wait_for_redis.sh`, which waits for Redis at `REDIS_URL` and then runs the command. The default commands are `opentelemetry-instrument uvicorn api:app --host 0.0.0.0 --port 8000` for the API and `opentelemetry-instrument python /app/conserver/main.py` for workers. A worker command that says `python main.py` fails, because the working directory is `/app`.
 
-| Image                      | What it contains                                                                 | Use it for                                                                       |
-| -------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| **`Dockerfile.api`**       | FastAPI app, storage backends, vCon library — no audio/ML stack                  | The API tier. Light, starts fast, scales horizontally.                           |
-| **`Dockerfile.conserver`** | Everything in the API image _plus_ transformers, openai, deepgram, ffmpeg, pydub | The worker tier. Heavy but only needed where audio processing and LLM calls run. |
+The `pymilvus` package is in none of the production images. If you use the `milvus` storage, add the `storage-milvus` dependency group to your build. Build arguments `VCON_SERVER_VERSION`, `VCON_SERVER_GIT_COMMIT` and `VCON_SERVER_BUILD_TIME` set what `/api/version` and the `X-Vcon-Server-*` headers report.
 
-Both images use [**uv**](https://github.com/astral-sh/uv) (Astral's Python package manager) for reproducible builds and place the virtualenv at `/opt/venv` so it survives volume mounts.
-
-In production, deploy the API image for the `conserver-api` service and the conserver image for the `conserver-worker` service. The example below does exactly that.
-
-## Architecture Overview
+## Architecture
 
 ```
-                    ┌─────────────────┐
-                    │   Load Balancer │
-                    │    (nginx/ALB)  │
-                    └────────┬────────┘
-                             │
-         ┌───────────────────┼───────────────────┐
-         │                   │                   │
-    ┌────▼────┐        ┌────▼────┐        ┌────▼────┐
-    │Conserver│        │Conserver│        │Conserver│
-    │   API   │        │   API   │        │   API   │
-    └────┬────┘        └────┬────┘        └────┬────┘
-         │                   │                   │
-         └───────────────────┼───────────────────┘
-                             │
-                    ┌────────▼────────┐
-                    │      Redis      │
-                    │  (Queues/Cache) │
-                    └────────┬────────┘
-                             │
-         ┌───────────────────┼───────────────────┐
-         │                   │                   │
-    ┌────▼────┐        ┌────▼────┐        ┌────▼────┐
-    │PostgreSQL│        │   S3    │        │ Milvus  │
-    └─────────┘        └─────────┘        └─────────┘
+  clients / partners
+          |
+   reverse proxy (TLS, rate limits)
+          |
+     API replicas  ---->  Redis  <----  worker containers
+                          queues,         (each runs
+                          vCon copies      CONSERVER_WORKERS processes)
+                                              |
+                                   storages: Postgres, S3, ...
 ```
 
-## Docker Compose Production Setup
+Nothing but Redis is shared, so API replicas and workers scale independently.
 
-### docker-compose.yml
+## Redis
 
-```yaml
-version: '3.8'
-
-services:
-  conserver-api:
-    image: your-registry/conserver-api:latest    # built from docker/Dockerfile.api
-    command: uvicorn api:app --host 0.0.0.0 --port 8000
-    deploy:
-      replicas: 3
-      resources:
-        limits:
-          cpus: '2'
-          memory: 4G
-        reservations:
-          cpus: '1'
-          memory: 2G
-    environment:
-      - REDIS_URL=redis://redis:6379
-      - CONSERVER_CONFIG_FILE=/app/config.yml
-      - CONSERVER_API_TOKEN_FILE=/run/secrets/api_tokens
-      - LOG_LEVEL=INFO
-      - ENV=production
-    volumes:
-      - ./config.yml:/app/config.yml:ro
-    secrets:
-      - api_tokens
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    depends_on:
-      redis:
-        condition: service_healthy
-
-  conserver-worker:
-    image: your-registry/conserver:latest        # built from docker/Dockerfile.conserver
-    command: python main.py
-    deploy:
-      replicas: 5
-      resources:
-        limits:
-          cpus: '4'
-          memory: 8G
-        reservations:
-          cpus: '2'
-          memory: 4G
-    environment:
-      - REDIS_URL=redis://redis:6379
-      - CONSERVER_CONFIG_FILE=/app/config.yml
-      - LOG_LEVEL=INFO
-      - ENV=production
-      - CONSERVER_WORKERS=4              # forked worker processes per container
-      - CONSERVER_PARALLEL_STORAGE=true  # write to storages concurrently
-      - OPENAI_API_KEY_FILE=/run/secrets/openai_key
-      - DEEPGRAM_KEY_FILE=/run/secrets/deepgram_key
-    volumes:
-      - ./config.yml:/app/config.yml:ro
-    secrets:
-      - openai_key
-      - deepgram_key
-    depends_on:
-      redis:
-        condition: service_healthy
-
-  redis:
-    image: redis:7-alpine
-    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy noeviction
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "443:443"
-      - "80:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./certs:/etc/nginx/certs:ro
-    depends_on:
-      - conserver-api
-
-volumes:
-  redis_data:
-
-secrets:
-  api_tokens:
-    file: ./secrets/api_tokens.txt
-  openai_key:
-    file: ./secrets/openai_key.txt
-  deepgram_key:
-    file: ./secrets/deepgram_key.txt
-```
-
-### nginx.conf
-
-```nginx
-upstream conserver {
-    least_conn;
-    server conserver-api:8000;
-}
-
-server {
-    listen 80;
-    server_name your-domain.com;
-    return 301 https://$server_name$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name your-domain.com;
-
-    ssl_certificate /etc/nginx/certs/fullchain.pem;
-    ssl_certificate_key /etc/nginx/certs/privkey.pem;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
-    ssl_prefer_server_ciphers off;
-
-    # Security headers
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-
-    # Rate limiting
-    limit_req_zone $binary_remote_addr zone=api:10m rate=100r/s;
-
-    location /api/ {
-        limit_req zone=api burst=200 nodelay;
-
-        proxy_pass http://conserver;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # Timeouts for long-running requests
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 300s;
-        proxy_read_timeout 300s;
-
-        # Buffer settings
-        proxy_buffer_size 128k;
-        proxy_buffers 4 256k;
-        proxy_busy_buffers_size 256k;
-    }
-
-    # Health check endpoint (no auth required)
-    location /health {
-        proxy_pass http://conserver/health;
-        proxy_http_version 1.1;
-    }
-}
-```
-
-***
-
-## Scaling Considerations
-
-### Horizontal Scaling
-
-The Conserver supports horizontal scaling because:
-
-* All state is stored in Redis
-* Multiple instances can process from the same queues
-* API requests are stateless
-
-Scale workers based on queue depth:
-
-```bash
-# Monitor queue depth
-redis-cli LLEN incoming_calls
-
-# Scale workers
-docker compose up -d --scale conserver-worker=10
-```
-
-### Redis Configuration
-
-For production Redis deployments:
-
-```conf
-# redis.conf
-maxmemory 4gb
-maxmemory-policy noeviction
-appendonly yes
-appendfsync everysec
-
-# For Redis Cluster
-cluster-enabled yes
-cluster-config-file nodes.conf
-cluster-node-timeout 5000
-```
-
-### Queue Monitoring
-
-Monitor queue lengths to detect backlogs:
-
-```python
-import redis
-
-r = redis.Redis(host='localhost', port=6379)
-
-# Check ingress queue depth
-queue_length = r.llen('incoming_calls')
-print(f"Queue depth: {queue_length}")
-
-# Check DLQ for failures
-dlq_length = r.llen('DLQ:incoming_calls')
-print(f"DLQ depth: {dlq_length}")
-```
-
-***
-
-## Security Hardening
-
-### API Token Management
-
-1.  **Use token files instead of environment variables:**
-
-    ```yaml
-    environment:
-      - CONSERVER_API_TOKEN_FILE=/run/secrets/api_tokens
-    ```
-2.  **Rotate tokens regularly:**
-
-    ```bash
-    # Generate new token
-    openssl rand -hex 32 > secrets/api_tokens.txt
-
-    # Restart API containers
-    docker compose restart conserver-api
-    ```
-3. **Use separate tokens for different purposes:**
-   * Internal API token for system operations
-   * Partner-specific tokens via `ingress_auth`
-
-### Network Security
-
-1.  **Isolate Redis:**
-
-    ```yaml
-    networks:
-      internal:
-        internal: true
-      external:
-
-    services:
-      redis:
-        networks:
-          - internal
-      conserver-api:
-        networks:
-          - internal
-          - external
-    ```
-2.  **Enable Redis AUTH:**
-
-    ```yaml
-    redis:
-      command: redis-server --requirepass ${REDIS_PASSWORD}
-    ```
-3. **Use TLS for external connections**
-
-### Secret Management
-
-Consider using:
-
-* Docker secrets (as shown above)
-* HashiCorp Vault
-* AWS Secrets Manager
-* Kubernetes secrets
-
-***
-
-## Monitoring and Observability
-
-### Health Checks
-
-The Conserver exposes three public system endpoints (no auth required) for monitoring:
-
-```bash
-# Health check — basic up/down + version
-curl http://localhost:8000/health
-
-# Build metadata — version, git commit, build time
-curl http://localhost:8000/version
-
-# Queue depth (point load balancers / autoscalers at this)
-curl "http://localhost:8000/stats/queue?list_name=incoming_calls"
-
-# Redis liveness
-redis-cli ping
-```
-
-These endpoints intentionally live at the application root (not under `API_ROOT_PATH`), so they're stable regardless of how you've configured the API prefix.
-
-### Metrics Integration
-
-Every standard link and storage emits OpenTelemetry spans and metrics (latency, errors, cache hits where applicable). Wire up an OTLP collector — see [vCon MCP Adapters](../tools/vcon-mcp-adapters.md) for a turnkey integration — and the conserver will populate your dashboards out of the box.
-
-Per-link metrics include:
-
-```python
-# Automatic OTEL attributes per link:
-# - link_name
-# - vcon_uuid (when relevant)
-# - status (ok | error | skipped)
-# - duration_ms
-# - cache_hit (for transcription links with caching)
-# - Storage operation latency
-```
-
-### Log Aggregation
-
-Configure structured JSON logging:
-
-```yaml
-environment:
-  - LOG_LEVEL=INFO
-  - LOG_FORMAT=json
-```
-
-Logs include:
-
-* Request IDs for tracing
-* Processing times
-* Error details with stack traces
-* vCon UUIDs for correlation
-
-### Alerting
-
-Set up alerts for:
-
-| Metric               | Threshold | Action               |
-| -------------------- | --------- | -------------------- |
-| Queue depth > 1000   | Warning   | Scale workers        |
-| DLQ depth > 100      | Critical  | Investigate failures |
-| API latency p99 > 5s | Warning   | Check resources      |
-| Error rate > 5%      | Critical  | Check logs           |
-
-***
-
-## Graceful Shutdown
-
-The Conserver handles SIGTERM for graceful shutdown:
-
-1. Stops accepting new vCons
-2. Completes in-flight processing
-3. Returns unprocessed items to queues
-4. Closes connections cleanly
-
-Configure Docker stop timeout:
-
-```yaml
-services:
-  conserver-worker:
-    stop_grace_period: 5m  # Allow time for long transcriptions
-```
-
-***
-
-## Backup and Recovery
-
-### Redis Persistence
-
-Enable AOF for durability:
+Run one Redis primary with persistence and `noeviction`. The conserver stores queued UUIDs and vCon bodies there, and an eviction policy can delete them.
 
 ```yaml
 redis:
-  command: redis-server --appendonly yes
+  image: redis:7.4-alpine
+  env_file: .env
+  command: >
+    redis-server --appendonly yes --maxmemory 4gb --maxmemory-policy noeviction
+    --requirepass ${REDIS_PASSWORD}
   volumes:
     - redis_data:/data
+  healthcheck:
+    test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
 ```
 
-### Backup Strategy
+Set `REDIS_URL=redis://:<password>@redis:6379` on the API and the workers. Plain Redis is enough. The conserver stores a vCon as a JSON string, so it needs no RedisJSON or Redis Stack module.
 
-1.  **Redis RDB snapshots:**
+Do not use Redis Cluster. The conserver connects to one node and uses commands that span keys, including `MGET` on several `vcon:` keys, a script over a vCon key and its DLQ key, and `KEYS`. Sentinel URLs are not supported either. A managed Redis in single-primary mode works.
 
-    ```bash
-    redis-cli BGSAVE
-    ```
-2. **Storage backend backups:**
-   * PostgreSQL: pg\_dump
-   * S3: Enable versioning
-   * Elasticsearch: Snapshot API
-3.  **Configuration backup:**
+When Redis reaches `maxmemory` under `noeviction`, writes fail and vCons start going to the dead letter queue. Alert on `conserver.redis.memory_used_bytes` and lower `VCON_REDIS_EXPIRY` if working copies pile up.
 
-    ```bash
-    # Backup config via API
-    curl -H "x-conserver-api-token: $TOKEN" \
-      http://localhost:8000/api/config > config_backup.json
-    ```
+## Compose example
 
-### Disaster Recovery
+This runs the API, the workers and Redis from the production images. Build the two images in your CI from `Dockerfile.api` and `Dockerfile.conserver`, and push them to your registry.
 
-1. Deploy Redis with persistence
-2. Use storage backends with replication
-3. Keep configuration in version control
-4. Document recovery procedures
+```yaml
+services:
+  api:
+    image: your-registry/vcon-server-api:2026.05.18
+    env_file: .env
+    environment:
+      - OTEL_SERVICE_NAME=api
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+    volumes:
+      - ./config.yml:/app/config.yml:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks: [internal]
 
-***
+  conserver:
+    image: your-registry/vcon-server-conserver:2026.05.18
+    env_file: .env
+    environment:
+      - OTEL_SERVICE_NAME=conserver
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+    volumes:
+      - ./config.yml:/app/config.yml:ro
+    deploy:
+      replicas: 3
+    stop_grace_period: 5m
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks: [internal]
 
-## Deployment Checklist
+  redis:
+    # as above
+    networks: [internal]
 
-### Pre-deployment
+networks:
+  internal:
 
-* [ ] Configure TLS certificates
-* [ ] Set up API tokens securely
-* [ ] Configure storage backends
-* [ ] Test configuration locally
-* [ ] Set up monitoring/alerting
-* [ ] Document rollback procedures
+volumes:
+  redis_data:
+```
 
-### Deployment
+The `.env` file holds `REDIS_URL`, `CONSERVER_CONFIG_FILE=/app/config.yml`, `CONSERVER_API_TOKEN_FILE` or `CONSERVER_API_TOKEN`, `CONSERVER_WORKERS`, `CONSERVER_VCON_CONCURRENCY` and `ENV`. The API image does not include `curl`, so the health check uses the Python interpreter already in the image.
 
-* [ ] Deploy Redis first
-* [ ] Deploy workers
-* [ ] Deploy API servers
-* [ ] Verify health checks pass
-* [ ] Test sample vCon processing
+The config file holds your provider keys and storage passwords as literal values. The conserver does not read `${VAR}` and does not read `*_FILE` variables, apart from `CONSERVER_API_TOKEN_FILE`. Render `config.yml` at deploy time from your secret store, give it a restrictive mode, and mount it read-only. A read-only mount means `POST /config` fails by design, which is usually what you want. Change the file through your deploy tooling instead.
 
-### Post-deployment
+## Reverse proxy
 
-* [ ] Monitor queue depths
-* [ ] Check error rates
-* [ ] Verify storage writes
-* [ ] Test API endpoints
-* [ ] Confirm metrics flowing
+Terminate TLS in front of the API. The application speaks plain HTTP. All routes are under `/api`.
 
-***
+```nginx
+limit_req_zone $binary_remote_addr zone=vcon_api:10m rate=100r/s;
 
-## Troubleshooting
+upstream conserver_api {
+    least_conn;
+    server api:8000;
+}
 
-### Common Issues
+server {
+    listen 443 ssl;
+    server_name conserver.example.com;
 
-**Workers not processing:**
+    ssl_certificate     /etc/nginx/certs/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    client_max_body_size 50m;
+
+    location /api/ {
+        limit_req zone=vcon_api burst=200 nodelay;
+        proxy_pass http://conserver_api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+    }
+}
+```
+
+Put this file in `conf.d`, where it is included at the `http` level, so the `limit_req_zone` line is valid. Nginx limits request bodies to 1 MB by default, and a vCon with inline audio is larger, so set `client_max_body_size` for your payloads.
+
+If you accept vCons from partners but do not want the main API on the internet, expose only the partner route, and keep the rest on the internal network:
+
+```nginx
+location = /api/vcon/external-ingress {
+    proxy_pass http://conserver_api;
+}
+```
+
+`GET /api/config` returns the whole configuration, secrets included, to anyone with the main token. `GET /api/stats/queue` and `GET /api/health` need no token.
+
+## Scaling
+
+The most vCons in flight is `CONSERVER_WORKERS` times `CONSERVER_VCON_CONCURRENCY` times the number of worker containers.
+
+* Raise `CONSERVER_WORKERS` to use more CPU cores. Each worker is its own process.
+* Raise `CONSERVER_VCON_CONCURRENCY` when chains wait on the network, for transcription, LLM calls, webhooks or storage. It runs several vCons in threads inside one worker.
+* Add worker containers to spread load over hosts. Workers pop from the same Redis lists, so no coordination is needed.
+* Add API replicas for request volume. The API keeps no state.
+
+Workers wait on the ingress lists with a 15 second timeout, so an idle worker polls Redis about four times a minute. Watch `conserver.ingress_list.length`, or call `GET /api/stats/queue?list_name=<list>`, and scale on it.
+
+Each ingress list is served by one chain. A worker re-reads `config.yml` on every pass, so chains and links change without a restart. Environment variables do not.
+
+## Security
+
+* **API token.** `CONSERVER_API_TOKEN_FILE` takes one token per line and is read when the API starts. To rotate, add the new token, restart the API, move clients over, then remove the old one and restart again.
+* **Partner keys.** Give each partner its own key in `ingress_auth`. A key opens one ingress list and nothing else.
+* **Networks.** Keep Redis and the workers on a network the proxy cannot reach, and set a Redis password.
+* **Logs.** The `mongo` storage logs its options, including a password inside the connection URL. Keep credentials out of the URL, or restrict log access.
+
+## Monitoring
+
+### Health
 
 ```bash
-# Check Redis connectivity
-docker exec conserver-worker redis-cli -h redis ping
-
-# Check queue contents
-docker exec conserver-worker redis-cli -h redis LRANGE incoming_calls 0 10
+curl http://localhost:8000/api/health
+curl http://localhost:8000/api/version
+curl "http://localhost:8000/api/stats/queue?list_name=incoming_calls"
+redis-cli -a "$REDIS_PASSWORD" ping
 ```
 
-**High DLQ count:**
+`/api/health` reports that the API process is up. It does not test Redis.
 
-```bash
-# Check DLQ contents
-curl -H "x-conserver-api-token: $TOKEN" \
-  "http://localhost:8000/api/dlq?ingress_list=incoming_calls"
+### Metrics
 
-# Reprocess after fixing issues
-curl -X POST -H "x-conserver-api-token: $TOKEN" \
-  "http://localhost:8000/api/dlq/reprocess?ingress_list=incoming_calls"
-```
+The containers run under `opentelemetry-instrument`. Set `OTEL_EXPORTER_OTLP_ENDPOINT` to an OTLP collector, plus `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_EXPORTER_OTLP_HEADERS` and `OTEL_EXPORTER_OTLP_INSECURE` as your backend needs. The `.env.example` file shows settings for Langfuse and for an OTLP collector. With no endpoint, nothing is exported.
 
-**Memory issues:**
+The conserver's own metrics, built in `common/lib/metrics.py`, go through a gRPC exporter at that endpoint whatever `OTEL_EXPORTER_OTLP_PROTOCOL` says. Point a collector with a gRPC receiver at them.
 
-```bash
-# Check Redis memory
-redis-cli INFO memory
+| Metric | Type | Attributes |
+| ------ | ---- | ---------- |
+| `conserver.main_loop.count_vcons_received` | counter | `ingress_list` |
+| `conserver.main_loop.count_vcons_processed` | counter | `chain.name` |
+| `conserver.main_loop.vcon_processing_time` | histogram, seconds | `chain.name` |
+| `conserver.vcons.inflight` | up-down counter | `chain.name` |
+| `conserver.link.count` | counter | `link_name`, `outcome` (`success`, `halt` or `error`) |
+| `conserver.link.execution_time` | histogram, seconds | `link.name`, `chain.name` |
+| `conserver.storage.count` | counter | `backend`, `outcome` (`success` or `error`) |
+| `conserver.storage.duration_ms` | histogram, milliseconds | `backend`, `outcome` |
+| `conserver.dlq.count` | counter | `queue_name` (`DLQ:<list>` or `DLQ:storage:<name>`) |
+| `conserver.ingress_list.length` | gauge | `ingress_list`, `kind` (`ingress` or `dlq`) |
+| `conserver.redis.memory_used_bytes` | gauge | none |
+| `conserver.api.count_vcons_enqueued` | counter | `ingress_list`, `source` (`new`, `external`, `reingress`, `dlq_reprocess`) |
+| `conserver.lib.vcon_redis.get_vcon_redis_miss`, `...get_vcon_storage_hit`, `...get_vcon_not_found` | counters | |
+| `conserver.webhook.duration` | histogram | `status_code` |
 
-# Check container memory
-docker stats
-```
+Most links add their own counters and histograms under `conserver.link.<family>.*`, such as `conserver.link.openai.analysis_time` and `conserver.link.deepgram.transcription_failures`. [Standard Links](standard-links.md) names the behavior behind each.
 
-See [Troubleshooting](troubleshooting.md) for more detailed solutions.
+The core metrics above carry no vCon identifier, because a per-vCon attribute would create one time series for every vCon. Many of the per-link metrics do add `vcon.uuid` as an attribute. Drop it in your collector before it reaches a metrics backend. Per-vCon detail belongs in traces: each vCon gets a `vcon_processing.<chain>` span, with a `link.<name>` child for each link and a `storage.<name>` child for each write. The root span carries the vCon UUID and, when the producer sent trace context, a span link to the producer's trace.
+
+`conserver.ingress_list.length` covers ingress lists and their ingress DLQs. It does not cover storage DLQs. Read those with `GET /api/dlq/storage?storage_name=<name>`, or `LLEN DLQ:storage:<name>` in Redis.
+
+### Logs
+
+Logs go to standard output as JSON from `common/logging.conf`. To change the format or levels, point `LOGGING_CONFIG_FILE` at your own `fileConfig` file, and mount it into the container. `LOG_FORMAT` and `LOG_LEVEL` are not read. Set `SENTRY_DSN` and `ENV` to send errors to Sentry.
+
+### Alerts
+
+| Signal | Condition | Action |
+| ------ | --------- | ------ |
+| `conserver.dlq.count` | any increase | Read the DLQ, fix the cause, replay |
+| `conserver.ingress_list.length` | rising for several minutes | Add workers or raise `CONSERVER_VCON_CONCURRENCY` |
+| `conserver.link.count{outcome="error"}` | above your baseline | Read the logs for the failing link |
+| `conserver.storage.count{outcome="error"}` | any | Check the backend, then replay its DLQ |
+| `conserver.redis.memory_used_bytes` | near `maxmemory` | Raise `maxmemory` or shorten expiries |
+| `conserver.vcons.inflight` | flat at the maximum | Chains are slow or stuck, check the slowest link |
+
+## Shutdown
+
+On `SIGTERM` or `SIGINT` a worker stops taking new work. A vCon it popped but has not started goes back to the head of its list. A vCon already running finishes its chain first. A worker may be waiting on Redis for up to 15 seconds, so shutdown can take that long even when idle.
+
+With one worker (`CONSERVER_WORKERS=1`) the worker runs in the main process and the shutdown waits for the chain to end. With more than one, the main process gives each worker 30 seconds, then terminates it. A vCon that is mid-chain at that point has already left the ingress list and is not put back. Its working copy stays in Redis until it expires, so resubmit it with `POST /api/vcon/ingress`. Set `stop_grace_period` above the longest chain you run, and run chains that outlast 30 seconds with a single worker per container.
+
+## Backup and recovery
+
+* **Redis.** Use AOF (`--appendonly yes`) and take RDB snapshots with `BGSAVE`. Queued UUIDs and vCons that are not yet stored exist only here.
+* **Storages.** Back up each one the usual way: `pg_dump` for Postgres, versioning on S3, snapshots for Elasticsearch.
+* **Configuration.** Keep a template of `config.yml`, without secrets, in version control, and keep the secrets in your secret store. `GET /api/config` returns JSON without comments and includes every secret, so it is a poor backup.
+* **Replay.** After an outage, replay `DLQ:<list>` with `POST /api/dlq/reprocess` and each `DLQ:storage:<name>` with `POST /api/dlq/storage/reprocess`. See [API](api.md#dead-letter-queues).
+
+## Checklist
+
+Before you deploy:
+
+* [ ] Redis runs with `--appendonly yes` and `--maxmemory-policy noeviction`, and a password.
+* [ ] `config.yml` is rendered from your secret store, mounted read-only, and not in version control.
+* [ ] `CONSERVER_API_TOKEN` or `CONSERVER_API_TOKEN_FILE` is set.
+* [ ] The proxy terminates TLS and sets `client_max_body_size`.
+* [ ] Each storage's credentials work, and the milvus build includes `pymilvus` if you use it.
+* [ ] A collector receives the metrics, and alerts exist for DLQ growth and Redis memory.
+
+After you deploy:
+
+* [ ] `GET /api/health` and `GET /api/version` return the expected build.
+* [ ] A test vCon with a lawful basis attachment moves through each chain, reaches each storage, and appears on the egress list.
+* [ ] `docker compose stop conserver` returns inside `stop_grace_period`.

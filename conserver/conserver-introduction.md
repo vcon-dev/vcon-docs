@@ -1,16 +1,25 @@
 ---
-description: A data platform for gathering, creating, storing and sharing vCons
+description: Explains what a conserver is for and why conversations need their own processing server, with the public sources behind each claim.
 ---
 
 # 🚀 Conserver
 
-The conserver is a data platform designed to extract conversations from business phone systems, transform them into actionable insights, and send that data into common business tools such as spreadsheets, Salesforce and no code toolsets. An open core product, the conserver enables data engineering teams to supply a reliable source of information for AI, ML and operational software in cloud, premise and hybrid contexts. The core for many of the business cases enabled by the conserver is the smart capture, redaction and lifecycle management of recorded customer conversations and customer journeys, recently accelerated by FTC and GDPR regulations and by increasing investments into AI and ML.
+A conserver is the server that receives vCons after a conversation ends, processes them, and delivers the results to the systems that use them. An adapter on a phone system, contact center queue or chat platform turns each conversation into a vCon and posts it to the conserver. The conserver runs it through a configured chain of links (transcription, redaction, summarization, tagging, routing, ledger registration) and writes the finished record to databases, object stores, search indexes or the [vCon MCP server](../mcp-server/README.md). The reference implementation is open source under the MIT license at [vcon-dev/vcon-server](https://github.com/vcon-dev/vcon-server).
 
-<figure><img src="../.gitbook/assets/Conserver Pictures (7).jpg" alt=""><figcaption></figcaption></figure>
+<figure><img src="../.gitbook/assets/Conserver Pictures (7).jpg" alt="Conversation sources feed the conserver, which extracts, transforms and serves vCons to business systems"><figcaption><p>Sources on the left, business systems on the right, the conserver extracting, transforming and serving vCons in between</p></figcaption></figure>
 
-From a system perspective, shown above, the Conserver attaches to information systems like Web Chat and call center queues, and extracts information from them after conversations are ended. This information is then cleaned and transformed into actionable data. For instance, a distributed call center might extract conversations from a group of sales agents, convert them into text, then filter those conversations looking for times when customers objected to a sale. These objections are then pushed into database tables and Google Sheets as a data self-service option for any business team. The conserver supports multiple data pipelines, each one extracting data from a number of systems, performing transformations such as translations, transcriptions and redactions, and then pushing the prepared data into applications to be used.
+## Why conversations need their own server
 
-In contrast to other data platforms, the Conserver is dedicated to managing the particular complexities of real time conversational sources. For instance, the amount of bandwidth and storage required to manage an hour long audio recording is an order of magnitude larger than managing a typical business object like a PDF. However, even this is just a start. Video is a few orders of magnitude greater than that, and the data creation for service providers such as Zoom and Skype are magnitudes of order still greater. From a legal perspective, regulatory compliance for customer data protections are particular for recorded conversations, and require support for tracking data’s use by automations, and for tracking deletion from a “Right to be Forgotten” request.
+A recorded conversation is a large media file plus who spoke, when, under what consent, and what every later process derived from it. A conserver keeps all of that in one vCon and adds to it at each step, so the transcript, the summary and the consent record stay attached to the call they describe. The vCon carries its own [lawful basis](../extensions/lawful-basis.md) and its [lifecycle](../extensions/lifecycle.md) events, which is what lets a deletion request or a consent withdrawal be answered from the record itself.
 
+Industry commentary makes the same point. CRM analyst Thomas Wieberneit, in [The vCon Reality Check](http://blog.aheadcrm.co.nz/2026/04/the-vcon-reality-check-moving-beyond.html), argues for putting conversational data infrastructure ahead of AI marketing, and notes that a vCon makes it possible to pinpoint the container holding an interaction, "providing an auditable trail for consent and compliance." Steve Lasker's TADSummit 2024 keynote ([session page](https://blog.tadsummit.com/2024/10/29/the-rise-and-rise-of-vcon/)) makes the case that combining SCITT and vCon delivers AI governance for conversations at scale. The conserver's `scitt` link and storage are where that happens.
 
+## Public vCon deployments
 
+The [vCon Progress Report (TADSummit, August 2025)](https://blog.tadsummit.com/2025/08/20/vcon-progress-report/) describes a company serving car dealerships and a contact center company working together to embed vCons in the contact center, and a pilot with 211 social services contact centers across the U.S. For more public material see [Talks, Articles and Press](../talks-articles-press/README.md).
+
+## Related pages
+
+- [Concepts](concepts.md) defines links, chains, storages and tracers, and how a chain runs.
+- [Quick Start](conserver-quick-start.md) gets one running.
+- [Operational Benefits](operational-benefits-of-conservers.md) covers what running one buys you.

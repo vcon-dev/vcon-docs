@@ -1,336 +1,261 @@
+---
+description: Reference for the 23 links that ship with vcon-server, with the options each reads, the defaults in the code, and what each writes to the vCon.
+---
+
 # 🔗 Standard Links
 
-Links are the processing units of the Conserver. Each link performs a specific operation on a vCon as it flows through a chain. Links can analyze content, transform data, route vCons, integrate with external services, and more.
+A link does one thing to a vCon as it moves through a chain. The conserver ships 23. The option tables below come from each module's `default_options` at vcon-server `b603b15`. A key you leave out takes the default shown. For what a link's return value does, and the order a chain runs in, see [Concepts](concepts.md).
 
-The conserver currently ships **22 standard links**. They are organized in this page by what they do:
+| Category | Links |
+| -------- | ----- |
+| Transcription | `transcribe`, `wtf_transcribe`, and the deprecated aliases `deepgram_link`, `groq_whisper`, `hugging_face_whisper`, `openai_transcribe` |
+| Analysis | `analyze`, `analyze_vcon`, `analyze_and_label`, `check_and_tag`, `detect_engagement`, `hugging_llm_link` |
+| Routing and filtering | `sampler`, `jq_link`, `tag_router` |
+| Data management | `tag`, `diet`, `expire_vcon` |
+| Integration | `webhook`, `post_analysis_to_slack` |
+| Audit | `scitt`, `datatrails` |
+| Testing | `delay` |
 
-| Category                | Links                                                                                                        |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------ |
-| **Transcription**       | `deepgram_link`, `groq_whisper`, `hugging_face_whisper`, `openai_transcribe`, `transcribe`, `wtf_transcribe` |
-| **Analysis**            | `analyze`, `analyze_vcon`, `analyze_and_label`, `check_and_tag`, `detect_engagement`, `hugging_llm_link`     |
-| **Routing & filtering** | `sampler`, `jq_link`, `tag_router`                                                                           |
-| **Data management**     | `tag`, `diet`, `expire_vcon`                                                                                 |
-| **Integration**         | `webhook`, `post_analysis_to_slack`                                                                          |
-| **Audit & compliance**  | `scitt`, `datatrails`                                                                                        |
+## Conventions
 
-All links emit OpenTelemetry metrics (latency, error counts, cache hits where applicable) and trace spans. If you've wired up the [`vcon-mcp-adapters`](../tools/vcon-mcp-adapters.md) OTEL collector, you'll see per-link spans automatically.
+**Interface.** Every link exposes `run(vcon_uuid, link_name, opts)`. It returns a UUID to continue, a falsy value to stop the chain, or raises to send the vCon to the dead letter queue. [Creating Custom Links](creating-custom-links.md) covers writing one.
 
-## Link Interface
+**Secrets.** Provider keys go in the link's `options`. The conserver does not expand `${VAR}` in `config.yml` and does not read provider keys from the environment, apart from two defaults noted under `detect_engagement` and `groq_whisper`. See [Configuring the Conserver](configuring-the-conserver.md#secrets). The links that record their options in `vendor_schema` drop any option whose name contains `key`, `token`, `secret`, `password`, `credential` or `proxy_url`.
 
-All links implement the same interface:
+**OpenAI-backed links.** `analyze`, `analyze_vcon`, `analyze_and_label`, `check_and_tag`, `detect_engagement` and `openai_transcribe` all build their client from the same options. The first group present wins:
 
-```python
-def run(vcon_uuid: str, link_name: str, opts: dict = default_options) -> str | None:
-    """
-    Process a vCon through this link.
+| Provider | Options |
+| -------- | ------- |
+| LiteLLM proxy | `LITELLM_PROXY_URL` and `LITELLM_MASTER_KEY` |
+| Azure OpenAI | `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_KEY`, and `AZURE_OPENAI_API_VERSION` (default `2024-10-21`) |
+| OpenAI | `OPENAI_API_KEY` (`api_key` and `openai_api_key` also work), with optional `organization` and `project` |
 
-    Args:
-        vcon_uuid: UUID of the vCon to process
-        link_name: Name of this link in the configuration
-        opts: Configuration options merged with defaults
+With none of them set the link raises, except `detect_engagement`, which logs a warning and passes the vCon on. `analyze` records the provider as the analysis `vendor` (`openai`, `azure`, or for LiteLLM a name inferred from the model). The other links record `openai`. The links also accept `send_ai_usage_data_to_url` and `ai_usage_api_token`, which post token counts to an endpoint you run.
 
-    Returns:
-        vcon_uuid: Continue processing with this vCon UUID
-        None: Stop chain processing (filter out this vCon)
-    """
-```
+**Shared analysis options.** The analysis links `analyze`, `analyze_vcon`, `analyze_and_label`, `check_and_tag` and `detect_engagement` also accept:
 
-## Available Links
+| Option | Description |
+| ------ | ----------- |
+| `sampling_rate` | Probability from 0 to 1 that the link runs on a given vCon. Default `1`. Skipped vCons continue down the chain. |
+| `only_if` | Run only if the vCon matches. `{section: "analysis" or "attachments", type: <name>, includes: <text>}`. `purpose` works as an alias of `type`. The link runs when an element of that section has that type and its body contains the text. For `type: tags` the text must equal one whole tag, such as `priority:high`. |
+| `source` | Which analysis to read, as `{analysis_type, text_location}`. The default `body.paragraphs.transcript` suits Deepgram with `smart_format`. For `openai_transcribe`, `groq_whisper` and `hugging_face_whisper` set `text_location: body.text`. For `wtf_transcribe` set `analysis_type: wtf_transcription` and `text_location: body.transcript.text`. |
 
-### Transcription Links
+These links work one dialog at a time. They skip a dialog that has no source analysis, and they skip a dialog that already has an analysis of their `analysis_type`, so a rerun does not duplicate.
 
-These links convert audio recordings in vCon dialogs to text transcripts.
+**Telemetry.** Each link runs inside a `link.<name>` span and the conserver counts it in `conserver.link.count` and times it in `conserver.link.execution_time`. Many links add their own counters under `conserver.link.<family>.*`. The containers export through `opentelemetry-instrument` and the `OTEL_EXPORTER_OTLP_*` variables. See [Production Deployment](production-deployment.md#metrics).
 
-***
+## Transcription links
 
-#### deepgram\_link
-
-Speech-to-text transcription using the Deepgram API with automatic language detection and confidence scoring.
-
-```yaml
-links:
-  deepgram:
-    module: links.deepgram_link
-    options:
-      DEEPGRAM_KEY: "your-api-key"
-      minimum_duration: 30
-      api:
-        model: "nova-2"
-        smart_format: true
-        detect_language: true
-```
-
-| Option                | Description                                     | Default    |
-| --------------------- | ----------------------------------------------- | ---------- |
-| `DEEPGRAM_KEY`        | Deepgram API key                                | (required) |
-| `minimum_duration`    | Minimum audio duration in seconds to transcribe | `30`       |
-| `api.model`           | Deepgram model to use                           | `nova-2`   |
-| `api.smart_format`    | Enable smart formatting                         | `true`     |
-| `api.detect_language` | Enable automatic language detection             | `true`     |
-
-***
-
-#### groq\_whisper
-
-Speech-to-text transcription using Groq's implementation of the Whisper ASR model.
-
-```yaml
-links:
-  groq_whisper:
-    module: links.groq_whisper
-    options:
-      GROQ_API_KEY: "your-api-key"
-      model: "whisper-large-v3"
-      minimum_duration: 3
-```
-
-| Option             | Description                       | Default            |
-| ------------------ | --------------------------------- | ------------------ |
-| `GROQ_API_KEY`     | Groq API key                      | (required)         |
-| `model`            | Whisper model to use              | `whisper-large-v3` |
-| `minimum_duration` | Minimum audio duration in seconds | `3`                |
-
-***
-
-#### hugging\_face\_whisper
-
-Speech-to-text transcription using Hugging Face's Whisper implementation, supporting both API-based and local inference.
-
-```yaml
-links:
-  hf_whisper:
-    module: links.hugging_face_whisper
-    options:
-      model: "openai/whisper-large-v3"
-      minimum_duration: 3
-```
-
-| Option             | Description                       | Default                   |
-| ------------------ | --------------------------------- | ------------------------- |
-| `model`            | Hugging Face model identifier     | `openai/whisper-large-v3` |
-| `minimum_duration` | Minimum audio duration in seconds | `3`                       |
-
-***
-
-#### openai\_transcribe
-
-Speech-to-text transcription using OpenAI's Whisper API or Azure OpenAI. Supports automatic chunking for long audio files.
-
-```yaml
-links:
-  openai_transcribe:
-    module: links.openai_transcribe
-    options:
-      # Public OpenAI
-      OPENAI_API_KEY: "sk-..."
-
-      # Or Azure OpenAI
-      AZURE_OPENAI_API_KEY: "your-key"
-      AZURE_OPENAI_ENDPOINT: "https://your-resource.openai.azure.com"
-      AZURE_OPENAI_API_VERSION: "2024-10-21"
-
-      model: "gpt-4o-transcribe"
-      language: "en"
-      minimum_duration: 3
-      max_chunk_duration: 480
-      use_silence_chunking: true
-      silence_thresh: -40
-      silence_len: 2000
-```
-
-| Option                  | Description                          | Default             |
-| ----------------------- | ------------------------------------ | ------------------- |
-| `OPENAI_API_KEY`        | OpenAI API key                       | (none)              |
-| `AZURE_OPENAI_API_KEY`  | Azure OpenAI API key                 | (none)              |
-| `AZURE_OPENAI_ENDPOINT` | Azure OpenAI endpoint URL            | (none)              |
-| `model`                 | Model to use                         | `gpt-4o-transcribe` |
-| `language`              | Language code                        | `en`                |
-| `minimum_duration`      | Minimum audio duration in seconds    | `3`                 |
-| `max_chunk_duration`    | Maximum chunk duration for splitting | `480` (8 min)       |
-| `use_silence_chunking`  | Split at silence points              | `true`              |
-| `silence_thresh`        | Silence threshold in dBFS            | `-40`               |
-| `silence_len`           | Minimum silence length in ms         | `2000`              |
+These turn recordings in `dialog[]` into `analysis[]` entries of type `transcript`. They process dialogs of type `recording`, skip dialogs shorter than `minimum_duration`, and skip dialogs that already have a transcript. `openai_transcribe` and `deepgram_link` need a dialog `url` and still transcribe a recording that has no `duration`. `groq_whisper` and `hugging_face_whisper` read the dialog `duration` without a default, so a recording without one raises, and they also accept an inline `body`.
 
 ***
 
 #### transcribe
 
-Local transcription using the vCon library's built-in transcription capabilities.
+The canonical transcription link. It sends the vCon to one vendor, chosen by `vendor`.
 
 ```yaml
 links:
-  transcribe:
+  transcribe_dg:
     module: links.transcribe
     options:
-      transcribe_options:
-        model_size: "base"
-        output_options: ["vendor"]
+      vendor: deepgram
+      vendor_options:
+        DEEPGRAM_KEY: "your-deepgram-key"
+        minimum_duration: 30
+        api:
+          model: nova-2
+          smart_format: true
 ```
 
-| Option                              | Description           | Default      |
-| ----------------------------------- | --------------------- | ------------ |
-| `transcribe_options.model_size`     | Model size            | `base`       |
-| `transcribe_options.output_options` | Output format options | `["vendor"]` |
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `vendor` | `openai`, `groq`, `hugging_face`, `deepgram` or `whisper_builtin`. Any other value raises. | `whisper_builtin` |
+| `vendor_options` | Options passed unchanged to the vendor. Each vendor's table is below. Your value replaces the default as a whole. | `{model_size: base, output_options: [vendor]}` |
+| `transcribe_options` | Legacy name for `vendor_options`, used when `vendor_options` is absent. | (none) |
+
+`whisper_builtin` calls `Vcon.transcribe(**vendor_options)` from the vcon library and runs Whisper inside the worker. The other vendors call the modules documented next.
+
+***
+
+#### openai\_transcribe
+
+Deprecated alias. The conserver rewrites `module: links.openai_transcribe` to `links.transcribe` with `vendor: openai` and logs one warning. New configs should use `transcribe`. Transcribes with an OpenAI-compatible speech API and splits long audio into chunks.
+
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `OPENAI_API_KEY`, Azure and LiteLLM options | See [Conventions](#conventions) | (none) |
+| `model` | Transcription model | `gpt-4o-transcribe` |
+| `minimum_duration` | Seconds of audio below which a dialog is skipped | `3` |
+| `max_chunk_duration` | Longest chunk in seconds | `480` |
+| `use_silence_chunking` | Cut chunks at silence | `true` |
+| `silence_thresh` | Silence threshold in dBFS | `-40` |
+| `silence_len` | Shortest silence to cut at, in ms | `2000` |
+
+`language` appears in the defaults, but the code never reads it. The analysis has `vendor: openai` and a body with `text`. The chunk results are kept under `chunked_transcription` when the audio was split.
+
+***
+
+#### groq\_whisper
+
+Deprecated alias for `vendor: groq`. Transcribes with Groq's hosted Whisper.
+
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `API_KEY` | Groq key. If you omit it, the module uses `GROQ_API_KEY` from the environment as read at import, else a placeholder string that fails. | `$GROQ_API_KEY` |
+| `minimum_duration` | Seconds of audio below which a dialog is skipped | `30` |
+| `Content-Type` | In the defaults, not used by the Groq call | `audio/flac` |
+
+The model is fixed in the code as `whisper-large-v3-turbo`. There is no `model` option. At import the module removes `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` from the process environment, which affects every other link in the same worker. The analysis has `vendor: groq_whisper` and a body with `text`.
+
+***
+
+#### hugging\_face\_whisper
+
+Deprecated alias for `vendor: hugging_face`. Posts audio to a Hugging Face Inference Endpoint that runs Whisper.
+
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `API_URL` | Your endpoint URL | a placeholder, required |
+| `API_KEY` | The token only. The link adds `Bearer ` itself, so do not include it | a placeholder, required |
+| `Content-Type` | Audio type sent to the endpoint | `audio/flac` |
+| `minimum_duration` | Seconds of audio below which a dialog is skipped | `30` |
+
+***
+
+#### deepgram\_link
+
+Deprecated alias for `vendor: deepgram`. Transcribes with Deepgram, directly or through a LiteLLM proxy.
+
+```yaml
+links:
+  deepgram:
+    module: links.transcribe
+    options:
+      vendor: deepgram
+      vendor_options:
+        DEEPGRAM_KEY: "your-deepgram-key"
+        api:
+          model: nova-2
+          smart_format: true
+          detect_language: true
+```
+
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `DEEPGRAM_KEY` | Deepgram key. Required unless the LiteLLM options are set | (none) |
+| `api` | Keyword arguments for Deepgram's `PrerecordedOptions`. Include it on the direct path, even as `{}`, because the code reads the key | (none) |
+| `minimum_duration` | Seconds of audio below which a dialog is skipped. A missing duration on a `.wav` URL is read from the file | `60` |
+| `minimum_confidence` | A transcript below this confidence is discarded | `0.5` |
+| `LITELLM_PROXY_URL`, `LITELLM_MASTER_KEY`, `model` | Send audio through a LiteLLM proxy instead. `model` defaults to `nova-3`. No confidence is returned, so the threshold is skipped | (none) |
+
+The analysis has `vendor: deepgram` and the first Deepgram alternative as its body, with `detected_language` added.
 
 ***
 
 #### wtf\_transcribe
 
-Transcribes dialog recordings via the `vfun` transcription service and writes a [WTF (World Transcription Format)](../extensions/wtf-transcription.md)-shaped analysis entry. Refactored in May 2026 to decompose `run()` and normalize timeout option names.
+Sends each recording to a `vfun` transcription server and stores the result as a [WTF](../extensions/wtf-transcription.md) analysis.
 
 ```yaml
 links:
   wtf:
     module: links.wtf_transcribe
     options:
-      vfun-server-url: "https://wtf.example.com/transcribe"
+      vfun-server-url: "https://vfun.example.com/transcribe"
       api-key: "your-vfun-key"
-      language: "en"
+      language: en
       diarize: true
-      vfun-timeout: 300
-      url-timeout: 60
 ```
 
-| Option            | Description                       | Default              |
-| ----------------- | --------------------------------- | -------------------- |
-| `vfun-server-url` | vfun transcription endpoint       | (required)           |
-| `api-key`         | Service API key                   | `None`               |
-| `language`        | BCP-47 language hint              | `None` (auto-detect) |
-| `diarize`         | Emit speaker labels               | `false`              |
-| `vfun-timeout`    | Transcription request timeout (s) | `300`                |
-| `url-timeout`     | Media-fetch timeout (s)           | `60`                 |
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `vfun-server-url` | Transcription endpoint. If it is missing the link logs an error and returns `None`, which halts the chain | (required) |
+| `api-key` | Sent as a bearer token | `None` |
+| `language` | Language hint sent to the server. It is also written to `transcript.language` | `None` |
+| `diarize` | Ask for speaker labels | `false` |
+| `vfun-timeout` | Seconds to wait for the server | `300` |
+| `url-timeout` | Seconds to wait when fetching the audio | `60` |
 
-Writes an `analysis[]` entry with `type: "wtf_transcription"`, `vendor` inferred from the service response, `encoding: "json"`, and a WTF document in `body`. See [WTF Transcription extension](../extensions/wtf-transcription.md) for the body shape.
+The analysis has `type: wtf_transcription`, `vendor: vfun`, `schema: wtf-1.0`, `mediatype: application/json` and the server's WTF document as `body`. A dialog that fails to transcribe is logged and skipped, and the chain continues. See the extension page for the body shape.
 
 ***
 
-### Analysis Links
+## Analysis links
 
-These links use AI to analyze and extract insights from vCon content.
+These send transcript text, or the whole vCon, to a language model and store the answer.
 
 ***
 
 #### analyze
 
-OpenAI-powered analysis of vCon transcripts with customizable prompts, sampling, and retry mechanisms.
+Runs a prompt over each dialog's transcript and stores the reply as text.
 
 ```yaml
 links:
-  analyze:
+  summarize:
     module: links.analyze
     options:
       OPENAI_API_KEY: "sk-..."
-      prompt: "Summarize this transcript in 3 bullet points"
-      analysis_type: "summary"
-      model: "gpt-4-turbo"
-      sampling_rate: 1
-      temperature: 0.3
+      prompt: "Summarize this transcript in three bullet points."
+      analysis_type: summary
+      model: gpt-4o-mini
       source:
-        analysis_type: "transcript"
-        text_location: "body.text"
+        analysis_type: transcript
+        text_location: body.text
 ```
 
-| Option                 | Description                        | Default             |
-| ---------------------- | ---------------------------------- | ------------------- |
-| `OPENAI_API_KEY`       | OpenAI API key                     | (required)          |
-| `prompt`               | Analysis prompt                    | (required)          |
-| `analysis_type`        | Type label for the analysis        | `summary`           |
-| `model`                | OpenAI model                       | `gpt-3.5-turbo-16k` |
-| `sampling_rate`        | Fraction of vCons to analyze (0-1) | `1`                 |
-| `temperature`          | Model temperature                  | `0.3`               |
-| `source.analysis_type` | Source analysis type to analyze    | `transcript`        |
-| `source.text_location` | Path to text within source         | `body.text`         |
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `prompt` | Instruction placed before the transcript | `""` |
+| `analysis_type` | `type` of the stored analysis | `summary` |
+| `model` | Chat model | `gpt-3.5-turbo-16k` |
+| `temperature` | Sampling temperature | `0` |
+| `system_prompt` | System message | `You are a helpful assistant.` |
+| `sampling_rate`, `source`, `only_if`, provider options | See [Conventions](#conventions) | |
+
+The analysis body is the reply as a string, with `encoding: none`, and `vendor_schema` records the model and prompt.
 
 ***
 
 #### analyze\_vcon
 
-AI analysis of entire vCon objects, returning structured JSON output.
+Sends the whole vCon to the model and stores the JSON it returns.
 
-```yaml
-links:
-  analyze_vcon:
-    module: links.analyze_vcon
-    options:
-      OPENAI_API_KEY: "sk-..."
-      system_prompt: "You are a conversation analyst."
-      prompt: "Analyze this vCon and return insights as JSON."
-      analysis_type: "vcon_analysis"
-      model: "gpt-4-turbo"
-```
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `prompt` | Instruction placed before the vCon JSON | `Analyze this vCon and return a JSON object with your analysis.` |
+| `analysis_type` | `type` of the stored analysis | `json_analysis` |
+| `model` | Chat model. The request asks for a JSON object | `gpt-3.5-turbo-16k` |
+| `temperature` | Sampling temperature | `0` |
+| `system_prompt` | System message | `You are a helpful assistant that analyzes conversation data and returns structured JSON output.` |
+| `remove_body_properties` | Drop `body` from every dialog before sending, to save tokens | `true` |
+| `sampling_rate`, `only_if`, provider options | See [Conventions](#conventions) | |
 
-| Option           | Description                 | Default         |
-| ---------------- | --------------------------- | --------------- |
-| `OPENAI_API_KEY` | OpenAI API key              | (required)      |
-| `system_prompt`  | System prompt for the model | (optional)      |
-| `prompt`         | Analysis prompt             | (required)      |
-| `analysis_type`  | Type label for the analysis | `vcon_analysis` |
-| `model`          | OpenAI model                | `gpt-4-turbo`   |
-
-***
-
-#### detect\_engagement
-
-Detects whether both parties actively engaged in a conversation.
-
-```yaml
-links:
-  engagement:
-    module: links.detect_engagement
-    options:
-      OPENAI_API_KEY: "sk-..."
-      prompt: "Did both the customer and the agent speak? Respond with 'true' or 'false'."
-      analysis_type: "engagement_analysis"
-      model: "gpt-4.1"
-      source:
-        analysis_type: "transcript"
-        text_location: "body.paragraphs.transcript"
-```
-
-| Option           | Description         | Default                       |
-| ---------------- | ------------------- | ----------------------------- |
-| `OPENAI_API_KEY` | OpenAI API key      | (required)                    |
-| `prompt`         | Evaluation prompt   | (engagement detection prompt) |
-| `analysis_type`  | Type label          | `engagement_analysis`         |
-| `model`          | OpenAI model        | `gpt-4.1`                     |
-| `sampling_rate`  | Fraction to process | `1`                           |
-
-Adds an `engagement` tag with value `true` or `false`.
+It stores one analysis on dialog `0`, with the parsed JSON as the body. If the vCon already has an analysis of that type, the link does nothing. A reply that is not valid JSON raises.
 
 ***
 
 #### analyze\_and\_label
 
-Combined analysis that extracts labels/categories and applies them as tags.
+Asks the model for labels and applies each one as a tag.
 
-```yaml
-links:
-  labeler:
-    module: links.analyze_and_label
-    options:
-      OPENAI_API_KEY: "sk-..."
-      prompt: "Analyze this transcript and provide relevant labels."
-      analysis_type: "labeled_analysis"
-      model: "gpt-4-turbo"
-      response_format:
-        type: "json_object"
-```
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `prompt` | Instruction. It must ask for a JSON object with a `labels` array | `Analyze this transcript and provide a list of relevant labels for categorization. Return your response as a JSON object with a single key 'labels' containing an array of strings.` |
+| `analysis_type` | `type` of the stored analysis | `labeled_analysis` |
+| `model` | Chat model | `gpt-4-turbo` |
+| `temperature` | Sampling temperature | `0.2` |
+| `response_format` | Passed to the API | `{type: json_object}` |
+| `sampling_rate`, `source`, `only_if`, provider options | See [Conventions](#conventions) | |
 
-| Option            | Description             | Default                   |
-| ----------------- | ----------------------- | ------------------------- |
-| `OPENAI_API_KEY`  | OpenAI API key          | (required)                |
-| `prompt`          | Label extraction prompt | (categorization prompt)   |
-| `analysis_type`   | Type label              | `labeled_analysis`        |
-| `model`           | OpenAI model            | `gpt-4-turbo`             |
-| `response_format` | Response format         | `{"type": "json_object"}` |
-
-Returns JSON with `labels` array and applies each label as a tag.
+Each label `x` becomes the tag `x:x`. The system message is fixed in the code. If the reply is not valid JSON, the raw text is stored as the analysis and no tags are added.
 
 ***
 
 #### check\_and\_tag
 
-Evaluates a condition using AI and applies a tag if the condition is met.
+Asks the model a yes or no question about the transcript and adds a tag when the answer is yes.
 
 ```yaml
 links:
@@ -338,104 +263,120 @@ links:
     module: links.check_and_tag
     options:
       OPENAI_API_KEY: "sk-..."
-      tag_name: "complaint"
-      tag_value: "detected"
-      evaluation_question: "Does this conversation contain a customer complaint?"
-      model: "gpt-5"
+      tag_name: complaint
+      tag_value: detected
+      evaluation_question: "Does the customer make a complaint?"
       source:
-        analysis_type: "transcript"
-        text_location: "body"
+        analysis_type: transcript
+        text_location: body.text
 ```
 
-| Option                | Description          | Default    |
-| --------------------- | -------------------- | ---------- |
-| `OPENAI_API_KEY`      | OpenAI API key       | (required) |
-| `tag_name`            | Tag name to apply    | (required) |
-| `tag_value`           | Tag value to apply   | (required) |
-| `evaluation_question` | Question to evaluate | (required) |
-| `model`               | OpenAI model         | `gpt-5`    |
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `tag_name`, `tag_value`, `evaluation_question` | All three are required. The link raises if one is missing | (none) |
+| `analysis_type` | `type` of the stored record of the decision | `tag_evaluation` |
+| `model` | Chat model | `gpt-5` |
+| `response_format` | Passed to the API | `{type: json_object}` |
+| `source` | Default `text_location` is `body`, which expects a plain string. Set it for your transcript | `{analysis_type: transcript, text_location: body}` |
+| `verbosity`, `minimal_reasoning` | In the defaults. The current code does not send them to the model | `low`, `true` |
+| `sampling_rate`, `only_if`, provider options | See [Conventions](#conventions) | |
+
+The stored analysis body is `{link_name, tag: "<name>:<value>", applies: true|false}`, whether or not the tag was added.
+
+***
+
+#### detect\_engagement
+
+Decides whether both sides of the conversation spoke, and tags the result.
+
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `prompt` | Question. The model must answer `true` or `false` | `Did both the customer and the agent speak? Respond with 'true' if yes, 'false' if not. Respond with only 'true' or 'false'.` |
+| `analysis_type` | `type` of the stored analysis | `engagement_analysis` |
+| `model` | Model, called through the OpenAI Responses API | `gpt-4.1` |
+| `temperature` | Sampling temperature | `0.2` |
+| `OPENAI_API_KEY` | Defaults to the `OPENAI_API_KEY` environment variable as read at import, else an empty string | `$OPENAI_API_KEY` |
+| `sampling_rate`, `source`, `only_if`, other provider options | See [Conventions](#conventions) | |
+
+The analysis body is the string `true` or `false`, and the vCon gets the tag `engagement:true` or `engagement:false`. This is the one link that returns the vCon unchanged when no credentials are set.
 
 ***
 
 #### hugging\_llm\_link
 
-AI analysis using Hugging Face language models, supporting both API and local inference.
+Summarizes the transcripts with a Hugging Face model. The prompt asks for a summary, the overall sentiment and key points, and is fixed.
 
-```yaml
-links:
-  hf_analysis:
-    module: links.hugging_llm_link
-    options:
-      model: "mistralai/Mistral-7B-Instruct-v0.2"
-      prompt: "Summarize this conversation."
-      analysis_type: "hf_summary"
-```
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `HUGGINGFACE_API_KEY` | Token for the hosted Inference API | `None` |
+| `model` | Model id | `meta-llama/Llama-2-70b-chat-hf` |
+| `use_local_model` | Run the model in the worker with `transformers` instead of calling the API. `transformers` and a backend such as `torch` are not in the base image | `false` |
+| `max_length` | Output length cap | `1000` |
+| `temperature` | Sampling temperature | `0.7` |
 
-| Option          | Description                   | Default       |
-| --------------- | ----------------------------- | ------------- |
-| `model`         | Hugging Face model identifier | (required)    |
-| `prompt`        | Analysis prompt               | (required)    |
-| `analysis_type` | Type label                    | `hf_analysis` |
+It stores one analysis with `type: llm_analysis` and `vendor: huggingface`, and does nothing if one exists. A model failure is logged and the vCon continues unchanged. As read at `b603b15`, the API path defines `analyze` as `async` and the processor calls it without `await`, so test this link on your own data before you rely on `use_local_model: false`.
 
 ***
 
-### Routing and Filtering Links
+## Routing and filtering links
 
-These links control vCon flow through chains.
+These decide which vCons continue. Returning `None` stops the chain for that vCon.
 
 ***
 
 #### sampler
 
-Selectively processes vCons based on various sampling methods.
+Keeps a share of vCons.
 
 ```yaml
 links:
-  sampler:
+  sample_ten_percent:
     module: links.sampler
     options:
-      method: "percentage"  # percentage, rate, modulo, time
-      percentage: 10        # For percentage method
-      rate: 100            # For rate method (1 per N)
-      modulo: 5            # For modulo method
+      method: percentage
+      value: 10
 ```
 
-| Option       | Description                     | Default      |
-| ------------ | ------------------------------- | ------------ |
-| `method`     | Sampling method                 | `percentage` |
-| `percentage` | Percentage to process (0-100)   | `100`        |
-| `rate`       | Process 1 out of N              | `1`          |
-| `modulo`     | Process if UUID modulo equals 0 | `1`          |
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `method` | `percentage`, `rate`, `modulo` or `time_based`. Any other value raises | `percentage` |
+| `value` | See below | `50` |
+| `seed` | Seeds Python's global random generator when set | `None` |
 
-Returns `None` for filtered vCons, stopping their chain processing.
+| Method | What `value` means |
+| ------ | ------------------ |
+| `percentage` | Keep this percent of vCons, 0 to 100 |
+| `rate` | Keep each vCon with probability `1 - e^(-1/value)`, about one in `value` for large values |
+| `modulo` | Keep a vCon when the hash of its UUID is divisible by `value`. Stable per UUID |
+| `time_based` | Keep a vCon that arrives when the current Unix second is divisible by `value` |
 
 ***
 
 #### jq\_link
 
-Filters vCons using jq expressions for complex content-based filtering.
+Filters on a [jq](https://jqlang.github.io/jq/) expression evaluated against the whole vCon.
 
 ```yaml
 links:
-  filter_sales:
+  only_agent_calls:
     module: links.jq_link
     options:
-      expression: '.parties[] | select(.role == "agent")'
-      forward_on_match: true
-      forward_list: "sales_ingress"
+      filter: '[.parties[] | select(.role == "agent")] | length > 0'
+      forward_matches: true
 ```
 
-| Option             | Description                          | Default    |
-| ------------------ | ------------------------------------ | ---------- |
-| `expression`       | jq expression to evaluate            | (required) |
-| `forward_on_match` | Continue chain if expression matches | `true`     |
-| `forward_list`     | Alternative ingress list for matches | (none)     |
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `filter` | jq program. The vCon matches when the first output is truthy, and does not match when there is no output | `.` |
+| `forward_matches` | `true` continues matching vCons. `false` continues the ones that do not match | `true` |
+
+A missing vCon or a jq error returns `None`, so an error drops the vCon from the chain and increments `conserver.link.jq.filter_errors`. A type error from string functions on mixed-type `body` arrays is retried once with the non-string items removed.
 
 ***
 
 #### tag\_router
 
-Routes vCons to additional Redis lists based on tags attached to the vCon. The vCon is pushed onto every matching target list; processing in the current chain continues unless `forward_original` is set to `false`.
+Pushes the UUID onto other Redis lists according to the vCon's tags.
 
 ```yaml
 links:
@@ -443,30 +384,27 @@ links:
     module: links.tag_router
     options:
       tag_routes:
-        priority: "priority_queue"
-        urgent: "urgent_queue"
-        complaint: "complaint_review_queue"
+        complaint: complaint_review_in
+        urgent: urgent_in
       forward_original: true
 ```
 
-| Option             | Description                                                                                                                                 | Default |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `tag_routes`       | Dict mapping tag value → target Redis list name. The link checks tags in the vCon's `attachments[]` of type `tags` against the keys here.   | `{}`    |
-| `forward_original` | If `true`, continue the current chain after routing. If `false`, return `None` to stop the chain (vCon proceeds only on the routed queues). | `true`  |
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `tag_routes` | Map from tag name to target list. It matches the name before the colon in `name:value` | `{}` |
+| `forward_original` | `true` lets the vCon continue in this chain. `false` stops it here | `true` |
 
-Returns `vcon_uuid` (chain continues) or `None` (chain stops) per `forward_original`.
+The link reads the attachment with `purpose: tags`, as a list of `name:value` strings or a dict. A vCon with several matching tags is pushed to each of their lists. The target should be the ingress list of another chain.
 
 ***
 
-### Data Management Links
-
-These links modify vCon content.
+## Data management links
 
 ***
 
 #### tag
 
-Adds configurable tags to vCons.
+Adds tags to the vCon. A tag is a `name:value` string stored in the `tags` attachment.
 
 ```yaml
 links:
@@ -474,74 +412,58 @@ links:
     module: links.tag
     options:
       tags:
-        - name: "source"
-          value: "phone"
-        - name: "processed"
-          value: "true"
+        - "source:phone"
+        - "reviewed"
 ```
 
-| Option         | Description         | Default    |
-| -------------- | ------------------- | ---------- |
-| `tags`         | List of tags to add | `[]`       |
-| `tags[].name`  | Tag name            | (required) |
-| `tags[].value` | Tag value           | (required) |
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `tags` | A list of `"name:value"` strings, where a bare `name` becomes `name:name`, or a dict `{name: value}` | `["iron", "maiden"]` |
+
+The default adds two tags, so always set `tags`. A list of `{name, value}` objects is not supported.
 
 ***
 
 #### diet
 
-Reduces vCon size by removing or redirecting elements. Useful for data minimization and privacy.
+Shrinks or scrubs the vCon in Redis before it is stored.
 
-```yaml
-links:
-  slim_down:
-    module: links.diet
-    options:
-      remove_dialog_bodies: true
-      remove_attachments: true
-      remove_analysis_types:
-        - "raw_transcript"
-      redirect_media_to_storage: "s3"
-      remove_system_prompts: true
-```
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `remove_dialog_body` | Replace each dialog `body` with an empty string, or with a URL if one of the two options below is set | `false` |
+| `s3_bucket` | Upload the dialog body to this bucket and put a presigned URL in the body | `""` |
+| `s3_path` | Key prefix inside the bucket | `""` |
+| `aws_access_key_id`, `aws_secret_access_key` | S3 credentials | `""` |
+| `aws_region` | S3 region | `us-east-1` |
+| `presigned_url_expiration` | Seconds the URL is valid | `3600` when unset |
+| `post_media_to_url` | If no bucket is set, POST `{content, vcon_uuid, dialog_id}` here and store the `url` from a `200` reply | `""` |
+| `remove_analysis` | Delete every analysis | `false` |
+| `remove_attachment_types` | Delete attachments whose `mime_type` is in this list | `[]` |
+| `remove_system_prompts` | Remove every `system_prompt` key anywhere in the vCon | `false` |
 
-| Option                      | Description                | Default |
-| --------------------------- | -------------------------- | ------- |
-| `remove_dialog_bodies`      | Remove dialog body content | `false` |
-| `remove_attachments`        | Remove all attachments     | `false` |
-| `remove_analysis_types`     | Analysis types to remove   | `[]`    |
-| `redirect_media_to_storage` | Move media to storage      | (none)  |
-| `remove_system_prompts`     | Remove system prompts      | `false` |
+If an upload or POST fails, the body is emptied. A replaced body gets `body_type: url`. `remove_attachment_types` compares the `mime_type` field, which is not a core vCon attachment field, so it does not match attachments by `purpose` or `mediatype`.
 
 ***
 
 #### expire\_vcon
 
-Sets a Redis TTL on the vCon key so the working copy is cleaned up automatically. The vCon stays in any storage backends configured on the chain — this only affects the Redis hot cache.
+Sets a TTL on the working copy in Redis. Storages are not touched.
 
-```yaml
-links:
-  set_expiry:
-    module: links.expire_vcon
-    options:
-      seconds: 86400  # 24 hours
-```
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `seconds` | TTL applied with `EXPIRE vcon:<uuid>` | `86400` |
 
-| Option    | Description                                     | Default            |
-| --------- | ----------------------------------------------- | ------------------ |
-| `seconds` | TTL in seconds applied via `EXPIRE vcon:{uuid}` | `86400` (24 hours) |
+The chain still has to store the vCon, so keep `seconds` longer than the rest of the chain takes.
 
 ***
 
-### Integration Links
-
-These links connect to external services.
+## Integration links
 
 ***
 
 #### webhook
 
-POSTs the current vCon as JSON to one or more webhook URLs. The same module is available as a [storage backend](storage.md#webhook) if you'd rather invoke webhooks after the chain rather than mid-chain.
+POSTs the vCon as JSON to each URL. A `webhook` storage with the same options sends after the chain instead. See [Storage](storage.md#webhook).
 
 ```yaml
 links:
@@ -550,91 +472,54 @@ links:
     options:
       webhook-urls:
         - "https://api.example.com/vcon-webhook"
-        - "https://backup.example.com/vcon-webhook"
       headers:
-        Authorization: "Bearer token123"
-        x-conserver-api-token: "your-api-token"
+        Authorization: "Bearer example-token"
 ```
 
-| Option         | Description                           | Default |
-| -------------- | ------------------------------------- | ------- |
-| `webhook-urls` | List of URLs to POST the vCon JSON to | `[]`    |
-| `headers`      | Headers to attach to each request     | `{}`    |
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `webhook-urls` | URLs to POST to, in order. If empty the link logs a warning and continues | `[]` |
+| `headers` | Headers for every request | `{}` |
 
-Each URL is called sequentially with a `POST` containing the full vCon JSON. Per-call latency and status codes are recorded as OTEL metrics.
+The body honors `EGRESS_FORMAT_VERSION`. The request has no timeout, and a non-2xx reply is logged and ignored. Only a connection error raises. If you need a delivery guarantee, use the storage form, which times out after 30 seconds and treats an HTTP error as a failed write.
 
 ***
 
 #### post\_analysis\_to\_slack
 
-Posts vCon analysis results to Slack channels.
+Posts an analysis, with a link to the vCon, to Slack when an analysis contains a phrase. It was written for one deployment's conventions, so check that your vCons fit before you use it.
 
 ```yaml
 links:
-  slack_notify:
+  slack_alert:
     module: links.post_analysis_to_slack
     options:
-      webhook_url: "https://hooks.slack.com/services/..."
-      channel: "#vcon-alerts"
-      analysis_type: "summary"
-      template: "New conversation summary: {body}"
-      condition:
-        tag_name: "priority"
-        tag_value: "high"
+      token: "xoxb-..."
+      default_channel_name: "#vcon-alerts"
+      url: "https://app.example.com/vcons/{vcon_id}"
+      only_if:
+        analysis_type: customer_frustration
+        includes: NEEDS REVIEW
 ```
 
-| Option          | Description            | Default    |
-| --------------- | ---------------------- | ---------- |
-| `webhook_url`   | Slack webhook URL      | (required) |
-| `channel`       | Slack channel          | (required) |
-| `analysis_type` | Analysis type to post  | `summary`  |
-| `template`      | Message template       | `{body}`   |
-| `condition`     | Optional tag condition | (none)     |
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `token` | Slack bot token | `None` |
+| `default_channel_name` | Channel for every post. It has no default and the link raises without it | (required) |
+| `url` | Details link. `{vcon_id}` is replaced with the UUID. Without it, `?_vcon_id="<uuid>"` is appended | placeholder text |
+| `only_if` | `{analysis_type, includes}`. Posts for each analysis of that type whose body contains the text. This is a different shape from the shared `only_if` | `{analysis_type: customer_frustration, includes: NEEDS REVIEW}` |
+
+The post body is the `summary` analysis of the same dialog, so a `summary` analysis must exist. If the vCon has a `strolid_dealer` attachment whose body names a team other than `strolid`, the link also posts to `team-<team>-alerts`. It sets `was_posted_to_slack` on the analysis so it posts once. `channel_name` and `analysis_to_post` are in the defaults, and the code does not read them.
 
 ***
 
-### Audit and Compliance Links
-
-These links provide integrity and audit trail capabilities.
-
-***
-
-#### datatrails
-
-Creates [DataTrails](https://app.datatrails.ai) Events for each vCon, producing a tamper-evident audit trail via OIDC-authenticated calls. DataTrails statements map onto SCITT envelopes — if you want a vendor-neutral transparency service, prefer the [`scitt`](standard-links.md#scitt) link instead.
-
-```yaml
-links:
-  audit:
-    module: links.datatrails
-    options:
-      api_url: "https://app.datatrails.ai/archivist"
-      auth_url: "https://app.datatrails.ai/archivist/iam/v1/appidp/token"
-      client_id: "${DATATRAILS_CLIENT_ID}"
-      client_secret: "${DATATRAILS_CLIENT_SECRET}"
-      partner_id: "your-partner-id"
-      asset_attributes:
-        arc_display_type: "vcon_droid"
-        conserver_link_version: "auto"
-```
-
-| Option                        | Description                                  | Default                                                   |
-| ----------------------------- | -------------------------------------------- | --------------------------------------------------------- |
-| `api_url`                     | DataTrails Archivist API root                | `https://app.datatrails.ai/archivist`                     |
-| `auth_url`                    | OIDC client-credentials token endpoint       | `https://app.datatrails.ai/archivist/iam/v1/appidp/token` |
-| `client_id` / `client_secret` | OIDC client credentials                      | (required)                                                |
-| `partner_id`                  | Partner identifier used in event attribution | `not-set`                                                 |
-| `asset_attributes`            | Initial attributes for the DataTrails asset  | DataTrails-recommended defaults                           |
-
-DataTrails is the durable store for the audit data — the vCon itself is not modified.
+## Audit links
 
 ***
 
 #### scitt
 
-Registers a COSE-signed statement about the current vCon on a [SCRAPI](https://datatracker.ietf.org/doc/draft-ietf-scitt-scrapi/)-compatible SCITT transparency service (such as [scittles](https://github.com/vcon-dev/scittles)), then verifies the returned COSE receipt and (optionally) stores it as an analysis entry on the vCon.
-
-Added in May 2026 (SCITT v0.3.0). The lifecycle event recorded is controlled by `vcon_operation`; combine multiple instances of this link in a chain to record `vcon_created` early and `vcon_enhanced` after transcription.
+Registers a signed statement about the vCon on a [SCRAPI](https://datatracker.ietf.org/doc/draft-ietf-scitt-scrapi/) transparency service such as [scittles](https://github.com/vcon-dev/scittles), verifies the receipt, and stores it on the vCon. Use two instances to record `vcon_created` before transcription and `vcon_enhanced` after it. For a copy that does not touch the vCon, use the [`scitt` storage](storage.md#scitt-transparency).
 
 ```yaml
 links:
@@ -642,100 +527,65 @@ links:
     module: links.scitt
     options:
       scrapi_url: "http://scittles:8000"
-      signing_key_pem: "${SCITT_SIGNING_KEY_PEM}"   # base64-encoded PEM (preferred for k8s/containers)
-      # OR for local development:
-      # signing_key_path: "/etc/scitt/signing-key.pem"
-      issuer: "conserver"
-      key_id: "conserver-key-1"
-      vcon_operation: "vcon_created"
-      store_receipt: true
+      signing_key_pem: "<base64 of the PEM text>"
+      issuer: conserver
+      key_id: conserver-key-1
+      vcon_operation: vcon_created
 ```
 
-| Option             | Description                                                         | Default                      |
-| ------------------ | ------------------------------------------------------------------- | ---------------------------- |
-| `scrapi_url`       | SCRAPI endpoint for the SCITT transparency service                  | `http://scittles:8000`       |
-| `signing_key_pem`  | Base64-encoded PEM. Preferred for containers / k8s deployments.     | `None`                       |
-| `signing_key_path` | Filesystem path to the signing key (fallback for local development) | `/etc/scitt/signing-key.pem` |
-| `issuer`           | COSE issuer identifier                                              | `conserver`                  |
-| `key_id`           | Key identifier                                                      | `conserver-key-1`            |
-| `vcon_operation`   | Lifecycle event recorded (e.g. `vcon_created`, `vcon_enhanced`)     | `vcon_created`               |
-| `store_receipt`    | Append the COSE receipt as an analysis entry on the vCon            | `true`                       |
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `scrapi_url` | Service base URL | `http://scittles:8000` |
+| `signing_key_pem` | Base64 of the PEM private key text. Preferred in containers | `None` |
+| `signing_key_path` | PEM file path, used when `signing_key_pem` is empty | `/etc/scitt/signing-key.pem` |
+| `issuer` | COSE issuer | `conserver` |
+| `key_id` | COSE key id | `conserver-key-1` |
+| `vcon_operation` | Lifecycle event recorded, for example `vcon_created` or `vcon_enhanced` | `vcon_created` |
+| `store_receipt` | Append the receipts as an analysis | `true` |
 
-Writes an `analysis[]` entry with `type: "scitt_receipt"`, `vendor: "scittles"`, and a body containing `entry_id`, `cose_receipt`, and `subject`. See [Lifecycle extension](../extensions/lifecycle.md) for how this composes with the vCon lifecycle audit story.
+There is no `jwks_uri` option. To verify a receipt, the link reads `jwks_uri` from the service's `/.well-known/transparency-configuration` and falls back to `<scrapi_url>/jwks`. A receipt that fails verification raises.
+
+It registers one statement for each party that has a `tel`, with subject `tel:<number>`, or one with subject `vcon://<uuid>` if no party does. With `store_receipt`, it adds an analysis `type: scitt_receipt`, `vendor: scittles`, on dialog `0`, whose body is one receipt object or a list of them. Each has `entry_id`, `cose_receipt` (base64), `vcon_operation`, `subject`, `vcon_hash` and `scrapi_url`. See the [Lifecycle extension](../extensions/lifecycle.md).
 
 ***
 
-## Using Links in Chains
+#### datatrails
 
-Links are combined into chains in the configuration:
-
-```yaml
-chains:
-  main_pipeline:
-    links:
-      - deepgram           # Transcribe audio
-      - analyze            # Generate summary
-      - check_complaint    # Check for complaints
-      - router             # Route based on tags
-    storages:
-      - postgres
-      - s3
-    ingress_lists:
-      - incoming_calls
-    egress_lists:
-      - processed_calls
-    enabled: 1
-    timeout: 300
-```
-
-Links execute in order. If any link returns `None`, chain processing stops for that vCon.
-
-## Common Patterns
-
-### Conditional Processing
-
-Use `sampler` or `jq_link` to process only certain vCons:
+Records an event for each vCon in [DataTrails](https://www.datatrails.ai/). The vCon is not changed.
 
 ```yaml
-chains:
-  sample_analysis:
-    links:
-      - sampler    # Process 10% of vCons
-      - analyze
+links:
+  audit:
+    module: links.datatrails
+    options:
+      partner_id: "your-partner-id"
+      vcon_operation: vcon_created
+      auth:
+        type: oidc-client-credentials
+        token_endpoint: "https://app.datatrails.ai/archivist/iam/v1/appidp/token"
+        client_id: "your-client-id"
+        client_secret: "your-client-secret"
 ```
 
-### Multi-stage Analysis
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `auth` | `{type, token_endpoint, client_id, client_secret}`. The only supported `type` is `oidc-client-credentials`. Anything else raises an HTTP 501 error | (required) |
+| `vcon_operation` | Event name, prefixed with `vcon_`. The code reads this key with no fallback, so set it | (required) |
+| `api_url` | DataTrails API root | `https://app.datatrails.ai/archivist` |
+| `partner_id` | Sent as `DataTrails-Partner-ID` | `not-set` |
+| `asset_attributes` | Attributes that find or create the daily asset the events attach to | `{arc_display_type: vcon_droid, conserver_link_version: 0.3.0}` |
+| `auth_url` | In the defaults. The code uses `auth.token_endpoint` | the DataTrails token URL |
 
-Chain multiple analysis links for comprehensive processing:
+The event carries the SHA-256 hash of the vCon, subject `vcon://<uuid>` and the operation. A failure to create the asset event raises. A failure to create the asset-free event is counted and ignored. DataTrails statements map onto SCITT, so prefer [`scitt`](#scitt) when you want a vendor-neutral service.
 
-```yaml
-chains:
-  full_analysis:
-    links:
-      - deepgram           # Step 1: Transcribe
-      - analyze            # Step 2: Summarize
-      - detect_engagement  # Step 3: Check engagement
-      - check_complaint    # Step 4: Detect complaints
-      - analyze_and_label  # Step 5: Categorize
-```
+***
 
-### Tag-based Routing
+## Testing link
 
-Use tags to route vCons to different downstream chains:
+#### delay
 
-```yaml
-chains:
-  intake:
-    links:
-      - deepgram
-      - analyze
-      - tag_router
-    ingress_lists: [incoming]
-    # No egress_lists - router handles distribution
+Sleeps, then passes the vCon on unchanged. Use it to hold a chain open and exercise `CONSERVER_VCON_CONCURRENCY` and shutdown behavior.
 
-  priority_handling:
-    links:
-      - notify_slack
-      - priority_storage
-    ingress_lists: [priority_queue]
-```
+| Option | Description | Default |
+| ------ | ----------- | ------- |
+| `seconds` | Time to sleep. A negative value becomes `0` | `5` |

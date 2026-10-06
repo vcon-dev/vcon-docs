@@ -5,31 +5,31 @@ description: Standalone tools and adapters that produce, consume, or operate on 
 
 # 🛠️ Tools
 
-The vCon ecosystem is more than the spec and the libraries — it's a set of practical tools you can run today. This section indexes them.
+The vCon ecosystem is more than the spec and the libraries. It's a set of practical tools you can run today. This section indexes them.
 
-## Generators
+## Generators and converters
 
 Tools that produce vCons.
 
-- [vCon Faker](vcon-faker.md) — synthetic vCons from LLM-generated dialog + TTS audio
-- [vCon Anthropic Chats](vcon-anthropic-chats.md) — converts Claude AI conversation exports into vCons
-- [vCon SIPREC Adapter](vcon-siprec-adapter.md) — ingests SIPREC-formatted call recordings
+- [vCon Faker](vcon-faker.md): synthetic vCons from LLM-generated dialog + TTS audio
+- [vCon Anthropic Chats](vcon-anthropic-chats.md): converts Claude Code sessions and claude.ai exports into vCons
+- [vCon SIPREC Adapter](vcon-siprec-adapter.md): records SIPREC sessions as vCons
+- [vCon MCP Adapters](vcon-mcp-adapters.md): converts AI agent traces (Anthropic, OpenAI, Claude Code, Helicone, Langfuse, LangSmith) into vCons
 
 ## Administration & operations
 
 Tools for managing vCons at scale.
 
-- [vCon Admin](vcon-admin.md) — admin UI for browsing, editing, and exporting vCons
-- [Mongo ↔ Redis Sync](mongo-redis-sync.md) — keep a Mongo vCon store and a Redis cache in sync
-- [vCon MCP Adapters](vcon-mcp-adapters.md) — observability adapters (OpenTelemetry) for the MCP server
+- [vCon Admin](vcon-admin.md): Streamlit toolkit for importing, exporting and inspecting vCons
+- [Redis to Mongo Sync](mongo-redis-sync.md): archived one-way copy from Redis to MongoDB
 
 ## Datasets
 
-- [Public vCon Datasets](vcon-datasets.md) — public GitHub datasets of vCons, and how to load one with vcon-data
+- [Public vCon Datasets](vcon-datasets.md): public GitHub datasets of vCons, and how to load one with vcon-data
 
 ## Apps and stores
 
-- [vCon Apps and Stores](../vcon-apps-and-stores/README.md) — community-built apps and the vCon App Template
+- [vCon Apps and Stores](../vcon-apps-and-stores/README.md): what vCon stores and apps are, the example app, and the TADHack dataset
 
 ## Adding a tool
 

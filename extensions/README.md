@@ -1,59 +1,59 @@
 ---
 description: >-
-  vCon extensions add structured data for specific use cases without breaking
-  the core spec.
+  Shows which vCon extension drafts exist, what token each one uses, and where
+  its data sits in a vCon, so you can add structured data without breaking
+  readers.
 icon: arrows-from-line
 ---
 
 # Extensions
 
-The vCon core specification ([`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/)) keeps the container small on purpose. Anything beyond parties, dialog, analysis, and attachments lives in an extension — a separately documented spec that adds new fields, attachment purposes, analysis types, or external lifecycle behavior.
+The core draft, [`draft-ietf-vcon-vcon-core-04`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), keeps the container small. Anything beyond the core parties, dialog, analysis and attachment fields belongs in an extension: a separate draft that defines new parameters, attachment `purpose` values or analysis `type` values, and registers a token for them.
 
-## How extensions work
+## How extensions are declared
 
-Two top-level fields on a vCon coordinate extensions:
+Two top-level arrays carry extension names (core-04 Sections 4.1.3 and 4.1.4):
 
-* **`extensions[]`** — strings listing every extension this vCon uses. Consumers can use this to decide whether they have enough support to safely process the vCon.
-* **`must_understand[]`** — a subset of `extensions[]` that consumers MUST be able to interpret. If a consumer sees a value here that it doesn't understand, it must refuse to process the vCon rather than silently drop data. (In older drafts and library code this field was called `must_support` or `critical` — they mean the same thing.)
+* `extensions` lists every extension whose parameters appear in the vCon. It SHOULD be present when any are used.
+* `critical` lists the extensions a reader must support to interpret the vCon correctly. A reader that finds a name it does not support in `critical` MUST NOT process the vCon except to reject it or report it.
 
-A typical signal looks like this:
+Core-04 calls an extension Compatible when an unaware reader can ignore it safely, and Incompatible when it changes meaning. Only Incompatible extensions, or ones whose draft says so, go in `critical`. All the extensions below are Compatible.
+
+A top-level fragment for a vCon carrying an agent trace that downstream systems must honor, plus a lawful basis attachment:
 
 ```json
 {
-  "vcon": "0.4.0",
-  "uuid": "...",
-  "extensions": ["lawful_basis", "wtf"],
-  "must_understand": ["lawful_basis"],
-  "parties": [...],
-  "dialog": [...],
-  "analysis": [...],
-  "attachments": [...]
+  "extensions": ["agent_session", "lawful_basis"],
+  "critical": ["agent_session"]
 }
 ```
 
+There is no `must_understand` field. `must_support` is the 0.3.0 name for `critical`. See the [field reference](../vcons/field-reference.md#legacy-names) for every renamed field.
+
 ## Available extensions
 
-| Extension                                 | Purpose                                                                                                | Where it lives                                                                                                | Draft                                                                                              |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| [Lawful Basis](lawful-basis.md)           | Records the legal grounds for processing conversation data (GDPR / privacy)                            | `attachments[]` with `type: "lawful_basis"`                                                                   | [`draft-howe-vcon-lawful-basis`](https://datatracker.ietf.org/doc/draft-howe-vcon-lawful-basis/)   |
-| [Lifecycle](lifecycle.md)                 | SCITT-anchored append-only ledger of vCon lifecycle events (create, send, consent, delete)             | External SCITT ledger; metadata-only on the vCon                                                              | [`draft-howe-vcon-lifecycle`](https://datatracker.ietf.org/doc/draft-howe-vcon-lifecycle/)         |
-| [WTF Transcription](wtf-transcription.md) | World Transcription Format — provider-agnostic shape for speech-to-text output                         | `analysis[]` with `type: "wtf_transcription"` (or `type: "transcript"` + `schema:` pointing at the WTF draft) | [`draft-howe-vcon-wtf-extension`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/)           |
-| [Agent Session](agent-session.md)         | Captures an AI agent's session trace (prompts, tool calls, artifacts) alongside the human conversation | `parties[].meta.agent_session`, `analysis[].type: "agent_trace"`, `attachments[].purpose: "agent_*"`          | [`draft-howe-vcon-agent-session`](https://datatracker.ietf.org/doc/draft-howe-vcon-agent-session/) |
-| [SIP Signaling](sip-signaling.md)         | SIP call metadata, STIR/SHAKEN certificates, and signaling traces                                      | `parties[].sip_*`, `dialog[].sip_*`, `attachments[].purpose: "sip-*"`                                         | [`draft-howe-vcon-sip-signaling`](https://datatracker.ietf.org/doc/draft-howe-vcon-sip-signaling/) |
+| Extension | Token | Where its data lives | Draft |
+| --- | --- | --- | --- |
+| [Lawful Basis](lawful-basis.md) | `lawful_basis` | `attachments[]` with `purpose: "lawful_basis"` | [draft-howe-vcon-lawful-basis-02](https://datatracker.ietf.org/doc/draft-howe-vcon-lawful-basis/) |
+| [WTF Transcription](wtf-transcription.md) | `wtf_transcription` | `analysis[]` with `type: "wtf_transcription"` | [draft-howe-vcon-wtf-extension-02](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/) |
+| [Agent Session](agent-session.md) | `agent_session` | agent `parties[]`, `analysis[]` with `type: "agent_trace"`, `attachments[]` with `agent_*` purposes | [draft-howe-vcon-agent-session-00](https://datatracker.ietf.org/doc/draft-howe-vcon-agent-session/) |
+| [SIP Signaling](sip-signaling.md) | `sip-signaling` | `sip_*` party and dialog parameters, `attachments[]` with `sip-*` and `stir-*` purposes | [draft-howe-vcon-sip-signaling-00](https://datatracker.ietf.org/doc/draft-howe-vcon-sip-signaling/) |
+| Contact Center | `CC` | party `role`, `contact_list`; dialog `campaign`, `interaction_type`, `interaction_id`, `skill` | [draft-ietf-vcon-cc-extension-02](https://datatracker.ietf.org/doc/draft-ietf-vcon-cc-extension/) |
+| Provenance | `provenance` | a `provenance` object on an analysis or dialog entry | [draft-howe-vcon-provenance-00](https://datatracker.ietf.org/doc/draft-howe-vcon-provenance/) |
+| [Lifecycle](lifecycle.md) | none | events on a SCITT transparency service, outside the vCon | [draft-howe-vcon-lifecycle-01](https://datatracker.ietf.org/doc/draft-howe-vcon-lifecycle/) |
 
-## A note on field naming
+Lifecycle is listed here because it is usually read alongside Lawful Basis, but it defines no extension token and adds nothing to the vCon itself.
 
-The core spec uses `purpose` on attachments (never `type`). The **Lawful Basis** extension is the one documented exception — it uses `type: "lawful_basis"` because the attachment is treated as a typed structural object rather than a free-form payload. Every other extension that touches `attachments[]` uses `purpose`.
+Every attachment uses `purpose`, never `type`. That includes `lawful_basis`.
 
-If you see code or older docs that put `type:` on an attachment that isn't lawful\_basis, that's a legacy pattern from pre-spec-02 libraries; the spec-correct form is `purpose:`.
+## Related work outside the vCon WG
 
-## Related work (not vCon extensions, but commonly confused with them)
+[`draft-howe-sipcore-mcp-extension`](https://datatracker.ietf.org/doc/draft-howe-sipcore-mcp-extension/) is a SIP protocol extension that carries MCP payloads inside SIP sessions. It adds nothing to a vCon.
 
-* [`draft-howe-sipcore-mcp-extension`](https://datatracker.ietf.org/doc/draft-howe-sipcore-mcp-extension/) is a SIP protocol extension (SIPCORE WG, not the vCon WG). It defines a SIP option tag, headers, and a media type for carrying MCP payloads inside SIP sessions. It does **not** add fields to a vCon — but it does come up in conversations about MCP-enhanced telephony, so it's worth knowing where it lives.
+[`draft-birkholz-verifiable-agent-conversations`](https://datatracker.ietf.org/doc/draft-birkholz-verifiable-agent-conversations/) defines Verifiable Agent Conversation records. It is not a vCon extension; the Agent Session extension embeds its records.
 
-## When to define a new extension
+## Writing a new extension
 
-Don't add fields to a vCon outside of an extension; consumers won't know what to do with them and may reject the vCon. If you have data that doesn't fit one of the extensions above:
+Check first whether your data fits as an analysis entry (anything derived from the conversation) or an attachment with a new `purpose` (anything supplied alongside it). Most data does, and needs no new draft.
 
-1. Check whether the data fits in `analysis[]` (anything derived from the conversation) or `attachments[]` (anything supplied alongside it). Most use cases do.
-2. If you genuinely need new top-level fields or new attachment purposes/analysis types, write an extension draft. The `vcon-speckit` repo has templates; the IETF VCON working group is the venue.
+If you need new parameters, write an Internet-Draft. Core-04 Section 2.5 says what it must contain: the extension name and whether it goes in `extensions`, `critical` or both; each new parameter and where it appears; compatibility and incompatibility considerations; and privacy and integrity considerations. Register the token in the vCon Extensions Names Registry (core-04 Section 6.4). Bring it to the [IETF VCON working group](https://datatracker.ietf.org/wg/vcon/about/).

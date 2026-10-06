@@ -1,79 +1,78 @@
 ---
-description: Learning More
+description: >-
+  Points you to the current IETF drafts, reference code, recorded talks and
+  outside writing about vCon, so you can go to the primary source.
 ---
 
 # ✨ More Information
 
 ## Read the current pitch
 
-These three pieces are the cleanest current articulations of what vCon is and why it matters now. Read one and you have the framing.
+These pieces give the clearest current case for vCon.
 
-* [vCon: The Power of a Definition](https://cpaasaa.com/vcon-the-power-of-a-definition/) — Thomas Howe, CPaaSAA, Aug 2025. The "magic of vCons", reality collapse, and SCITT as a global digital notary.
-* [The vCon Reality Check: Moving Beyond Generative Hype to Actual Conversational Architecture](https://aheadcrm.medium.com/the-vcon-reality-check-moving-beyond-generative-hype-to-actual-conversational-architecture-41197017fb9b) — Thomas Wieberneit, Medium, April 2026. Analyst framing for why enterprises should care.
-* [The Pulver vCon Report](https://thejeffpulver.substack.com/) — Jeff Pulver's ongoing Substack series. Best single subscription for tracking industry adoption.
+* [vCon: The Power of a Definition](https://cpaasaa.com/vcon-the-power-of-a-definition/), Thomas Howe, CPaaSAA, August 2025. Covers why a defined file format matters and SCITT as a global digital notary.
+* [The vCon Reality Check: Moving Beyond Generative Hype to Actual Conversational Architecture](https://aheadcrm.medium.com/the-vcon-reality-check-moving-beyond-generative-hype-to-actual-conversational-architecture-41197017fb9b), Thomas Wieberneit, Medium, April 2026. An analyst's view of why enterprises should care.
+* [The Pulver vCon Report](https://thejeffpulver.substack.com/), Jeff Pulver's ongoing Substack series on industry adoption.
 
-## Official Documents
+## IETF drafts
 
-Read the IETF working-group draft: [`draft-ietf-vcon-vcon-core-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) — the current spec target, with syntax parameter `"vcon": "0.4.0"`.
+The working group's core draft is [`draft-ietf-vcon-vcon-core-04`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), syntax `"vcon": "0.4.0"`. Track the [VCON working group](https://datatracker.ietf.org/wg/vcon/about/) for its charter, meetings and documents.
 
-Track our [group's progress at the IETF](https://datatracker.ietf.org/doc/charter-ietf-vcon/) (charter, meetings, and active drafts).
+Working group drafts:
 
-### Extension drafts
+* [`draft-ietf-vcon-overview-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-overview/): use cases and architecture
+* [`draft-ietf-vcon-privacy-primer-01`](https://datatracker.ietf.org/doc/draft-ietf-vcon-privacy-primer/): privacy background for implementers
+* [`draft-ietf-vcon-cc-extension-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-cc-extension/): contact center extension
 
-vCon's extension mechanism (`extensions[]` + `must_understand[]` / `critical`) is documented in the core draft. Active extension drafts:
+Individual extension drafts:
 
-- [`draft-howe-vcon-lawful-basis`](https://datatracker.ietf.org/doc/draft-howe-vcon-lawful-basis/) — lawful basis for processing (GDPR / privacy compliance)
-- [`draft-howe-vcon-lifecycle`](https://datatracker.ietf.org/doc/draft-howe-vcon-lifecycle/) — SCITT-based lifecycle and audit trail
-- [`draft-howe-vcon-wtf-extension`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/) — World Transcription Format (multi-vendor transcription)
-- [`draft-howe-vcon-agent-session`](https://datatracker.ietf.org/doc/draft-howe-vcon-agent-session/) — verifiable agent-conversation session trace
-- [`draft-howe-vcon-sip-signaling`](https://datatracker.ietf.org/doc/draft-howe-vcon-sip-signaling/) — SIP telephony signaling metadata
-- [`draft-howe-vcon-agent-session`](https://datatracker.ietf.org/doc/draft-howe-vcon-agent-session/) — AI agent and MCP session records
+* [`draft-howe-vcon-lawful-basis-02`](https://datatracker.ietf.org/doc/draft-howe-vcon-lawful-basis/): lawful basis for processing
+* [`draft-howe-vcon-lifecycle-01`](https://datatracker.ietf.org/doc/draft-howe-vcon-lifecycle/): lifecycle events on a SCITT transparency service
+* [`draft-howe-vcon-wtf-extension-02`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/): World Transcription Format
+* [`draft-howe-vcon-agent-session-00`](https://datatracker.ietf.org/doc/draft-howe-vcon-agent-session/): AI agent sessions
+* [`draft-howe-vcon-sip-signaling-00`](https://datatracker.ietf.org/doc/draft-howe-vcon-sip-signaling/): SIP and STIR/SHAKEN signaling data
+* [`draft-howe-vcon-provenance-00`](https://datatracker.ietf.org/doc/draft-howe-vcon-provenance/): generation provenance for model output
 
-See the **Extensions** section of this site for a per-extension overview.
+Related: [`draft-birkholz-verifiable-agent-conversations-01`](https://datatracker.ietf.org/doc/draft-birkholz-verifiable-agent-conversations/) defines the agent records that the agent session extension embeds.
 
-> **Historical note:** The pre-WG draft was `draft-petrie-vcon-01` with syntax `"0.0.2"`. Both have been superseded by the working-group draft above. If you find content elsewhere referencing the old draft or version string, treat it as historical.
+Extensions are declared in the top-level `extensions` array, and the ones a reader must support go in `critical`. The [field reference](field-reference.md) lists every token, and the [Extensions](../extensions/README.md) section covers each one.
 
-## vCon Software and Implementations
+Revisions above were current on datatracker on 2026-10-06. The datatracker links always open the newest revision.
 
-Visit our [open source library for the vCon and the Conserver](https://github.com/vcon-dev/vcon). (Give us a star!)
+**Earlier drafts.** The individual draft [`draft-petrie-vcon-04`](https://datatracker.ietf.org/doc/draft-petrie-vcon/) used syntax `"0.0.1"`. The later working group draft [`draft-ietf-vcon-vcon-container-03`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-container/) used `"0.0.2"`. Both are replaced by `draft-ietf-vcon-vcon-core`. Treat material citing them, or syntax `0.3.0`, as historical.
 
-[The Repo for the py-vcon and py-vcon-server Projects](https://github.com/dgpetrie/py-vcon#the-repo-for-the-py-vcon-and-py-vcon-server-projects)
+## Software
 
-## Videos and Presentations
+* [vcon-dev/vcon](https://github.com/vcon-dev/vcon) gathers the project's repositories, including the conserver and libraries, as submodules.
+* [py-vcon](https://github.com/py-vcon/py-vcon) is Dan Petrie's Python implementation, including `py-vcon-server`.
+* This site documents the [Python library](../vcon-library/README.md), the [JavaScript library](../vcon-js-library/README.md) and the [Conserver](../conserver/README.md).
 
-See the [Keynote at TAD Summit](https://youtu.be/TVq7Y1SoGo4?si=Led6pdqP6rmvynkW), Paris, October, 2023
+## Videos and presentations from 2022 and 2023
 
-See the [TADSummit Podcast](https://youtu.be/Ijmvras0DFE?si=5Qs-3VtDK8agW-Ud) with Alan Quayle, September, 2023
+These predate the working group's core draft, so field names in them may be out of date.
 
-See the [Birds of a Feather session at IETF 116, Yokohama](https://youtu.be/EF2OMbo6Qj4), March, 2023
+* [Keynote at TADSummit](https://youtu.be/TVq7Y1SoGo4?si=Led6pdqP6rmvynkW), Paris, October 2023
+* [TADSummit Podcast](https://youtu.be/Ijmvras0DFE?si=5Qs-3VtDK8agW-Ud) with Alan Quayle, September 2023
+* [Birds of a Feather session at IETF 116](https://youtu.be/EF2OMbo6Qj4), Yokohama, March 2023
+* [Presentation at TADSummit](https://youtu.be/ZBRJ6FcVblc), Portugal, November 2022
+* [Presentation at IETF 115](https://youtu.be/dJsPzZITr_g?t=243), London, November 2022
+* [Presentation at IIT](https://youtu.be/s-pjgpBOQqc), Chicago, October 2022
 
-See the [presentation at TADSummit](https://youtu.be/ZBRJ6FcVblc), Portugal, Nov 2022
+See [Talks, Articles & Press](../talks-articles-press/README.md) for the full list, including newer recordings.
 
-See the [presentation at IETF 115, London, Nov 2022](https://youtu.be/dJsPzZITr_g?t=243)
+## Papers
 
-See the [presentation at IIT](https://youtu.be/s-pjgpBOQqc), Chicago, Oct 2022
-
-See the [key note proposal for vCons](https://blog.tadsummit.com/2021/12/08/strolid-keynote-vcons/).
-
-## White Papers
-
-Read the [white paper](https://docs.google.com/document/d/1TV8j29knVoOJcZvMHVFDaan0OVfraH_-nrS5gW4-DEA/edit?usp=sharing)
+* [White paper](https://docs.google.com/document/d/1TV8j29knVoOJcZvMHVFDaan0OVfraH_-nrS5gW4-DEA/edit?usp=sharing)
+* [Keynote proposal for vCons](https://blog.tadsummit.com/2021/12/08/strolid-keynote-vcons/), TADSummit blog, December 2021
 
 ## Ecosystem
 
-A non-exhaustive set of companies, products, and communities building on vCon today. See [Talks, Articles & Press](../talks-articles-press/) for the full curated list of writing and recordings.
+A partial list of companies, products and communities working with vCon.
 
-* [Vconic](https://vconic.com) — Strolid's commercial vCon platform, real-time vCon processing and proof-of-value applications.
-* [Strolid: IETF for vCons](https://strolid.com/ietf-for-vcons/) — the BPO that incubated vCon, running roughly a quarter million conversations per month through the format.
-* [MindMaking](https://mindmaking.com/) — vCon app store for service providers, turning calls into structured vCons with transcript, summary, action items, and sentiment.
-* [Nimble Ape](https://nimblea.pe/) — Dan Jenkins / CommCon, the open RTC community that hosts early implementer conversations.
-* [py-vcon](https://github.com/py-vcon/py-vcon) — Dan Petrie's reference Python implementation, including `py-vcon-server`.
-* [vCon Foundation](https://thejeffpulver.substack.com/) — Jeff Pulver's foundation and the rolling commentary on adoption.
-* [CPaaS Acceleration Alliance](https://cpaasaa.com/tag/vcon/) — the alliance's ongoing vCon coverage, including the CASA Amsterdam events.
-* [Cavell](https://www.cavell.com/a-comprehensive-guide-to-vcon-in-communications/) — analyst overview for the CX / CCaaS audience.
-* [Telecom Reseller podcasts](https://telecomreseller.com/category/podcasts/) — Doug Green's running podcast series, including the Pulver, CarrierX, and healthcare-AI episodes.
-
-
-
-
-
+* [Vconic](https://vconic.com): Strolid's commercial vCon platform for real-time vCon processing.
+* [Strolid: IETF for vCons](https://strolid.com/ietf-for-vcons/): the BPO that incubated vCon, running roughly a quarter million conversations per month through the format.
+* [MindMaking](https://mindmaking.com/): a vCon app store for service providers that turns calls into vCons with transcript, summary, action items and sentiment.
+* [Nimble Ape](https://nimblea.pe/): Dan Jenkins and CommCon, the open RTC community that hosted early implementer conversations.
+* [CPaaS Acceleration Alliance](https://cpaasaa.com/tag/vcon/): the alliance's vCon coverage, including the CASA Amsterdam events.
+* [Cavell](https://www.cavell.com/a-comprehensive-guide-to-vcon-in-communications/): an analyst overview for the CX and CCaaS audience.
+* [Telecom Reseller podcasts](https://telecomreseller.com/category/podcasts/): Doug Green's podcast series, including the Pulver, CarrierX and healthcare AI episodes.

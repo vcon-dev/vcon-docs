@@ -1,122 +1,92 @@
 ---
 description: >-
-  The must/never list for every adapter PR. Mirrors the smoke tests in
-  vcon-adapter-template.
+  The single rule list for adapter code review. Every other adapters page links
+  here instead of repeating field rules.
 ---
 
 # ✅ Spec Compliance Checklist
 
-This is the gate every adapter PR (and every hand-written vCon construction) should pass. It mirrors the 14 smoke tests in [`vcon-adapter-template/tests/test_vcon_builder.py`](https://github.com/vcon-dev/vcon-adapter-template/blob/main/tests/test_vcon_builder.py) and the [`CONTRIBUTING.md`](https://github.com/vcon-dev/vcon-adapter-template/blob/main/CONTRIBUTING.md) in the same repo. If you scaffolded from the template, `pytest` runs all of this for you.
+This page is the one place the adapter rules are written down. The [Extensions Cookbook](extensions-cookbook.md), the [Development Guide](vcon-adapter-development-guide.md) and the [LLM Guide](llm-guide-creating-vcon-adapters.md) link here rather than repeating them. Field-by-field definitions live in the [vCon field reference](../vcons/field-reference.md). The template's test suite in [`tests/`](https://github.com/vcon-dev/vcon-adapter-template/tree/main/tests) enforces most of this, and `pytest` runs it in any adapter scaffolded from the template.
 
-**Spec target:** IETF [`draft-ietf-vcon-vcon-core-04`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), syntax `"0.4.0"`.
+## Spec target
 
-## The one-line rule
+Adapters here target IETF [`draft-ietf-vcon-vcon-core-04`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), with the `vcon` syntax parameter set to `"0.4.0"` and the [`vcon`](../vcon-library/README.md) Python library at 0.10.0 or later. Code or examples citing `0.2.0`, `0.3.0`, `-02` or `-03` are out of date.
 
-> **Always use the** [**`vcon`**](../vcon-library/) **library helpers (`add_party`, `add_dialog`, `add_attachment`, `add_analysis`, `add_tag`). Never write directly to `vcon_dict[...]` except for the four documented quirks below.**
+With `encoding: "json"`, an attachment or analysis `body` is the JSON value itself (an object or array), not a `json.dumps()` string. Stringified JSON is still accepted, so readers must handle both, and the template's `json_body()` does. Writers emit the value form. Where an extension draft's own example shows a stringified body, write the value form anyway.
 
-Recent versions of the `vcon` Python library (≥0.9.4) emit spec-correct output for every helper. Hand-rolling a dict bypasses that and is the single most common source of compliance drift in real adapters.
+## The one rule
+
+Build through the `vcon` library helpers (`add_party`, `add_dialog`, `add_attachment`, `add_analysis`, `add_tag`) and the template's `new_vcon()`, `add_lawful_basis()` and `finalize_vcon()`. Do not write to `vcon_dict[...]` by hand except for what those helpers cannot do: `subject` (the library has no setter) and the `extensions` list. `new_vcon()` also drops the empty `group` and `redacted` that older library releases leave behind, and `finalize_vcon()` strips empty `meta` and `metadata` placeholders. Current library releases already omit `group` and `redacted`, so on a pinned `vcon>=0.10.0` those pops are no-ops.
 
 ## Top-level vCon
 
-* [ ] `vcon` syntax parameter is exactly the string `"0.4.0"` — not `0.0.1`, `0.0.2`, `0.2.0`, `0.3.0`, or any number
-* [ ] `uuid` is a v4 UUID string
-* [ ] All timestamps are ISO-8601 with a timezone (`Z` or explicit offset)
-* [ ] No empty `group: []` or empty `redacted: {}` left over from `Vcon.build_new()` — drop them; the spec reserves these fields for actual use
-* [ ] `subject` is written via `v.vcon_dict["subject"]` (the lib has no setter)
+* [ ] `vcon` is exactly `"0.4.0"`
+* [ ] `uuid` is a UUID string, preferably version 8 built from a domain you control (core-04 §4.1.2)
+* [ ] Every timestamp is ISO 8601 with a timezone (`Z` or an offset)
+* [ ] No empty `group`, `redacted`, `meta` or `metadata` anywhere
+* [ ] Every extension used is listed in `extensions[]`, spelled as the draft spells it: `lawful_basis`, `sip-signaling`, `wtf_transcription`, `agent_session`. The lifecycle draft defines no token, so lifecycle events need no `extensions` entry
+* [ ] An extension is listed in `critical` only when a consumer must refuse the vCon without it
 
-The template's `new_vcon()` helper handles all five of these — call it instead of `Vcon.build_new()` directly.
+## Analysis
 
-## Analysis objects
+* [ ] `vendor` is present (the library raises without it)
+* [ ] The schema pointer is `schema`, never `schema_version`
+* [ ] A JSON body is the parsed value with `encoding: "json"`
+* [ ] Transcripts live in `analysis[]`, never `attachments[]`, with `type: "wtf_transcription"`, `vendor`, `product` and the WTF draft URL in `schema`
 
-* [ ] Constructed via `Vcon.add_analysis(type, dialog, vendor, body, encoding, schema, product, ...)`
-* [ ] Field name is **`schema`** — never `schema_version`
-* [ ] `vendor` is REQUIRED on every analysis (the lib enforces this as a kwarg)
-* [ ] For a JSON body, pair it with `encoding="json"` and write the parsed JSON value itself (an object or array), not a `json.dumps()` string. Readers should still accept the older stringified form
-* [ ] Transcripts live in `analysis[]`, not `attachments[]`
-* [ ] Transcript analysis has `schema=<WTF draft URL>`, `encoding="json"`, `vendor="<provider>"`, `product="<model>"`
+## Attachments
 
-See the [Extensions Cookbook](extensions-cookbook.md) for full transcript examples.
-
-## Attachment objects
-
-* [ ] Constructed via `Vcon.add_attachment(purpose, body, encoding, party, dialog, ...)`
-* [ ] Field name is **`purpose`**, never `type`, including on `lawful_basis` attachments in new code (readers should still accept the legacy `type` field on older vCons)
-* [ ] `start`, `party`, AND `dialog` are all present. Use `0, 0` for `party`/`dialog` on vCon-level attachments not tied to a specific party or dialog
-* [ ] An attachment with a body carries `mediatype` alongside `encoding`
-* [ ] For a JSON body, `encoding="json"` pairs with the parsed JSON value itself (an object or array), not a `json.dumps()` string. Readers should still accept the older stringified form
-* [ ] Inline binary bodies (audio, images) use `base64url`, never plain base64 or hex
-
-## Tags
-
-* [ ] Use `Vcon.add_tag(name, value)` directly. Library ≥0.9.3 writes `party`/`dialog` on the tags attachment correctly — no backfill needed.
+* [ ] The field is `purpose`, never `type`, including for `lawful_basis`. Readers should still accept legacy `type` on old vCons
+* [ ] `start`, `party` and `dialog` are all present. Use `0` and `0` when the attachment is not tied to a party or dialog
+* [ ] A body carries `mediatype` and `encoding`
+* [ ] Inline binary is `base64url`, never plain base64 or hex
+* [ ] Tags go through `add_tag(name, value)`
 
 ## External media
 
-* [ ] Both `url` AND `content_hash` are present on the dialog
-* [ ] `content_hash` is formatted as `sha512-<base64url-of-digest>` — not hex, not base64 (with `+/=`), not SHA-256
-* [ ] `mediatype` is set (e.g. `audio/wav`, `video/mp4`, `text/plain`)
+* [ ] A dialog that points at media has both `url` and `content_hash`
+* [ ] `content_hash` is `sha512-<base64url digest>`, not hex, not padded base64, not SHA-256
+* [ ] `mediatype` is set
 
-The template provides `sha512_b64url(data)` and `external_media_url(url, content, mediatype)` helpers in [`vcon_builder.py`](https://github.com/vcon-dev/vcon-adapter-template/blob/main/src/__ADAPTER_PACKAGE__/vcon_builder.py).
+The template provides `sha512_b64url(data)` and `external_media_url(url=, content=, mediatype=)` in [`vcon_builder.py`](https://github.com/vcon-dev/vcon-adapter-template/blob/main/src/__ADAPTER_PACKAGE__/vcon_builder.py).
 
-## Legacy field-name traps
+## Legacy names
 
-These names appear in older vcon-mcp code and older draft revisions. **Never** emit them in a new vCon — the receiver may reject the vCon or, worse, silently misroute it.
+Never write the left column. A receiver may reject the vCon or misroute it.
 
-| ❌ Never write           | ✅ Always write | Why                                                                 |
-| ----------------------- | -------------- | ------------------------------------------------------------------- |
-| `appended`              | `amended`      | Legacy vcon-mcp column name                                         |
-| `must_support`          | `critical`     | Legacy vcon-mcp column name                                         |
-| `schema_version`        | `schema`       | Older draft field name; current spec is `schema`                    |
-| `type` (on attachments) | `purpose`      | Core spec uses `purpose`. `lawful_basis` also writes `purpose` in new code; readers should still accept the legacy `type` field on older vCons |
-| `did` (on parties)      | (removed)      | The `did` field was removed in `0.4.0`                              |
+| Never write | Write | Note |
+| --- | --- | --- |
+| `appended` | `amended` | legacy vcon-mcp column |
+| `must_support`, `must_understand` | `critical` | legacy vcon-mcp column |
+| `schema_version` | `schema` | older draft field |
+| `type` on an attachment | `purpose` | applies to `lawful_basis` too |
+| `mimetype` | `mediatype` | the spec field is `mediatype` |
+| `did` on a party | none | removed in 0.4.0 |
 
-The template's smoke test `test_no_legacy_field_names_in_serialized_vcon` greps the serialized vCon for `appended` and `must_support` and fails the build if either appears.
+## Lawful basis
 
-## Extensions
+* [ ] Every vCon an adapter emits carries a `purpose: "lawful_basis"` attachment, built by `add_lawful_basis()` from `LawfulBasisConfig`, not by hand
+* [ ] The adapter never defaults a basis in code. When `LAWFUL_BASIS` and the YAML block are unset, the helper logs one warning per process and adds nothing. Set it to what your deployment actually relies on, or accept the warning
+* [ ] `lawful_basis` is in `extensions[]` (the helper adds it)
+* [ ] The body follows [`draft-howe-vcon-lawful-basis`](https://datatracker.ietf.org/doc/draft-howe-vcon-lawful-basis/): `lawful_basis`, `expiration` (an ISO 8601 timestamp or `null`), and `purpose_grants[]` with `purpose`, `granted` and `granted_at`. `proof_mechanisms[]` entries carry `proof_type`, `timestamp` and `proof_data`
 
-* [ ] Every extension used is listed in top-level `extensions[]`
-* [ ] Extension names match the spec exactly (e.g. `"sip-signaling"`, `"lawful_basis"`, `"wtf"` or `"wtf_transcription"`, `"agent_session"`, `"lifecycle"`)
-
-## Lawful basis (if recording consent is tracked)
-
-* [ ] Attachment uses `purpose: "lawful_basis"` in new code. Readers should still accept the legacy `type: "lawful_basis"` field on older vCons
-* [ ] `"lawful_basis"` is added to top-level `extensions[]`
-* [ ] For synthetic test data: `lawful_basis: "legitimate_interests"` + `proof_mechanism` of type `external_system`
-
-See the [Extensions Cookbook](extensions-cookbook.md) and the [Lawful Basis page](../extensions/lawful-basis.md) for full examples.
+See the [Extensions Cookbook](extensions-cookbook.md) for the helper call and the [Lawful Basis page](../extensions/lawful-basis.md) for the model.
 
 ## Synthetic test data
 
-If you're generating synthetic vCons for testing or training:
+* [ ] Each synthetic party carries `validation: "synthetic"`
+* [ ] If you choose to attach a lawful basis to synthetic data, document the origin with an `external_system` proof mechanism. Do not forge a consent record and do not default a basis for the data
 
-* [ ] Each synthetic party is marked with `validation: "synthetic"`
-* [ ] A `purpose: "synthetic_data_consent"` attachment is present, OR a `lawful_basis` attachment documents the synthetic origin via an `external_system` proof mechanism
+## The template's tests
 
-## The 14 smoke tests, by name
+The template's `tests/` directory has three modules:
 
-These are the canonical compliance gates. From [`test_vcon_builder.py`](https://github.com/vcon-dev/vcon-adapter-template/blob/main/tests/test_vcon_builder.py):
+* `test_vcon_builder.py` covers the builder helpers, `LawfulBasisConfig`, `add_lawful_basis()`, `finalize_vcon()` and `json_body()`, plus a check that serialized output never contains `appended` or `must_support`
+* `test_spec_compliance.py` validates a sample vCon against the vendored official JSON schema and checks the rules the schema does not, such as no `mimetype`, a `purpose`, `start`, `party` and `dialog` on every attachment, and no double-encoded JSON bodies. Its `assert_spec_compliant()` is written to be copied into another repo's tests
+* `test_webhook_delivery.py` covers the HMAC signature format, dead-letter writes, and `ConserverDelivery` headers, ingress lists and retries
 
-1. `test_syntax_is_0_4_0`
-2. `test_build_new_strips_group_and_redacted`
-3. `test_subject_is_written_via_vcon_dict`
-4. `test_extensions_listed_at_top_level`
-5. `test_lib_add_attachment_uses_purpose_with_party_and_dialog`
-6. `test_lib_add_analysis_uses_schema_not_schema_version`
-7. `test_lib_add_analysis_requires_vendor`
-8. `test_lib_add_tag_writes_party_and_dialog`
-9. `test_content_hash_format`
-10. `test_external_media_dialog_has_url_and_content_hash`
-11. `test_no_legacy_field_names_in_serialized_vcon[appended]`
-12. `test_no_legacy_field_names_in_serialized_vcon[must_support]`
-13. (Plus delivery-layer tests for HMAC signature format and DLQ behavior)
+Outside the template, copy `test_spec_compliance.py` and the vendored schema.
 
-Run them with `pytest` from any adapter scaffolded from the template. If you're not using the template, copy the test file — it's spec-version-pinned and short.
+## When you find drift
 
-## When you discover compliance drift
-
-If you find a vCon in the wild — your archive, a partner's payload, a test fixture — that violates this list, do _not_ round-trip it through `Vcon.from_dict(...)` and pretend it's fine. Open an issue against the producing adapter, file the offending field, and either:
-
-* Add a migration link in your conserver to repair the shape, OR
-* Reject the vCon at ingress
-
-The spec is what the spec says. Tolerating drift is how the ecosystem fragments.
+If a vCon in your archive, a partner payload or a fixture breaks this list, do not round-trip it through `Vcon.from_dict(...)` and call it fixed. Open an issue against the producing adapter naming the field, then either repair it with a conserver link or reject it at ingress.
