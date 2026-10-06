@@ -8,7 +8,7 @@ description: >-
 # 🕸️ The Conversational Graph
 
 {% embed url="https://www.youtube.com/watch?v=FXoIxbxsOs0" %}
-Thinking in vCon: The Conversational Graph — 22:08, one case followed all the way through.
+Thinking in vCon: The Conversational Graph, 22:08, one case followed all the way through.
 {% endembed %}
 
 ## The argument
@@ -29,8 +29,8 @@ The line the talk closes on is the whole idea in five words: the conversation is
 
 ## Go deeper
 
-* [Concepts](../vcons/concepts.md) — parties, dialog, analysis, and how vCons reference one another
-* [Day In the Life of a vCon](../conserver/day-in-the-life-of-a-vcon.md) — the end-to-end flow through the Conserver
-* [The Journey of a vCon](../conserver/vcon-conveyor-infographic.md) — the same path, as a diagram
-* [MCP Server](../mcp-server/) — how AI assistants query vCon data directly, which is what makes graph questions answerable in practice
-* [Why Conversations Need a File](../vcons/why-vcons.md) — the written form of the underlying argument
+* [Concepts](../vcons/concepts.md): parties, dialog, analysis, and how vCons reference one another
+* [Day In the Life of a vCon](../conserver/day-in-the-life-of-a-vcon.md): the end-to-end flow through the Conserver
+* [The Journey of a vCon](../conserver/vcon-conveyor-infographic.md): the same path, as a diagram
+* [MCP Server](../mcp-server/): how AI assistants query vCon data directly, which is what makes graph questions answerable in practice
+* [Why Conversations Need a File](../vcons/a-vcon-primer.md#why-conversations-need-a-file): the written form of the underlying argument

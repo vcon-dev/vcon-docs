@@ -4,14 +4,14 @@ description: Longform writing, press coverage, and LinkedIn commentary about vCo
 
 # 📰 Articles & Press
 
-Written coverage of vCon — analyst posts, vendor blogs, dev community writeups, and ongoing commentary on LinkedIn. Reverse-chronological.
+Written coverage of vCon: analyst posts, vendor blogs, developer community writeups, and ongoing commentary on LinkedIn. Dated entries run newest first; entries whose source gives no date come last in their section.
 
 ## 2026
 
-### Thomas Wieberneit — "The vCon Reality Check: Moving Beyond Generative Hype to Actual Conversational Architecture"
+### Thomas Wieberneit, "The vCon Reality Check: Moving Beyond Generative Hype to Actual Conversational Architecture"
 
 - **Medium, April 2026:** [The vCon Reality Check](https://aheadcrm.medium.com/the-vcon-reality-check-moving-beyond-generative-hype-to-actual-conversational-architecture-41197017fb9b)
-- **Mirror:** [aheadcrm.co.nz](http://blog.aheadcrm.co.nz/2026/04/the-vcon-reality-check-moving-beyond.html)
+- **Mirror:** [aheadcrm.co.nz](https://blog.aheadcrm.co.nz/2026/04/the-vcon-reality-check-moving-beyond.html)
 - A CRM-industry analyst's take on why vCon matters in the gap between generative-AI hype and durable conversational architecture.
 
 ### "From Voice to Data: How vCons Are Changing Business Communication"
@@ -21,10 +21,10 @@ Written coverage of vCon — analyst posts, vendor blogs, dev community writeups
 
 ## 2025 and earlier
 
-### "Next Stop — Fall '25 vCon" — J Arnold & Associates
+### "Next Stop: Fall '25 vCon", J Arnold & Associates
 
-- **JAA blog:** [Next Stop — Fall '25 vCon](https://www.jarnoldassociates.com/blog/search/2025/12/1/next-stop-fall-25-vcon)
-- Industry-analyst writeup connecting vCon to broader UC and CX trends.
+- **JAA blog, 2025-12-01:** [Next Stop: Fall '25 vCon](https://www.jarnoldassociates.com/blog/search/2025/12/1/next-stop-fall-25-vcon)
+- Industry-analyst writeup connecting vCon to UC and CX trends.
 
 ### "What Are vCons? The New AI Standard for Business Conversations"
 
@@ -38,12 +38,12 @@ Written coverage of vCon — analyst posts, vendor blogs, dev community writeups
 
 ## Ongoing voices to follow
 
-These authors post about vCon regularly. Subscribe / follow rather than treating any single post as canonical.
+These authors post about vCon regularly. Follow them rather than treating any single post as canonical.
 
-- **Jeff Pulver** — vCon Foundation CEO. [LinkedIn](https://www.linkedin.com/in/jpulver) · [Substack](https://thejeffpulver.substack.com/)
-- **Ken Herron (PRV8)** — writes about vCons in the context of "intelligent agreement management." [LinkedIn](https://www.linkedin.com/in/kenherron)
-- **Thomas Howe (Strolid)** — recurring TADSummit author. [TADSummit author archive](https://blog.tadsummit.com/tag/thomas-howe/)
-- **Alan Quayle (TADSummit / TADHack organizer)** — covers vCon community events. [TADSummit blog](https://blog.tadsummit.com/)
+- **Jeff Pulver**: vCon Foundation CEO. [LinkedIn](https://www.linkedin.com/in/jpulver) · [Substack](https://thejeffpulver.substack.com/)
+- **Ken Herron (PRV8)**: writes about vCons in the context of "intelligent agreement management." [LinkedIn](https://www.linkedin.com/in/kenherron)
+- **Thomas Howe (Strolid)**: recurring TADSummit author. [TADSummit author archive](https://blog.tadsummit.com/tag/thomas-howe/)
+- **Alan Quayle (TADSummit / TADHack organizer)**: covers vCon community events. [TADSummit blog](https://blog.tadsummit.com/)
 
 ## See also
 

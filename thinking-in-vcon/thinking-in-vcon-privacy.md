@@ -5,7 +5,7 @@ description: Existing privacy law already applies to conversations. This episode
 # 🔒 Thinking in vCon: Privacy
 
 {% embed url="https://www.youtube.com/watch?v=B3FO8y5fRB8" %}
-Thinking in vCon: Privacy — 15:09, a companion to the main talk.
+Thinking in vCon: Privacy, 15:09, a companion to the main talk.
 {% endembed %}
 
 ## The argument
@@ -24,8 +24,8 @@ The practical consequence is that answering a right-to-know or right-to-erasure 
 
 ## Go deeper
 
-- [Privacy Primer](../vcons/privacy-primer.md) — a short orientation to data and communications privacy for people building or reviewing vCon-based systems
-- [Lawful Basis](../extensions/lawful-basis.md) — the extension that records legal grounds for processing, with cryptographic proof and per-purpose consent
-- [Privacy-First Conversation Management](../deep-dives/privacy-first-conversation-management.md) — the technical whitepaper behind this episode
-- [Lifecycle (SCITT)](../extensions/lifecycle.md) — append-only audit ledger for consent and deletion events
-- [vCons and Increasing End User Agency](../deep-dives/vcons-and-increasing-end-user-agency.md) — the same argument from the data subject's side
+- [Privacy Primer](../vcons/privacy-primer.md): a short orientation to data and communications privacy for people building or reviewing vCon-based systems
+- [Lawful Basis](../extensions/lawful-basis.md): the extension that records legal grounds for processing, with cryptographic proof and per-purpose consent
+- [Privacy-First Conversation Management](../deep-dives/privacy-first-conversation-management.md): the technical whitepaper behind this episode
+- [Lifecycle (SCITT)](../extensions/lifecycle.md): append-only audit ledger for consent and deletion events
+- [vCons and Increasing End User Agency](../deep-dives/vcons-and-increasing-end-user-agency.md): the same argument from the data subject's side

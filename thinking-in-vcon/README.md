@@ -9,7 +9,7 @@ description: >-
 
 **Thinking in vCon** is a video series about one idea: a conversation is a thing you can hold. Not a recording locked in a vendor's platform, not a row in a CRM, but a signed, portable object with its parties, its dialog, its consent, and its analysis all in one place.
 
-Each episode takes a single question — privacy, provenance, the shape of a conversation, identity — and works it from first principles up to something you can act on. The standard is vCon. The point is what it lets you build.
+Each episode takes a single question (privacy, provenance, the shape of a conversation, identity) and works it from first principles up to something you can act on. The standard is vCon. The point is what it lets you build.
 
 {% hint style="info" %}
 New here? Start with [A vCon Primer](../vcons/a-vcon-primer.md) for the written version of the argument, then come back and watch.
@@ -18,7 +18,7 @@ New here? Start with [A vCon Primer](../vcons/a-vcon-primer.md) for the written 
 ## Start with the keynote
 
 {% embed url="https://www.youtube.com/watch?v=MjhpMnvcNds" %}
-Thinking in vCon — the through-line of the series, in one sitting. 17:41.
+Thinking in vCon, the through-line of the series, in one sitting. 17:41.
 {% endembed %}
 
 Why conversations have never had a standard file format the way documents, images, and spreadsheets do, and why that gap matters now. Introduces vCon as a single trustworthy object carrying a conversation's recording, transcript, metadata, provenance, and rights.
@@ -45,5 +45,5 @@ Everything in one place, in series order: the [Thinking in vCon playlist](https:
 
 ## Related
 
-* [Talks, Articles & Press](../talks-articles-press/) — conference keynotes, IETF sessions, and podcasts
-* [Why Conversations Need a File](../vcons/why-vcons.md) — the core written argument
+* [Talks, Articles & Press](../talks-articles-press/): conference keynotes, IETF sessions, and podcasts
+* [Why Conversations Need a File](../vcons/a-vcon-primer.md#why-conversations-need-a-file): the core written argument

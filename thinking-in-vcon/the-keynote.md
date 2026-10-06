@@ -9,7 +9,7 @@ description: >-
 
 {% embed url="https://www.youtube.com/watch?v=MjhpMnvcNds" %}
 
-Thinking in vCon — the keynote, in one sitting. 17:41.
+Thinking in vCon, the keynote, in one sitting. 17:41.
 
 ### The argument
 
@@ -23,7 +23,7 @@ vCon closes that gap by giving a conversation what every other kind of content a
 
 AI raises the stakes. Models are trained on conversations, agents act on them, and analytics pipelines make decisions from them. When the underlying record has no fixed shape and carries no permissions of its own, basic questions have no reliable answer: who agreed to what, which transcript a summary came from, whether a recording has been altered since it was captured.
 
-A conversation with a standard format is a conversation you can reason about. Consent becomes checkable rather than assumed. Provenance becomes verifiable rather than asserted. And the conversation becomes portable — something the parties to it can actually hold, instead of a byproduct locked inside whatever platform happened to capture it.
+A conversation with a standard format is a conversation you can reason about. Consent becomes checkable rather than assumed. Provenance becomes verifiable rather than asserted. And the conversation becomes portable: something the parties to it can actually hold, instead of a byproduct locked inside whatever platform happened to capture it.
 
 ### What the talk covers
 
@@ -34,7 +34,7 @@ A conversation with a standard format is a conversation you can reason about. Co
 
 ### Watch and share
 
-* [Thinking in vCon — full talk on YouTube](https://www.youtube.com/watch?v=MjhpMnvcNds)
+* [Thinking in vCon: full talk on YouTube](https://www.youtube.com/watch?v=MjhpMnvcNds)
 * [Thinking in vCon playlist on YouTube](https://www.youtube.com/playlist?list=PLaxNQ-GrpFLc)
 * [conserver channel on YouTube](https://www.youtube.com/@conserverio)
 
@@ -42,5 +42,5 @@ A conversation with a standard format is a conversation you can reason about. Co
 
 * [Privacy](thinking-in-vcon-privacy.md)
 * [The Conversational Graph](the-conversational-graph.md)
-* [Why Conversations Need a File](../vcons/why-vcons.md)
+* [Why Conversations Need a File](../vcons/a-vcon-primer.md#why-conversations-need-a-file)
 * [A vCon Primer](../vcons/a-vcon-primer.md)

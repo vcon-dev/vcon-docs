@@ -9,7 +9,7 @@ description: Describes the 43 synthetic TADHack 2025 vCons, where to get them an
 
 For the TADHack 2025 vCon Hackathon, we've generated a set of synthetic vCons for your use:
 
-* You can download the set at [https://github.com/vcon-dev/tadhack-2025](https://github.com/vcon-dev/tadhack-2025)&#x20;
+* You can download the set at [https://github.com/vcon-dev/tadhack-2025](https://github.com/vcon-dev/tadhack-2025)
 * Audio lives in the repo alongside the vCons, in IETF vCon syntax 0.4.0
 * The conversations are synthetic, generated with the vCon Faker pipeline. Each party is marked `"validation": "synthetic"`, and each vCon carries a `lawful_basis` attachment recording that it is demo data with no real data subject. The phone numbers and emails were not checked against real subscribers, so do not dial or email them.
 * The dataset is also listed in [Public vCon Datasets](../tools/vcon-datasets.md), with the `vcon-data` command to load it.

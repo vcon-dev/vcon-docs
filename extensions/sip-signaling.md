@@ -146,4 +146,4 @@ Store whole SIP messages in wire format, with `encoding: "none"` for UTF-8 text 
 ## See also
 
 * [Field reference](../vcons/field-reference.md) for core party and dialog fields.
-* [Authenticating and Certifying Conversations](../use-cases-studies/authenticating-and-certifying-conversations.md) for the STIR/SHAKEN background.
+* [Certifying a conversation](../use-cases-studies/patterns.md#certifying-a-conversation) for the STIR/SHAKEN background.

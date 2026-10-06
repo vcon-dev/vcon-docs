@@ -149,4 +149,4 @@ Avoid the library's WTF helpers in 0.10.0 for now. `add_wtf_transcription_attach
 
 * [Field reference](../vcons/field-reference.md) for analysis fields and body encodings.
 * [Standard Links](../conserver/standard-links.md) for the conserver's transcription links.
-* [Speech Recognition Test Set](../use-cases-studies/speech-recognition-test-set.md) for multi-provider comparison.
+* [Comparing transcription engines](../use-cases-studies/patterns.md#comparing-transcription-engines) for multi-provider comparison.

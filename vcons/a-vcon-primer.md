@@ -1,106 +1,94 @@
 ---
-description: Thomas McCarthy-Howe, CTO, Strolid.
+description: >-
+  Explains what a vCon is, why conversations need their own file format, what
+  sits inside one, and where vCon work stands at the IETF, for readers new to
+  the standard.
 ---
 
 # 💬 A vCon Primer
 
-A [vCon](https://datatracker.ietf.org/group/vcon/about/) is a portable, verifiable container for a conversation.  It is currently on the standards track at the premier Internet standards organization, the [IETF](https://www.ietf.org).   The three core specifications are in preparation for working group last call, after over two years of work from dozens of leading engineers, privacy advocates, regulators and operators. \
-\
-This page explains what one is, why the idea matters now, where vCons are already in production, what they look like inside, and what they let you do that other formats do not. If you read one piece of vCon documentation, read this.
+_By Thomas McCarthy-Howe, CTO, Strolid._
+
+A vCon (virtual conversation) is a portable, verifiable container for one conversation. It is a JSON object that holds who took part, what was said, what has been learned from it since, and the files that explain why it happened. The format is being standardized in the [IETF VCON working group](https://datatracker.ietf.org/group/vcon/about/) as [`draft-ietf-vcon-vcon-core`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), currently revision 04 with syntax `"vcon": "0.4.0"`.
 
 ## What a vCon is
 
-A vCon (virtual conversation) is to a conversation what a PDF is to a document, or a vCard is to a business card. Think of it as a sealed folder for a conversation, carrying who was on the call (parties), what was said (the dialog, as recording or transcript), what they agreed to (consent), the notes added since (analysis), and a stamped record of every set of hands it has passed through (a tamper evident history). Inside the cover it is a signed JSON object. The same shape works for a phone call, a chat session, a video meeting, or a human to agent conversation.
+A vCon is to a conversation what a PDF is to a document or a [vCard](https://datatracker.ietf.org/doc/html/rfc6350) is to a business card. The same shape works for a phone call, a chat session, an email thread, a video meeting, or a conversation between a person and an AI agent. A simple example is the last call you had with a customer service agent: the vCon identifies the people on the call, carries the recording or transcript, holds analysis such as a summary, and attaches supporting documents.
 
-The name traces to a casual remark by Brian Galvin, past CTO of both Genesys and Nuance, asking why there was no vCard equivalent for conversations. vCon is the answer. The technical definition lives in the IETF VCON working group, with the spec target [`draft-ietf-vcon-vcon-core`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) and syntax parameter `"vcon": "0.4.0"` (1).
+A vCon can be built after the conversation ends or updated while it is still in progress. It can be stored on disk, attached to an email, or sent across a network. When it leaves the security domain that built it, the core draft says it SHOULD be signed (JWS) or encrypted (JWE). A signed vCon is tamper-evident: any change after signing invalidates the signature. Signing is a recommendation, so an unsigned vCon is still a valid vCon.
 
-Like PDF and vCard, vCon is open and carries no intellectual property encumbrance. Data formats cannot be patented in most jurisdictions, and vCon was designed that way on purpose.
+## Why conversations need a file
 
-## Why this matters now
+Conversations carry decisions, negotiations, commitments and complaints, yet they have rarely existed as one coherent digital object. A recording lives in one platform, the transcript in another, consent records somewhere else, and AI summaries get copied into a CRM. Every tool sees a fragment.
 
-The original use case was contact center recording. Since 2024 the stakes have widened. Four forces are pushing the same direction at once.
+That was tolerable while people reviewed a handful of calls. It stops being tolerable when models and agents summarize, classify and act on every conversation. A model reasoning over a summary of a transcript that has been detached from its recording and its consent record is working from a partial copy, and it fills the gaps by inference.
 
-**Agentic AI is moving into production.** Agents are starting to talk to customers and to each other. There is no shared record of what an agent said, on whose behalf, or under what authority. Without that record, there is nothing for a regulator, a customer, or a downstream system to verify against.
+Other kinds of content crossed this line long ago. Documents got portable formats, calendars got iCalendar, contacts got vCard, and ecosystems formed around each. vCon proposes the same for conversations: one object that keeps the media, the participants, the analysis and the related records together as the conversation moves between systems. The [Conserver](../conserver/conserver-introduction.md) is open source infrastructure that builds, enriches, stores and forwards those objects.
 
-**Authentic and synthetic are getting harder to tell apart.** A deepfake injected into an AI pipeline is the conversational analog of malware injected into a software supply chain. vCon pairs with SCITT, the IETF effort for Supply Chain Integrity, Transparency and Trust, so creation, sharing, analysis, and deletion are recorded in an append only ledger that cannot be altered after the fact.
+Three pressures make this more urgent now.
 
-**Consent does not travel today.** Consent typically lives in a privacy policy, a recording disclosure, or a screenshot, separate from the conversation it covers. vCon carries consent inside the file itself, scoped by purpose and time. That is the difference between reporting on a privacy policy and enforcing one.
-
-**The silo model is doubling down.** Proprietary contact center, recording, and AI stacks are extending deeper, on architectures that do not interoperate. Without an open container, every enterprise rebuilds the same data prison in a new color every five years.
-
-vCon is built in the open at the IETF, the standards body responsible for TCP/IP, DNS, HTTP, TLS, and SIP. The process is rough consensus, running code, and a public record. Anyone can read the drafts, join the mailing list, and challenge a design decision in writing.
-
-## Where vCon is running today
-
-vCon is past the pilot stage.
-
-The [BPO that incubated the technology](https://www.strolid.com) runs roughly a quarter million vCon formatted conversations per month through its production pipeline, and that volume has roughly doubled over the past year.
-
-A large financial institution is live with millions of vCon productions per day on a path to a million per hour. That deployment is also the first production instance of real-time vCons, where applications follow a conversation as it happens rather than waiting for the recording.
-
-A [prototype is running at a United Way 211 center](https://frontline.group/frontline-group-launches-vcon-pilot/) where the system listens for context that should change routing. A food-banking question and a sexual-abuse disclosure should not sit in the same queue, and they should not have to wait for tomorrow's manager review to be distinguished.
-
-Dozens of [companies are actively building with vCons today](https://www.pulver.com/members). Telecom, contact center, and CPaaS vendors are leaning in first, which is the usual pattern for an open standard. SIP gave service providers recording. vCon gives them a portable answer for what to do with the recording next.
+* **AI agents talk to customers.** There is no shared record of what an agent said, on whose behalf, or under what authority. A vCon can hold that record, including the agent as a party.
+* **Synthetic media is harder to spot.** A fabricated recording fed into an AI pipeline is the conversational analog of malware injected into a software supply chain. A signed vCon lets a recipient check who produced it and whether it changed.
+* **Permissions do not travel today.** Consent usually lives in a privacy policy or a separate database, apart from the conversation it covers. The [Lawful Basis extension](../extensions/lawful-basis.md) puts the legal grounds for processing inside the vCon, scoped by purpose and time, so any system that receives it can check before acting.
 
 ## Inside a vCon
 
 <div align="right"><figure><img src="../.gitbook/assets/Conserver Pictures (8).jpg" alt=""><figcaption><p>The insides of a vCon</p></figcaption></figure></div>
 
-A vCon has five things inside it.
+Core-04 defines four arrays inside the top-level object, alongside `uuid`, `created_at` and the `vcon` syntax version. The [field reference](field-reference.md) lists every field.
 
-**Dialogues** are the recorded media: audio, video, text, messaging. A vCon can be packed (media inline) for emailing or shipping as one file, or unpacked (media by reference) when the recordings are large enough to live on their own storage.
+**Parties** identify who took part, human or bot, by `tel`, `sip`, `mailto`, `did`, name and organization. A `validation` field records how identity was checked.
 
-**Parties** identify who was in the conversation, and who verified their identity. Identity verification is a first class concept, not an afterthought.
+**Dialog** holds the conversation itself: recordings, video, text messages. Media can be inline, for a vCon that ships as one file, or referenced by URL with a `content_hash`, when the recordings live on their own storage.
 
-**Consent** is carried inside the file, scoped by purpose and duration. When consent is withdrawn or expires, the systems holding the vCon can act on it without consulting an external policy.
+**Analysis** holds what has been derived from the dialog: transcripts, summaries, sentiment, model outputs. Each entry names the dialog it was derived from and the vendor, and optionally the product, that produced it.
 
-**Analysis** holds commentary derived from the dialog: transcription, sentiment, redaction, summarization, model outputs. It is stored as JSON, attachable in layers, and tied to the dialog it refers to.
+**Attachments** carry the context the conversation depended on, such as a sales lead, a CRM record or an inbound form. Extensions use attachments too. A lawful basis record is an attachment with `purpose: "lawful_basis"`.
 
-**Attachments** carry the context the conversation depended on. A sales lead, a CRM record, an inbound form, an authentication challenge, anything that explains why the conversation happened in the first place.
+Consent is not a core component. It is defined by the Lawful Basis extension, one of several [extensions](../extensions/README.md) that build on the core container.
+
+A vCon can also be redacted or amended. A redacted vCon removes data for a given audience and points back to the original, so a recipient can tell it was derived without seeing what was removed. An amended vCon adds to a prior version and references it.
 
 ## The hard part
 
-Conversations are simultaneously the most valuable and the most sensitive data a business holds. The value is obvious: every renewal, complaint, sales objection, support edge case, agent error, and customer insight lives in conversation long before it shows up in structured data. Modern ML, agentic AI, compliance audits, and revenue operations all want this material in volume. The sensitivity is just as obvious. Voices and faces are biometric identifiers a customer cannot change. The disclosures inside a conversation routinely include health, finances, family circumstances, and named third parties who never consented to be in the room at all. Treating one side without the other is the trap. Lock the conversations down and the business loses the most important signal it produces. Open them up and the next breach is catastrophic and unrecoverable.
+Conversations are among the most valuable and the most sensitive data a business holds. Renewals, complaints, objections and agent errors show up in conversation long before they reach structured data. Voices and faces are biometric identifiers a person cannot change, and conversations routinely include health, financial and family details, plus named third parties who never agreed to be discussed.
 
-vCon is built to hold both sides at once:
+vCon gives a business tools for holding both sides:
 
-* **Consent** rides inside the file, scoped by purpose and duration, so each downstream system can see what it is allowed to do and refuse to act outside that scope.&#x20;
-* **Redaction** is a first class operation, recorded in the analysis layer, so a redacted projection can be produced for one audience while the unredacted original remains controlled and inspectable for another.&#x20;
-* **Provenance and integrity** are cryptographic, not procedural, so any version of a vCon can be traced back to who signed it, what was changed, and when.&#x20;
-* **SCITT**, the IETF Supply Chain Integrity, Transparency and Trust ledger, records every lifecycle event (creation, sharing, analysis, deletion) in an append only log that downstream auditors can verify on their own without trusting the operator.&#x20;
+* **Lawful basis in the file.** With the Lawful Basis extension, each downstream system can see what processing is permitted and refuse to act outside that scope.
+* **Redaction as a defined operation.** A redacted vCon can go to one audience while the unredacted original stays controlled.
+* **Signatures.** A signed vCon shows who signed it and whether it has changed since.
+* **A lifecycle record.** The [Lifecycle extension](../extensions/lifecycle.md) records events such as creation, sharing, consent revocation and deletion on a [SCITT](../deep-dives/scitt-supply-chain-integrity-transparency-and-trust.md) transparency service. The log is append-only and tamper-evident, and an auditor can verify receipts without trusting the operator's database.
 
-**None of these mechanisms eliminate the tension**. **They make it manageable, auditable, and verifiable in software, which is the difference between a privacy policy and a privacy posture**.
+None of this removes the tension between value and sensitivity. It makes the handling auditable in software instead of in policy documents.
 
-## What it gets you
+## Data subject rights in practice
 
-* **Privacy and deletion you can actually execute.** vCons make "what data did we capture, and where is it" answerable in a structured way. GDPR style deletion stops being a project and starts being an API call.
-* **Audit and provenance.** Every lifecycle event (creation, sharing, analysis, deletion) can be recorded in a SCITT ledger that downstream auditors can verify on their own. The conversation, and what was done to it, are inspectable separately.
-* **ML lifecycle hygiene.** When a customer revokes consent or asks for deletion, you need to know which models trained on which conversations. vCons make that traceable, which makes the retraining cost bounded.
-* **Consent that travels.** Consent moves with the file. Any system that opens a vCon can see the scope and the expiry, and refuse to act outside them, without phoning home.
-* **An interoperable ecosystem.** Because the format is open, independent vendors can supply redaction, validation, transcription, and analytics tools that all read and write the same object. The buyer is not locked into a single stack.
+When conversations live in vCons, the rights in the GDPR and similar laws map onto concrete operations. The [Lawful Basis draft](https://datatracker.ietf.org/doc/draft-howe-vcon-lawful-basis/) is the document that requires implementations to support them; the core draft does not.
 
-## GDPR, in practice
+* **Access.** A query against structured objects instead of a search across systems.
+* **Rectification.** A new analysis entry or an amended vCon, recorded alongside the original.
+* **Erasure.** Deletion across every store that holds the vCon, with a `vcon_deleted` event recorded under the Lifecycle extension.
+* **Restriction and objection.** The purposes granted in the lawful basis record, which downstream systems can read before processing.
+* **Portability.** The vCon itself, in an open format.
+* **Automated decision making.** The analysis entries name the vendors and products that processed the conversation.
 
-Every data subject right GDPR grants becomes operable rather than aspirational when conversations live in vCons:
+The [Privacy Primer](privacy-primer.md) covers the vocabulary. In GDPR terms a "natural person" is an individual human being, as opposed to a legal person such as a company.
 
-* The **right to be informed** is met by the disclosure stored at capture.&#x20;
-* The **right of access** becomes a query against a structured object instead of a hunt across systems.&#x20;
-* **Rectification** lands as an additional analysis entry with provenance rather than an overwrite.
-* **Erasure** can be issued by the Conserver across every storage location holding the vCon, with the deletion event recorded in SCITT.&#x20;
-* **Restriction of processing** follows the consent scope inside the file, which downstream systems can read directly and refuse to act outside of.&#x20;
-* **Portability** is the format's defining trait, so a subject access request can return the conversations themselves rather than a flat export.&#x20;
-* **The right to object** travels with the file, since revocation of consent propagates rather than waiting on a separate policy.&#x20;
-* And for the **rights around automated decision making**, the analysis layer records every model that touched the conversation, so the subject can be told which decisions used their data.
+## Where vCon is running
+
+The [TADSummit vCon Progress Report](https://blog.tadsummit.com/2025/08/20/vcon-progress-report/) (August 2025) describes an alliance between Strolid and Frontline Group and a vCon pilot with 211 contact centers, the U.S. social services help line. Frontline's own announcement is [here](https://frontline.group/frontline-group-launches-vcon-pilot/). Other public talks and articles are collected under [Talks, Articles and Press](../talks-articles-press/).
+
+## Standards status
+
+As of 2026-10-06, datatracker lists four VCON working group documents, all in the "WG Document" state: [`draft-ietf-vcon-vcon-core-04`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), [`draft-ietf-vcon-overview-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-overview/), [`draft-ietf-vcon-privacy-primer-01`](https://datatracker.ietf.org/doc/draft-ietf-vcon-privacy-primer/) and [`draft-ietf-vcon-cc-extension-02`](https://datatracker.ietf.org/doc/draft-ietf-vcon-cc-extension/). The extensions on this site (lawful basis, lifecycle, WTF transcription, agent session, SIP signaling) are individual drafts.
+
+No IPR disclosures had been filed against `draft-ietf-vcon-vcon-core` as of the same date, according to the [datatracker IPR search](https://datatracker.ietf.org/ipr/search/?draft=draft-ietf-vcon-vcon-core&submit=draft). Anyone can read the drafts, join the [mailing list](https://datatracker.ietf.org/group/vcon/about/) and raise an objection in writing.
 
 ## What to read next
 
-* [vCons are...](vcons-are....md) for the one paragraph mental model
-* [Concepts](concepts.md) for the deeper vocabulary
-* [Privacy Primer](privacy-primer.md) for the lawful basis and PII story
-* [Conserver Quick Start](../conserver/conserver-quick-start.md) to run a vCon pipeline on your machine
-* [IETF VCON working group](https://datatracker.ietf.org/group/vcon/about/) for the primary spec record
-
-## Foot Notes
-
-1. The IETF VCON working group page is at [datatracker.ietf.org/group/vcon/about/](https://datatracker.ietf.org/group/vcon/about/). The core spec target is [`draft-ietf-vcon-vcon-core`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) with syntax parameter `"vcon": "0.4.0"`.
-2. In GDPR terminology, a "natural person" is an individual human being, as opposed to a legal person such as a corporation.
+* [Concepts](concepts.md) for the vocabulary
+* [Field Reference](field-reference.md) for every field and draft revision
+* [Privacy Primer](privacy-primer.md) for lawful basis and personal data
+* [The Journey of a vCon](../conserver/vcon-conveyor-infographic.md) for a vCon moving through a pipeline
+* [Conserver Quick Start](../conserver/conserver-quick-start.md) to run a pipeline on your machine

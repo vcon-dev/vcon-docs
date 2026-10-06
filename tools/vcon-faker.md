@@ -53,4 +53,4 @@ For programmatic generation, the underlying module is callable from Python — u
 ## See also
 
 - [Lawful Basis extension](../extensions/lawful-basis.md) — the spec-correct way to declare synthetic origin
-- [Speech Recognition Test Set use case](../use-cases-studies/speech-recognition-test-set.md) — one of vcon_faker's most common consumers
+- [Comparing transcription engines](../use-cases-studies/patterns.md#comparing-transcription-engines), a common use for synthetic vCons

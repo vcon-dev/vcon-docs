@@ -43,4 +43,4 @@ The adapter has no default basis. `lawful_basis.enabled` defaults to true, but i
 
 - [SIP Signaling extension](../extensions/sip-signaling.md)
 - [Lawful Basis extension](../extensions/lawful-basis.md)
-- [Authenticating and Certifying Conversations](../use-cases-studies/authenticating-and-certifying-conversations.md)
+- [Certifying a conversation](../use-cases-studies/patterns.md#certifying-a-conversation)
