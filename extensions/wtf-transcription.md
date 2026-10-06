@@ -4,7 +4,7 @@ description: World Transcription Format — a vendor-neutral analysis shape for 
 
 # 🗣️ WTF Transcription Extension
 
-**Draft:** [`draft-howe-vcon-wtf-extension`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf/) · **Extension name:** `"wtf"` (often emitted as `"wtf_transcription"` by older library code)
+**Draft:** [`draft-howe-vcon-wtf-extension`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/) · **Extension name:** `"wtf"` (often emitted as `"wtf_transcription"` by older library code)
 
 ## What it is
 
@@ -34,7 +34,7 @@ The WTF document is added as an `analysis[]` entry. The recommended form per the
       "vendor": "openai-whisper",
       "product": "whisper-large-v3",
       "encoding": "json",
-      "schema": "https://datatracker.ietf.org/doc/draft-howe-vcon-wtf/",
+      "schema": "https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/",
       "body": "{\"transcript\":{\"text\":\"Hello, I need help with my account.\",\"language\":\"en\",\"duration\":3.2,\"confidence\":0.95},\"segments\":[{\"id\":0,\"start\":0.0,\"end\":3.2,\"text\":\"Hello, I need help with my account.\",\"confidence\":0.95}],\"metadata\":{\"created_at\":\"2026-05-18T10:00:00Z\",\"provider\":\"whisper\",\"model\":\"whisper-large-v3\"}}"
     }
   ]
@@ -125,7 +125,7 @@ v.vcon_dict["analysis"].append({
     "vendor": "openai-whisper",
     "product": "whisper-large-v3",
     "encoding": "json",
-    "schema": "https://datatracker.ietf.org/doc/draft-howe-vcon-wtf/",
+    "schema": "https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/",
     "body": json.dumps(wtf_doc),
 })
 v.add_extension("wtf")

@@ -24,10 +24,10 @@ vCon's extension mechanism (`extensions[]` + `must_understand[]` / `critical`) i
 
 - [`draft-howe-vcon-lawful-basis`](https://datatracker.ietf.org/doc/draft-howe-vcon-lawful-basis/) — lawful basis for processing (GDPR / privacy compliance)
 - [`draft-howe-vcon-lifecycle`](https://datatracker.ietf.org/doc/draft-howe-vcon-lifecycle/) — SCITT-based lifecycle and audit trail
-- [`draft-howe-vcon-wtf`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf/) — World Transcription Format (multi-vendor transcription)
+- [`draft-howe-vcon-wtf-extension`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/) — World Transcription Format (multi-vendor transcription)
 - [`draft-howe-vcon-agent-session`](https://datatracker.ietf.org/doc/draft-howe-vcon-agent-session/) — verifiable agent-conversation session trace
 - [`draft-howe-vcon-sip-signaling`](https://datatracker.ietf.org/doc/draft-howe-vcon-sip-signaling/) — SIP telephony signaling metadata
-- [`draft-howe-vcon-mcp-session`](https://datatracker.ietf.org/doc/draft-howe-vcon-mcp-session/) — MCP / LLM session attachment
+- [`draft-howe-vcon-agent-session`](https://datatracker.ietf.org/doc/draft-howe-vcon-agent-session/) — AI agent and MCP session records
 
 See the **Extensions** section of this site for a per-extension overview.
 
@@ -49,7 +49,7 @@ See the [Birds of a Feather session at IETF 116, Yokohama](https://youtu.be/EF2O
 
 See the [presentation at TADSummit](https://youtu.be/ZBRJ6FcVblc), Portugal, Nov 2022
 
-See the [presentation at IETF 115, London, Nov 2022](https://youtu.be/dJsPzZITr\_g?t=243)
+See the [presentation at IETF 115, London, Nov 2022](https://youtu.be/dJsPzZITr_g?t=243)
 
 See the [presentation at IIT](https://youtu.be/s-pjgpBOQqc), Chicago, Oct 2022
 
@@ -57,14 +57,14 @@ See the [key note proposal for vCons](https://blog.tadsummit.com/2021/12/08/stro
 
 ## White Papers
 
-Read the [white paper](https://docs.google.com/document/d/1TV8j29knVoOJcZvMHVFDaan0OVfraH\_-nrS5gW4-DEA/edit?usp=sharing)
+Read the [white paper](https://docs.google.com/document/d/1TV8j29knVoOJcZvMHVFDaan0OVfraH_-nrS5gW4-DEA/edit?usp=sharing)
 
 ## Ecosystem
 
 A non-exhaustive set of companies, products, and communities building on vCon today. See [Talks, Articles & Press](../talks-articles-press/) for the full curated list of writing and recordings.
 
 * [Vconic](https://vconic.com) — Strolid's commercial vCon platform, real-time vCon processing and proof-of-value applications.
-* [Strolid: IETF for vCons](https://strolid.com/ietf-for-vcons/) and [Strolid AI Conserver](https://strolid.ai/vcon-conservers/) — the BPO that incubated vCon, running roughly a quarter million conversations per month through the format.
+* [Strolid: IETF for vCons](https://strolid.com/ietf-for-vcons/) — the BPO that incubated vCon, running roughly a quarter million conversations per month through the format.
 * [MindMaking](https://mindmaking.com/) — vCon app store for service providers, turning calls into structured vCons with transcript, summary, action items, and sentiment.
 * [Nimble Ape](https://nimblea.pe/) — Dan Jenkins / CommCon, the open RTC community that hosts early implementer conversations.
 * [py-vcon](https://github.com/py-vcon/py-vcon) — Dan Petrie's reference Python implementation, including `py-vcon-server`.

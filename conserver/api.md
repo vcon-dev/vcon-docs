@@ -416,7 +416,7 @@ Updates the system configuration file.
 
 ## Dead Letter Queue
 
-When vCon processing fails, the vCon UUID is moved to a Dead Letter Queue (DLQ). Each ingress list has an associated DLQ named `{ingress_list}:dlq`.
+When vCon processing fails, the vCon UUID is moved to a Dead Letter Queue (DLQ). Each ingress list has an associated DLQ named `DLQ:{ingress_list}`.
 
 ### Get DLQ Contents
 

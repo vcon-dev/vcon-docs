@@ -1469,7 +1469,7 @@ def create_transcription_enabled_conversation():
         "vendor": "openai-whisper",
         "product": "whisper-1",
         "encoding": "json",
-        "schema": "https://datatracker.ietf.org/doc/draft-howe-vcon-wtf/",
+        "schema": "https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/",
         "body": json.dumps(attachment.to_dict()),
     })
 

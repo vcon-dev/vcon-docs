@@ -6,7 +6,7 @@ description: >-
 
 # 🧰 Tool Reference
 
-The vCon MCP server exposes **37 tools** to LLM clients. They split into seven groups by purpose. For each tool's authoritative response schema, call `describe_response_shape(tool_name)` against the live server — see [Contract Tools](contract-tools.md).
+The vCon MCP server exposes **46 tools** to LLM clients. They split into seven groups by purpose. For each tool's authoritative response schema, call `describe_response_shape(tool_name)` against the live server — see [Contract Tools](contract-tools.md).
 
 The May 2026 contract redesign added a six-tool family (`vcon_fetch`, `vcon_search`, `vcon_capabilities`, `vcon_taxonomy`, `vcon_graph_shape`, `describe_response_shape`) that LLM clients should prefer over the legacy equivalents wherever they overlap.
 

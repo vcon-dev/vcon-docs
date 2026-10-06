@@ -20,7 +20,7 @@ curl -H "x-conserver-api-token: $TOKEN" http://localhost:8000/api/config
 
 # Queue status
 redis-cli LLEN incoming_calls
-redis-cli LLEN incoming_calls:dlq
+redis-cli LLEN DLQ:incoming_calls
 ```
 
 ### View Logs
@@ -182,7 +182,7 @@ docker compose logs conserver-worker --tail 100
 
 ```bash
 # Check DLQ depth
-redis-cli LLEN incoming_calls:dlq
+redis-cli LLEN DLQ:incoming_calls
 
 # Get DLQ contents
 curl -H "x-conserver-api-token: $TOKEN" \
@@ -524,7 +524,7 @@ redis-cli ZSCORE vcons vcon:$VCON_UUID
 
     ```bash
     redis-cli CONFIG SET maxmemory 2gb
-    redis-cli CONFIG SET maxmemory-policy allkeys-lru
+    redis-cli CONFIG SET maxmemory-policy noeviction
     ```
 3.  **Use diet link to reduce vCon size:**
 

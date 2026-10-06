@@ -81,7 +81,7 @@ Prompts are not just instructions. They can include examples, best practices, an
 
 The vCon MCP Server implements MCP to give AI assistants access to conversation data. It provides:
 
-**37 tools** for managing conversations — see [Tool Reference](tool-reference.md) for the full list grouped by category. They cover vCon CRUD, dialog/analysis/attachment management, four kinds of search (metadata, keyword, semantic, hybrid), the May 2026 [contract / discovery surface](contract-tools.md), tag management, analytics, and database introspection.
+**46 tools** for managing conversations — see [Tool Reference](tool-reference.md) for the full list grouped by category. They cover vCon CRUD, dialog/analysis/attachment management, four kinds of search (metadata, keyword, semantic, hybrid), the May 2026 [contract / discovery surface](contract-tools.md), tag management, analytics, and database introspection.
 
 **Resources** that let the assistant directly read conversation data using URI paths. For example, the assistant can request a resource like `vcon://uuid/abc123` to get a specific conversation, or `vcon://uuid/abc123/parties` to get just the participant information.
 

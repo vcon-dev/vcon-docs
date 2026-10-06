@@ -114,7 +114,7 @@ docker run --rm -p 3000:3000 \
   -e SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
   -e API_KEYS="$MCP_API_KEY_1,$MCP_API_KEY_2" \
   -e MCP_TRANSPORT=http \
-  public.ecr.aws/r4g1k2s3/vcon-dev/vcon-mcp:main
+  public.ecr.aws/r4g1k2s3/vcon-dev/vcon-mcp:latest
 ```
 
 The `main` tag tracks the trunk branch. For production, pin to an explicit semver tag (the CI tags every release as `vX.Y.Z`).

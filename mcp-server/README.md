@@ -5,9 +5,9 @@ description: The vCon MCP Server — an open-source Model Context Protocol serve
 
 # MCP Server
 
-The vCon MCP Server is the canonical way for AI assistants — Claude, Cursor, custom agents — to read, write, and reason about vCon conversation data. It speaks the [Model Context Protocol](https://modelcontextprotocol.io) over stdio or Streamable HTTP, exposes **37 tools** grouped into seven categories, and is backed by a Supabase Postgres deployment with optional Redis caching and pgvector-based semantic search.
+The vCon MCP Server is the canonical way for AI assistants — Claude, Cursor, custom agents — to read, write, and reason about vCon conversation data. It speaks the [Model Context Protocol](https://modelcontextprotocol.io) over stdio or Streamable HTTP, exposes **46 tools** grouped into seven categories, and is backed by a Supabase Postgres deployment with optional Redis caching and pgvector-based semantic search.
 
-The code lives at [vcon-dev/vcon-mcp](https://github.com/vcon-dev/vcon-mcp). It's MIT-licensed, TypeScript, and ships as both an npm package (`vcon-mcp`) and a Docker image (`public.ecr.aws/r4g1k2s3/vcon-dev/vcon-mcp:main`).
+The code lives at [vcon-dev/vcon-mcp](https://github.com/vcon-dev/vcon-mcp). It's MIT-licensed, TypeScript, and ships as both an npm package (`vcon-mcp`) and a Docker image (`public.ecr.aws/r4g1k2s3/vcon-dev/vcon-mcp:latest`).
 
 ## When to use it
 

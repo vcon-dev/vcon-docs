@@ -18,7 +18,7 @@ Under `-04`, a JSON-encoded `body` (`encoding="json"`) is the parsed JSON value 
 
 ## WTF Transcription
 
-📄 **Spec:** [WTF Transcription Extension](../extensions/wtf-transcription.md) · [`draft-howe-vcon-wtf-extension`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf/) · **Extension name:** `"wtf"` (older code uses `"wtf_transcription"`)
+📄 **Spec:** [WTF Transcription Extension](../extensions/wtf-transcription.md) · [`draft-howe-vcon-wtf-extension`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/) · **Extension name:** `"wtf"` (older code uses `"wtf_transcription"`)
 
 Use WTF when your adapter calls a speech-to-text provider — Whisper, Deepgram, AssemblyAI, ElevenLabs, AWS, Azure, Google. The point is that downstream tooling shouldn't have to special-case each provider's output.
 
@@ -285,7 +285,7 @@ There's no ordering constraint and no limit. List them all, then add the corresp
 
 When you need authoritative answers, read the drafts — not this cookbook:
 
-* [WTF Transcription](../extensions/wtf-transcription.md) → [`draft-howe-vcon-wtf-extension`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf/)
+* [WTF Transcription](../extensions/wtf-transcription.md) → [`draft-howe-vcon-wtf-extension`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/)
 * [Lawful Basis](../extensions/lawful-basis.md) → [`draft-howe-vcon-lawful-basis`](https://datatracker.ietf.org/doc/draft-howe-vcon-lawful-basis/)
 * [SIP Signaling](../extensions/sip-signaling.md) → [`draft-howe-vcon-sip-signaling`](https://datatracker.ietf.org/doc/draft-howe-vcon-sip-signaling/)
 * [Agent Session](../extensions/agent-session.md) → [`draft-howe-vcon-agent-session`](https://datatracker.ietf.org/doc/draft-howe-vcon-agent-session/)

@@ -171,7 +171,7 @@ The framework's format-agnostic design and standardized APIs ensure that organiz
 * SCITT Community. "SCITT API Emulator Reference Implementation." https://github.com/scitt-community/scitt-api-emulator
 * Internet Engineering Task Force. "CBOR Object Signing and Encryption (COSE)." RFC 8152. https://datatracker.ietf.org/doc/html/rfc8152
 * Cybersecurity and Infrastructure Security Agency. "Software Supply Chain Security Guidance." https://www.cisa.gov/software-supply-chain-security
-* SCITT Receipts Format Specification. "SCITT Receipts." https://datatracker.ietf.org/doc/draft-ietf-scitt-receipts/
+* COSE Receipts (Merkle tree proofs). https://datatracker.ietf.org/doc/draft-ietf-cose-merkle-tree-proofs/
 * Package URL Specification. "A minimal specification for purl." https://github.com/package-url/purl-spec
 * Supply-chain Levels for Software Artifacts. "SLSA Framework." https://slsa.dev/
 * OpenSSF Sigstore Project. "A new standard for signing, verifying and protecting software." https://www.sigstore.dev/

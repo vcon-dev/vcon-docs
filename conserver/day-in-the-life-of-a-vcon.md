@@ -195,7 +195,7 @@ receipt back. One write, many destinations, each tuned to a different reader. Se
 [Storage](/conserver/storage.md).
 
 Had any link thrown an exception, or the chain run past its 600 second timeout, the UUID would have
-gone to `service_calls:dlq` instead, where it waits seven days for someone to inspect it and
+gone to `DLQ:service_calls` instead, where it waits seven days for someone to inspect it and
 `POST /dlq/reprocess` sends it back through. Nothing is dropped silently.
 
 ## 11. The MCP server
@@ -203,7 +203,7 @@ gone to `service_calls:dlq` instead, where it waits seven days for someone to in
 The conserver's work is done. It processed the conversation once, on arrival, whether or not anyone
 ever asks about it. Asking is the [vCon MCP server](/mcp-server/README.md)'s job.
 
-The MCP server is the read path over the same store. It exposes 37 tools over the Model Context
+The MCP server is the read path over the same store. It exposes 46 tools over the Model Context
 Protocol, so an AI assistant can search conversations by metadata, by keyword, by meaning, or by
 a hybrid of the two, then fetch one record or one component of one. It reads Redis first and
 falls back to Postgres, so a conversation someone looked at a moment ago comes back in a couple of

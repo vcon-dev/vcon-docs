@@ -351,7 +351,7 @@ A chain configuration includes:
 2. Links execute sequentially (any can stop processing by returning `None`)
 3. vCon is stored in all configured storage backends
 4. UUID is added to egress lists
-5. If processing fails, UUID moves to DLQ (`{ingress_list}:dlq`)
+5. If processing fails, UUID moves to DLQ (`DLQ:{ingress_list}`)
 
 ***
 

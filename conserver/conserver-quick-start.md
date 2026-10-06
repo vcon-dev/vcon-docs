@@ -84,8 +84,8 @@ chains:
 When running a conserver in "standalone mode" (using vcon-admin as a simple portal, which will also provide the basic versions of all of the apps and databases), it will automatically register a domain name and generate a valid SSL certificate using LetsEncrypt, assuming that the domain name has an A record pointing to your server.
 
 ```
-export DNS_REGISTRATION_EMAIL=mulligan.mccarthy@strolid.com
-export DNS_HOST=mulligan.strolid.net
+export DNS_REGISTRATION_EMAIL=admin@example.com
+export DNS_HOST=conserver.example.com
 ```
 
 ### Start the Conserver

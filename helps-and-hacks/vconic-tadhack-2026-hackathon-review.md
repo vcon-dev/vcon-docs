@@ -6,7 +6,7 @@ description: A review of all 16 submissions from the VCONIC TADHack 2026 hackath
 
 > **Event:** [VCONIC TADHack](https://blog.tadhack.com/2025/12/19/vconic-tadhack/) | March 7-8, 2026 | Virtual
 >
-> **Core technology:** [vCon](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-container/) (IETF standard) | [vCon MCP Server](https://github.com/vcon-dev/vcon-mcp) ([docs](https://www.conserver.io/mcp-server/what-is-the-vcon-mcp-server) | [live](https://mcp.conserver.io/))
+> **Core technology:** [vCon](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) (IETF standard) | [vCon MCP Server](https://github.com/vcon-dev/vcon-mcp) ([docs](https://www.conserver.io/mcp-server/what-is-the-vcon-mcp-server) | [live](https://mcp.conserver.io/))
 
 ## Overview
 
@@ -348,7 +348,7 @@ A personal life intelligence system that captures everyday moments and turns the
 
 **vCon capabilities demonstrated:**
 - JSON-LD and JSON-LD-EX extensions for semantic enrichment
-- Cryptographic signing and integrity verification ([JWS](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-container/))
+- Cryptographic signing and integrity verification ([JWS](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/))
 - Tamper detection — changing a single field breaks the signature
 - MongoDB vector search over vCon embeddings
 - Confidence labels for agentic AI trust decisions
@@ -463,7 +463,7 @@ The pattern of "connect the MCP server, then query with natural language" appear
 
 ### Specifications and Standards
 
-- [vCon Container Format](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-container/) — The core IETF standard
+- [vCon Core Format](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) — The core IETF standard
 - [vCon Working Group](https://datatracker.ietf.org/group/vcon/about/) — IETF working group developing the standard
 - [vCon Lawful Basis Extension](https://datatracker.ietf.org/doc/draft-howe-vcon-lawful-basis/) — Consent and legal basis tracking
 - [vCon Lifecycle Management](https://datatracker.ietf.org/doc/draft-howe-vcon-lifecycle/) — SCITT-based transparency services

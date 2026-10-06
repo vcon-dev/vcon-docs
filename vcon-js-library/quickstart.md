@@ -66,7 +66,7 @@ vcon.addAnalysis({
   vendor: 'openai-whisper',
   product: 'whisper-large-v3',
   encoding: 'json',
-  schema: 'https://datatracker.ietf.org/doc/draft-howe-vcon-wtf/',
+  schema: 'https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/',
   body: JSON.stringify({
     transcript: { text: 'Hello, I need help.', language: 'en', duration: 1.5, confidence: 0.95 },
     segments: [{ id: 0, start: 0.0, end: 1.5, text: 'Hello, I need help.', confidence: 0.95 }],

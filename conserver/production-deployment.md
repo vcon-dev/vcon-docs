@@ -128,7 +128,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy noeviction
     volumes:
       - redis_data:/data
     healthcheck:
@@ -250,7 +250,7 @@ For production Redis deployments:
 ```conf
 # redis.conf
 maxmemory 4gb
-maxmemory-policy allkeys-lru
+maxmemory-policy noeviction
 appendonly yes
 appendfsync everysec
 
@@ -274,7 +274,7 @@ queue_length = r.llen('incoming_calls')
 print(f"Queue depth: {queue_length}")
 
 # Check DLQ for failures
-dlq_length = r.llen('incoming_calls:dlq')
+dlq_length = r.llen('DLQ:incoming_calls')
 print(f"DLQ depth: {dlq_length}")
 ```
 

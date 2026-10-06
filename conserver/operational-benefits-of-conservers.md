@@ -10,7 +10,7 @@ The framing is not original to Conserver. Jeff Pulver describes vCon as the equi
 
 ## What is already in production
 
-The volumes below are reported in the [vCon Progress Report (TADSummit, Aug 2025)](https://blog.tadsummit.com/2025/08/20/vcon-progress-report/) and on [Strolid's vCon Conserver page](https://strolid.ai/vcon-conservers/).
+The volumes below are reported in the [vCon Progress Report (TADSummit, Aug 2025)](https://blog.tadsummit.com/2025/08/20/vcon-progress-report/).
 
 * **Roughly a quarter million vCons per month** at the BPO that incubated the technology, with volume roughly doubling year over year.
 * **Millions of vCons per day** at a large financial institution on a path to a million per hour. Same deployment is also the first production instance of real-time vCons.
@@ -21,7 +21,7 @@ The shape of the operational benefit below is what these deployments have in com
 
 ## Deployment flexibility
 
-Conservers run as a chain of stateless Python processes against Redis-backed queues and configurable storage backends, deployable in cloud, on-prem, hybrid, or edge configurations. The architecture is documented in [Conserver Introduction](conserver-introduction.md) and the [storage backends reference](storage.md). Strolid's public description of the same pattern is on [strolid.ai/vcon-conservers](https://strolid.ai/vcon-conservers/).
+Conservers run as a chain of stateless Python processes against Redis-backed queues and configurable storage backends, deployable in cloud, on-prem, hybrid, or edge configurations. The architecture is documented in [Conserver Introduction](conserver-introduction.md) and the [storage backends reference](storage.md).
 
 This is what enables the same Conserver code to run inside a financial institution's perimeter and inside a BPO's multi-tenant cloud without forking. Wieberneit calls this out specifically in [The vCon Reality Check](https://aheadcrm.medium.com/the-vcon-reality-check-moving-beyond-generative-hype-to-actual-conversational-architecture-41197017fb9b) as the property enterprises ask about first.
 
