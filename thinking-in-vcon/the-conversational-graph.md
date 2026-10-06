@@ -7,8 +7,8 @@ description: >-
 
 # 🕸️ The Conversational Graph
 
-{% embed url="https://www.youtube.com/watch?v=Wp-YRAlYf_8" %}
-Thinking in vCon: The Conversational Graph — 22:09, one case followed all the way through.
+{% embed url="https://www.youtube.com/watch?v=FXoIxbxsOs0" %}
+Thinking in vCon: The Conversational Graph — 22:08, one case followed all the way through.
 {% endembed %}
 
 ## The argument

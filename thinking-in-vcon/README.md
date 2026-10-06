@@ -41,8 +41,6 @@ Why conversations have never had a standard file format the way documents, image
 
 Short cuts live on the [conserver channel](https://www.youtube.com/@conserverio) and are cross-posted to LinkedIn and Facebook. They stand alone: one idea, a couple of minutes.
 
-* [Privacy (short)](https://www.youtube.com/watch?v=XAAaSRiyBe4) — 4:52 — consent that travels with the recording
-
 Everything in one place, in series order: the [Thinking in vCon playlist](https://www.youtube.com/playlist?list=PLaxNQ-GrpFLc) on YouTube.
 
 ## Related

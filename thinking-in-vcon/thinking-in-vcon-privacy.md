@@ -22,10 +22,6 @@ Consent travels with the dialog, recorded per purpose in the object itself rathe
 
 The practical consequence is that answering a right-to-know or right-to-erasure request stops being a project and becomes a query against objects that already carry the answer.
 
-## Watch the short version
-
-Five minutes instead of fifteen: [Privacy (short)](https://www.youtube.com/watch?v=XAAaSRiyBe4) makes the same argument without the worked example.
-
 ## Go deeper
 
 - [Privacy Primer](../vcons/privacy-primer.md) — a short orientation to data and communications privacy for people building or reviewing vCon-based systems
