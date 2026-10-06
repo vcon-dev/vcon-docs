@@ -1,150 +1,220 @@
 ---
 icon: question
+description: The vCon MCP Server is the read path for conversation data. What it is, what it lets an AI assistant ask, and how it keeps a model honest about a store it has never seen.
 ---
 
 # What is the vCon MCP Server?
 
-Have you ever wanted to ask an AI assistant about past conversations? Maybe you want to find all the times a customer called about billing issues, or analyze patterns in support calls, or track what happened in a sales meeting. The vCon MCP Server makes this possible.
+The vCon MCP Server is the read path for conversation data. Once a conversation has been
+captured, enriched and stored as a vCon, somebody is going to ask a question about it, and
+increasingly that somebody is a language model. The server is what the model talks to. It speaks
+the Model Context Protocol, exposes the store as a set of tools whose definitions the model reads
+before it uses them, and does the validation, filtering and budgeting that a model cannot be
+trusted to do for itself.
 
-This post explains what the vCon MCP Server is, what problem it solves, and why it might be useful for you.
+It is open source under an MIT license, written in TypeScript, and lives at
+[github.com/vcon-dev/vcon-mcp](https://github.com/vcon-dev/vcon-mcp). It ships as an npm package
+(`vcon-mcp`) and a Docker image, runs over stdio or Streamable HTTP, and sits over a Supabase
+Postgres deployment with optional Redis caching and pgvector for semantic search.
 
-### The Problem with Conversation Data
+<figure><img src="figures/conserver-and-mcp.svg" alt="The conserver is the write path and the MCP server is the read path over one shared store"><figcaption>Two systems, one store. The conserver writes the record. The MCP server answers questions about it.</figcaption></figure>
 
-Most businesses have conversations happening everywhere. Phone calls, video meetings, chat messages, emails. These conversations contain valuable information, but they are usually scattered across different systems. Each system stores data in its own format. This makes it hard to:
+## The problem it solves
 
-* Search across different types of conversations
-* Analyze patterns over time
-* Share conversation data between tools
-* Work with AI assistants on conversation history
-* Maintain privacy and compliance standards
+The [conserver](/conserver/README.md)'s job ends when the record is stored. The question arrives
+later. A support lead asks which complaints went up this month. A sales manager asks which deals
+have no agreed next step. A compliance officer asks what happened to one call on one afternoon.
+Not long ago each of those was a report somebody built. Now each is a sentence typed at an
+assistant.
 
-You might have customer support calls in one system, sales meetings in another, and email threads in yet another. To get a complete picture, you would need to check all three systems separately. That takes time and effort.
+Between the sentence and the store there has to be something, because you cannot hand a model a
+database connection. It does not know your schema. It will guess at tag values. It will write a
+query that returns forty megabytes into a context window that holds two, and when the query is
+wrong it will not know. An MCP server is that something. It publishes what can be asked, in a
+form the model reads at the start of every session, checks every request against the vCon
+standard, and returns answers in the shape the model was told to expect.
 
-### What is vCon?
+Two open standards meet here. [vCon](/vcons/a-vcon-primer.md) is the record, so what the server
+returns is portable and not tied to the system that captured it. [MCP](/mcp-server/mcp-and-ai.md)
+is the way the model asks, so an assistant that has learned to work against one vCon deployment
+can work against another. Neither standard is controlled by a single company, and that is the
+point of building on both.
 
-vCon stands for Virtual Conversation. It is an IETF standard format for representing conversations. Think of it like PDF for conversations. Just as PDF is a standard format that works across different computers and programs, vCon is a standard format that works across different systems.
+## What an assistant can do with it
 
-A vCon file can contain:
+The server exposes 46 tools in seven groups. An assistant reads the tool definitions and picks
+the one that fits the question.
 
-* The actual conversation content, whether it came from voice, video, text, or email
-* Information about who participated in the conversation
-* Analysis results from AI, like transcripts, sentiment scores, or summaries
-* Attachments like documents or images related to the conversation
-* Privacy markers that track consent and can hide sensitive information
+| Group | Tools | What they do |
+| ----- | ----- | ------------ |
+| vCon CRUD | 17 | Create, fetch, update and delete a vCon; append a dialog, an analysis or an attachment. Any dialog, analysis or attachment can be updated or removed by index, and parties can be added, updated or removed. Templates for a phone call, a chat, an email thread and a video meeting |
+| Contract and discovery | 7 | `vcon_fetch`, `vcon_search`, `vcon_capabilities`, `vcon_taxonomy`, `vcon_graph_shape`, `describe_response_shape`, `vcon_aggregate`. Server side rollups, for example by dealer, via `vcon_aggregate`. The surface built for LLM clients, added May 2026 |
+| Search, legacy | 4 | Metadata, full text, semantic and hybrid search. Still supported. New work uses `vcon_search` |
+| Tags | 5 | Add, list, search by and clear tags. Tags are an attachment with `purpose: "tags"`, materialized in the database so filtering on them is cheap |
+| Analytics | 6 | Growth, content, attachment and tag distributions, and health metrics for the corpus as a whole |
+| Database inspection | 5 | Shape, statistics, size, search limits and `EXPLAIN` plans |
+| Schema and examples | 2 | The vCon JSON Schema and a set of example vCons from minimal to full featured |
 
-The key benefit is portability. If you store conversations in vCon format, you can move them between systems without losing data. You are not locked into one vendor's system. You own your conversation data in a standard format.
+Alongside the tools the server publishes read only resources at URIs like `vcon://v1/vcons/{uuid}`
+and `vcon://v1/vcons/{uuid}/parties`, and prompts that tell the assistant how to phrase a good query.
+The full list is in the [Tool Reference](/mcp-server/tool-reference.md).
 
-### What is MCP?
+## Four ways to search
 
-MCP stands for Model Context Protocol. It is a way for AI assistants to use external tools and data sources. Without MCP, AI assistants can only work with the information they learned during training. They cannot access your live data or perform actions in your systems.
+* **Metadata.** Subject, participant, dates, tags. B-tree indexes. Use it when you know what you are looking for.
+* **Keyword.** Words in the dialog and analysis bodies. GIN indexes with trigram matching, so a
+  typo does not lose the match.
+* **Semantic.** Meaning rather than words. Each vCon's subject, dialog and analysis text carries a 384 dimension embedding in
+  pgvector under an HNSW index, generated by a queue so writes never wait on it.
+* **Hybrid.** Both at once, merged under a `semantic_weight` you set. The
+  best general answer when you are not sure which kind of question you have.
 
-With MCP, an AI assistant can:
+Keyword, semantic, hybrid and tag searches are database functions that run where the data is. The assistant does not need to
+know any of this. It needs to know that a literal word wants keyword, a concept wants semantic,
+a UUID or a date range wants metadata, and doubt wants hybrid, and the tool descriptions tell it
+so.
 
-* Read data from your databases
-* Perform actions using your tools
-* Access real-time information
-* Maintain context about what you are working on
+## Built for a client that does not know the server
 
-Think of MCP like giving an AI assistant access to your toolbox. The assistant can see what tools are available, understand what each tool does, and use them when you ask. This makes AI assistants much more useful for real work.
+Most MCP servers assume the client knows the server's shape ahead of time. When the client is a
+model that assumption fails in four ways. The model does not know which extensions this
+deployment carries. It cannot guess how this deployment spells a dealer ID or a campaign name. It
+needs to know how big an answer will be before the answer arrives, or it overflows its own
+context. And it is bad at offset pagination.
 
-### What is the vCon MCP Server?
+In May 2026 the server gained seven [contract tools](/mcp-server/contract-tools.md) that fix this
+by making the server describe itself.
 
-The vCon MCP Server combines these two ideas. It is a server that lets AI assistants work with conversation data stored in vCon format. You connect the server to an AI assistant like Claude, and then the assistant can:
+<figure><img src="figures/mcp-contract-session.svg" alt="A six step session: four discovery calls once, then a search and fetch loop"><figcaption>Four cheap calls at the start of a session, then the working loop.</figcaption></figure>
 
-* Create new conversation records
-* Search through historical conversations
-* Analyze conversations for insights
-* Organize conversations with tags
-* Answer questions about your conversation data
+`vcon_capabilities` returns what this server supports: the field groups a fetch can include, the
+search modes, the pagination rules, the byte budgets. `vcon_taxonomy` returns the vocabulary the
+corpus actually uses, the tag keys with sample values, the attachment purposes, the fields this
+deployment expects to be populated. `vcon_graph_shape` returns what is really in the store, how
+many transcripts, how many of each tag, which analysis types travel with which attachments.
+`describe_response_shape` returns the JSON Schema and an example payload for any tool, so a
+client can plan a multi step query knowing which fields will be there downstream. Then
+`vcon_search` and `vcon_fetch` do the work. `vcon_aggregate` returns server side counts and rollups grouped by a field such as dealer, so the model does not page through records to count them.
 
-The server speaks the MCP protocol, which AI assistants understand. When you ask the assistant to do something with conversation data, it uses the server's tools to get the job done.
+Three rules hold across all seven.
 
-### What Can It Do?
+* **One envelope.** A single item comes back as `{ok, item}`. A list comes back as
+  `{ok, items, page}` with an opaque `next_cursor`. A failure comes back as
+  `{ok: false, error: {code, message}}`. The shape never varies with the content.
+* **A byte budget, enforced.** Fetch and search take `max_response_bytes`, 250,000 by default, and an `include` list naming only the parts the client will use. A response that would exceed the
+  budget returns `RESPONSE_TOO_LARGE` rather than a truncated answer that looks whole.
+* **Refuse rather than guess.** An ambiguous search returns a structured error. A model can
+  recover from a clean error. It cannot recover from a wrong answer it does not know is wrong.
 
-Here are the main capabilities:
+A well behaved client calls the four discovery tools once per session and caches the result.
+The search and fetch loop is where the time goes.
 
-**Store conversations** - The server can store conversations in vCon format, following the IETF standard exactly.
+## How a question is answered
 
-**Search conversations** - You can search in four different ways:
+The server is three layers, and a request passes down through them and back up.
 
-* Basic filtering by subject, participants, or dates
-* Keyword search that looks for exact words
-* Semantic search that finds conversations by meaning, even if the exact words are different
-* Hybrid search that combines keyword and semantic approaches
+1. **The MCP layer** receives a JSON-RPC message over stdio or HTTP, works out which tool,
+   resource or prompt is being asked for, and hands it down.
+2. **The business logic layer** validates and executes. The validation engine checks the request
+   against the IETF specification before anything touches the database: at least one party,
+   valid dialog types, a vendor on every analysis, valid encodings, `critical` entries listed in
+   `extensions`, ISO 8601 dates. A request that fails
+   comes back with a message that says what is wrong. The query engine runs everything else, and writes the parent row first and then the children.
+3. **The database layer** is Postgres on Supabase, and the vCon is stored normalized rather than
+   as one JSON document. Eight tables: `vcons`, `parties`, `dialog`, `analysis`, `attachments`,
+   `groups`, `party_history` and `vcon_embeddings`. A search by participant reads one table
+   instead of every record. Adding a dialog entry touches one row. The engine joins the tables
+   back into a complete vCon on the way out.
 
-**Organize with tags** - You can add tags to conversations for easy organization and filtering. Tags work like labels you might put on file folders.
+Plugins hook the business logic layer, before and after reads, searches and writes, which is
+where audit logging and access control live. With Redis configured, reads check the cache first
+and fall back to Postgres, which is faster, and an update invalidates the cached copy so the
+next read is fresh.
 
-**Analyze and monitor** - The server can provide analytics about your conversation database, showing growth trends, content patterns, and health metrics.
+<figure><img src="figures/mcp-request-path.svg" alt="A request passes down through the MCP layer, the business logic layer and the database layer, and the answer comes back up the same way"><figcaption>Down through three layers, back up through the same three. Plugins hook the business logic layer on the way in and on the way out.</figcaption></figure>
 
-**Manage components** - You can add or update different parts of a conversation, like adding analysis results or attaching files, without recreating the whole conversation.
+Two details matter more than they look. Tags are stored as an attachment inside the vCon, so
+they stay in the standard, and a materialized view (`vcon_tags_mv`) turns them into rows so a
+tag filter costs nothing at query time. And the server emits and accepts the spec correct field
+names `amended` and `critical` while a compatibility view (`vcons_legacy`) serves the older
+`appended` and `must_support` to clients that have not moved; see
+[Field-Name Migration](/mcp-server/field-name-migration.md).
 
-**Use templates** - The server includes templates for common conversation types, making it easier to create new records.
+## The conserver and the MCP server
 
-**Extend with plugins** - The server supports plugins that can add custom functionality, like privacy controls or compliance features.
+Both deal in vCons and they are easy to confuse. The conserver is the write path. It takes a
+conversation that has just happened, runs it through a chain of links, transcribes, summarizes,
+tags, signs, and stores it. It is queue driven, it scales by adding workers, and it runs whether or
+not anyone is asking it anything.
 
-### Who Would Use This?
+The MCP server is the read path. It runs only when something asks. They share a store: the
+conserver writes into the Postgres database the MCP server reads, and both use the same Redis,
+write through on one side and cache first on the other. Neither calls the other and nothing is
+copied between them. A vCon the conserver finished a second ago is answerable now.
 
-Several groups of people might find this useful:
+The line to hold is this. The conserver decides what the record becomes. The MCP server decides
+what can be asked of it. Enrichment does not belong in a tool call, because it has to happen
+once per conversation whether or not anybody asks. Query does not belong in a chain, because a
+chain runs on arrival and the question arrives later. See
+[MCP and Conserver Together](/mcp-server/mcp-and-conserver-together.md).
 
-**Customer support teams** - Store and search support calls, track issues, analyze agent performance, and maintain compliance records.
+## Who is allowed to ask
 
-**Sales teams** - Record sales conversations, extract action items, analyze what works, and generate meeting summaries.
+The read path is where conversation data leaves the building, so the server is strict about it.
 
-**Compliance and legal teams** - Maintain conversation archives, apply privacy controls, track consent, and generate audit reports.
+* **Authentication is on by default.** Clients present a bearer token from the `API_KEYS` list.
+  If no keys are configured and authentication is required, the MCP endpoint answers every
+  request with 503 rather than come up open. Keys in `API_KEYS` get every tool. Keys in
+  `API_KEYS_READONLY` get only read tools, and `MCP_TOOLS_PROFILE` narrows the tool set per
+  deployment. OAuth is also supported.
+* **Tenants are separated in the database.** With `RLS_ENABLED=true` and `CURRENT_TENANT_ID` set, the server sets
+  the tenant on its database session and Postgres Row Level Security enforces the boundary. One
+  instance serves one tenant.
+* **Plugins sit on the read.** Plugins hook `get_vcon` and `search_vcons`. The contract tools, the other search
+  tools and resource reads do not run plugin hooks today, so a redaction plugin does not cover
+  them. Consent management, privacy request handling and retention enforcement can be built as
+  plugins for regulated deployments. None ship with the server.
+* **No credentials are stored.** Over HTTP the server keeps in-memory sessions by default, and with `MCP_HTTP_STATELESS=true` it holds no session state. It stores no credentials. Keys are read
+  at startup and rotated by restarting. Supabase encrypts data at rest and in transit.
 
-**Researchers** - Collect conversation datasets, study communication patterns, and build training data for machine learning models.
+Because a vCon carries its own lawful basis attachment, a read side plugin has what it needs in
+the record itself: who consented, to what purpose, until when. The permission travels with the
+conversation instead of living in a policy document somewhere else.
 
-**Developers** - Build applications that work with conversation data using a standard format and API.
+## Running it
 
-**Business analysts** - Search across conversations to find insights, track trends, and answer questions about customer interactions.
+Two transports, chosen by `MCP_TRANSPORT`. Over **stdio**, the default, a host such as Claude
+Desktop launches the server as a subprocess and talks to it on standard input and output, with
+no ports exposed. Over **Streamable HTTP**, remote agents and web clients connect across the
+network, stateful with an `Mcp-Session-Id` header or stateless behind a load balancer, with
+optional server sent events, allowed origins and DNS rebinding protection.
 
-### A Simple Example
+You need a Supabase Postgres project (the free tier is fine to start) with the migrations from
+the repository applied, an MCP client, and for semantic search an embedding provider, OpenAI when `OPENAI_API_KEY` is set, otherwise Supabase's built-in gte-small. Redis is optional. Then either `npx -y vcon-mcp` from a Claude Desktop configuration, or
+the published Docker image, `public.ecr.aws/r4g1k2s3/vcon-dev/vcon-mcp:latest`. Pin a version tag such as `:1.9.2` in
+production.
 
-Imagine you run a customer support team. You have thousands of support calls stored in a system. You want to know: "What are customers complaining about most this month?"
+In stateless mode it scales by running more of it behind a load balancer. Each tool call emits
+an OpenTelemetry span with the tool name and success, a duration metric, and a cache-hit
+attribute on reads. See
+[Transport and Deployment](/mcp-server/transport-and-deployment.md) for the full environment
+reference and three recipes.
 
-Without the vCon MCP Server, you might need to:
+## Where to go next
 
-1. Export data from your phone system
-2. Load it into a spreadsheet or database
-3. Write queries or scripts to analyze it
-4. Create reports manually
+* [MCP and AI](/mcp-server/mcp-and-ai.md) explains how an assistant uses tools, resources and
+  prompts.
+* [What the vCon MCP Server Can Do](/mcp-server/what-the-vcon-mcp-server-can-do.md) walks the
+  capabilities in full.
+* [Contract Tools](/mcp-server/contract-tools.md) is the design behind the LLM facing surface.
+* [Tool Reference](/mcp-server/tool-reference.md) lists every tool by group.
+* [How the vCon MCP Server is Built](/mcp-server/how-the-vcon-mcp-server-is-built.md) covers the
+  architecture, the schema and the request flow.
+* [Transport and Deployment](/mcp-server/transport-and-deployment.md) is how to run one.
+* [MCP and Conserver Together](/mcp-server/mcp-and-conserver-together.md) covers the write path
+  and the read path side by side.
+* [Business Cases for MCP Servers and vCon](/mcp-server/business-cases-for-mcp-servers-and-vcon.md)
+  is when to reach for this.
 
-With the vCon MCP Server, you can simply ask your AI assistant: "What are customers complaining about most this month?" The assistant uses the server's search tools to find relevant conversations, analyzes them, and gives you an answer. If you want more detail, you can ask follow-up questions. The assistant has access to all your conversation data through the server.
-
-### Why Standards Matter
-
-Both vCon and MCP are open standards. This means:
-
-* They are not controlled by a single company
-* Anyone can implement them
-* They work across different systems
-* They evolve through community input
-* They are documented publicly
-
-Using standards gives you options. If you build on top of the vCon MCP Server and later want to switch to a different system, your data is in a standard format. You are not locked in. You also benefit from the work others do with these standards. New tools and integrations appear as the standards grow.
-
-### Getting Started
-
-The vCon MCP Server is open source ([vcon-dev/vcon-mcp](https://github.com/vcon-dev/vcon-mcp), MIT licensed) and free to use. The repo ships a TypeScript implementation that targets Node.js 20+, with a published Docker image and an installable `vcon-mcp` npm package.
-
-Minimum requirements:
-
-* A Supabase Postgres deployment for the database (free tier is fine to start)
-* An MCP-aware client — Claude Desktop, the MCP inspector CLI, or any custom client that speaks MCP
-* For semantic search: an OpenAI API key (or another embedding provider — the model is configurable)
-* For caching, observability, or HTTP transport: see [Transport and Deployment](transport-and-deployment.md)
-
-See [Transport and Deployment](transport-and-deployment.md) for the full environment-variable reference and three deployment recipes (local development, Docker, Claude Desktop).
-
-### What's Next?
-
-This was a high-level overview. The other pages in this section go deeper:
-
-* [MCP and AI](mcp-and-ai.md) — how MCP works with AI assistants in more detail
-* [What the vCon MCP Server Can Do](what-the-vcon-mcp-server-can-do.md) — the complete scope of capabilities
-* [How the vCon MCP Server is Built](how-the-vcon-mcp-server-is-built.md) — internal architecture
-* [Tool Reference](tool-reference.md) — every tool, grouped by purpose
-* [Contract Tools](contract-tools.md) — the May 2026 LLM-facing surface
-* [Transport and Deployment](transport-and-deployment.md) — auth, transport modes, Docker, npm
-* [MCP and Conserver Together](mcp-and-conserver-together.md) — how the MCP server and conserver compose
-* [Business Cases](business-cases-for-mcp-servers-and-vcon.md) — when to reach for this
+The source is at [github.com/vcon-dev/vcon-mcp](https://github.com/vcon-dev/vcon-mcp) and the
+generated technical reference is at [mcp.conserver.io](https://mcp.conserver.io/).

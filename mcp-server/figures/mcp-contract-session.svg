@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 262" width="520" height="262" role="img" aria-label="A seven step session: four discovery calls once, then a search and fetch loop">
+  <style>
+    .seal{font:700 9px Inter,'Helvetica Neue',Arial,sans-serif;letter-spacing:.08em;fill:#FFFFFF}
+    .sealsub{font:400 8.5px Inter,'Helvetica Neue',Arial,sans-serif;letter-spacing:.03em;fill:#FFFFFF;opacity:.72}
+    .n{font:700 11px Inter,'Helvetica Neue',Arial,sans-serif;fill:#FFFFFF}
+    .tool{font:700 9px ui-monospace,Menlo,Consolas,monospace;fill:#292929}
+    .pb{font:400 8.5px Inter,'Helvetica Neue',Arial,sans-serif;fill:#33363B}
+    .ph{font:700 8px Inter,'Helvetica Neue',Arial,sans-serif;letter-spacing:.08em;fill:#0A7D18}
+    .arr{font:700 7.5px Inter,'Helvetica Neue',Arial,sans-serif;letter-spacing:.08em;fill:#8A8A8D}
+  </style>
+  <rect x="0.5" y="0.5" width="519" height="261" fill="#FFFFFF" stroke="#292929" stroke-width="1"/>
+  <rect x="0.5" y="0.5" width="519" height="28" fill="#292929"/>
+  <text class="seal" x="14" y="18">ONE SESSION AGAINST A SERVER THE MODEL HAS NEVER SEEN</text>
+  <text class="sealsub" x="506" y="18" text-anchor="end">discover once, then work</text>
+
+  <text class="ph" x="14" y="46">ONCE PER SESSION</text>
+  <line x1="100" y1="43" x2="506" y2="43" stroke="#292929" stroke-opacity="0.16"/>
+
+  <rect x="14" y="54" width="18" height="18" fill="#0BB81E"/><text class="n" x="23" y="67" text-anchor="middle">1</text>
+  <text class="tool" x="42" y="67">vcon_capabilities()</text>
+  <text class="pb" x="266" y="67">includes, search modes, cursors, byte budgets</text>
+
+  <rect x="14" y="80" width="18" height="18" fill="#0BB81E"/><text class="n" x="23" y="93" text-anchor="middle">2</text>
+  <text class="tool" x="42" y="93">vcon_taxonomy()</text>
+  <text class="pb" x="266" y="93">the vocabulary this corpus actually uses</text>
+
+  <rect x="14" y="106" width="18" height="18" fill="#0BB81E"/><text class="n" x="23" y="119" text-anchor="middle">3</text>
+  <text class="tool" x="42" y="119">vcon_graph_shape()</text>
+  <text class="pb" x="266" y="119">what is really in the store, and how much</text>
+
+  <rect x="14" y="132" width="18" height="18" fill="#0BB81E"/><text class="n" x="23" y="145" text-anchor="middle">4</text>
+  <text class="tool" x="42" y="145">describe_response_shape("vcon_search")</text>
+  <text class="pb" x="266" y="145">the shape of the answer, before asking</text>
+
+  <text class="ph" x="14" y="176">THE WORKING LOOP</text>
+  <line x1="104" y1="173" x2="506" y2="173" stroke="#292929" stroke-opacity="0.16"/>
+
+  <rect x="14" y="184" width="18" height="18" fill="#292929"/><text class="n" x="23" y="197" text-anchor="middle">5</text>
+  <text class="tool" x="42" y="197">vcon_search(filters, max_response_bytes)</text>
+  <text class="pb" x="266" y="197">a page of UUIDs and summaries, plus a cursor</text>
+
+  <rect x="14" y="210" width="18" height="18" fill="#292929"/><text class="n" x="23" y="223" text-anchor="middle">6</text>
+  <text class="tool" x="42" y="223">vcon_fetch(uuid, max_response_bytes)</text>
+  <text class="pb" x="266" y="223">only the parts of one record the question needs</text>
+
+  <path d="M500 219 L500 201" stroke="#292929" stroke-width="1" fill="none"/>
+  <path d="M497 201 L500 195 L503 201 Z" fill="#292929"/>
+  <path d="M500 219 L500 223 L496 223" stroke="#292929" stroke-width="1" fill="none"/>
+  <text class="arr" x="506" y="240" text-anchor="end">REPEAT 5, 6</text>
+
+  <text class="pb" x="14" y="250">Every answer is {ok, item} or {ok, items, page}. A failure is {ok: false, error}. Never a truncated success.</text>
+</svg>

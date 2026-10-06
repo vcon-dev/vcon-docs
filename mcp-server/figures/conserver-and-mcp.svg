@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 256" width="520" height="256" role="img" aria-label="The conserver is the write path and the MCP server is the read path over one shared store">
+  <style>
+    .seal{font:700 9px Inter,'Helvetica Neue',Arial,sans-serif;letter-spacing:.08em;fill:#FFFFFF}
+    .sealsub{font:400 8.5px Inter,'Helvetica Neue',Arial,sans-serif;letter-spacing:.03em;fill:#FFFFFF;opacity:.72}
+    .ph{font:700 11px Inter,'Helvetica Neue',Arial,sans-serif;letter-spacing:.06em;fill:#292929}
+    .ps{font:400 8.5px Inter,'Helvetica Neue',Arial,sans-serif;letter-spacing:.04em;fill:#0A7D18}
+    .pb{font:400 8.5px Inter,'Helvetica Neue',Arial,sans-serif;fill:#33363B}
+    .arr{font:700 7.5px Inter,'Helvetica Neue',Arial,sans-serif;letter-spacing:.08em;fill:#8A8A8D}
+    .st{font:700 9.5px Inter,'Helvetica Neue',Arial,sans-serif;letter-spacing:.06em;fill:#FFFFFF}
+    .ss{font:400 8.5px Inter,'Helvetica Neue',Arial,sans-serif;fill:rgba(255,255,255,0.72)}
+  </style>
+  <rect x="0.5" y="0.5" width="519" height="255" fill="#FFFFFF" stroke="#292929" stroke-width="1"/>
+  <rect x="0.5" y="0.5" width="519" height="28" fill="#292929"/>
+  <text class="seal" x="14" y="18">TWO SYSTEMS, ONE STORE</text>
+  <text class="sealsub" x="506" y="18" text-anchor="end">the conserver decides what the record becomes</text>
+
+  <rect x="14.5" y="42.5" width="235" height="140" fill="#FFFFFF" stroke="#292929" stroke-width="1"/>
+  <line x1="14.5" y1="74.5" x2="249.5" y2="74.5" stroke="#292929" stroke-opacity="0.16"/>
+  <rect x="14.5" y="42.5" width="4" height="32" fill="#0BB81E"/>
+  <text class="ph" x="30" y="60">CONSERVER</text>
+  <text class="ps" x="30" y="70">the write path</text>
+  <text class="pb" x="30" y="94">Ingests vCons from adapters and apps</text>
+  <text class="pb" x="30" y="114">Enriches them through a chain of links</text>
+  <text class="pb" x="30" y="134">Signs, stores, and hands the record on</text>
+  <text class="pb" x="30" y="154">Queue driven, scales by adding workers</text>
+  <text class="pb" x="30" y="174">Batch or real time</text>
+
+  <rect x="270.5" y="42.5" width="235" height="140" fill="#FFFFFF" stroke="#292929" stroke-width="1"/>
+  <line x1="270.5" y1="74.5" x2="505.5" y2="74.5" stroke="#292929" stroke-opacity="0.16"/>
+  <rect x="270.5" y="42.5" width="4" height="32" fill="#0BB81E"/>
+  <text class="ph" x="286" y="60">MCP SERVER</text>
+  <text class="ps" x="286" y="70">the read path</text>
+  <text class="pb" x="286" y="94">Answers questions about stored vCons</text>
+  <text class="pb" x="286" y="114">Filter, keyword, semantic, hybrid search</text>
+  <text class="pb" x="286" y="134">Tools over the Model Context Protocol</text>
+  <text class="pb" x="286" y="154">Called by an AI assistant or an app</text>
+  <text class="pb" x="286" y="174">Request time, one question at a time</text>
+
+  <line x1="132" y1="184" x2="132" y2="206" stroke="#292929" stroke-width="1"/>
+  <path d="M129 206 L132 212 L135 206 Z" fill="#292929"/>
+  <text class="arr" x="142" y="200">WRITES</text>
+
+  <line x1="388" y1="212" x2="388" y2="190" stroke="#292929" stroke-width="1"/>
+  <path d="M385 190 L388 184 L391 190 Z" fill="#292929"/>
+  <text class="arr" x="398" y="200">READS</text>
+
+  <rect x="14.5" y="212.5" width="491" height="30" fill="#292929"/>
+  <text class="st" x="30" y="232">ONE STORE</text>
+  <text class="ss" x="118" y="232">Postgres, with a Redis cache in front of it. Write through on one side, cache first on the other.</text>
+</svg>
