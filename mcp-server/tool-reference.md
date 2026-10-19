@@ -6,9 +6,9 @@ description: >-
 
 # 🧰 Tool Reference
 
-The server exposes 46 tools in seven groups, 19 resources and 10 prompts. This page is built from
+The server exposes 46 tools in seven groups, 7 concrete resources, 16 resource templates and 10 prompts. This page is built from
 each tool's `inputSchema` in [vcon-dev/vcon-mcp](https://github.com/vcon-dev/vcon-mcp) at release
-1.9.2. For the response shape of a contract or search tool, call `describe_response_shape` against
+1.10.0. For the response shape of a contract or search tool, call `describe_response_shape` against
 the live server; see [Contract Tools](contract-tools.md).
 
 Which tools a client sees depends on the deployment. `MCP_TOOLS_PROFILE`, the category variables
@@ -22,10 +22,10 @@ Create, read, update and delete a vCon and its parts. Category `write`, except `
 
 | Tool | Key parameters | What it does |
 | ---- | -------------- | ------------ |
-| `create_vcon` | `parties` (required), `subject`, `dialog`, `analysis`, `attachments`, `extensions`, `critical` | Validates and stores a new vCon. `must_support` is accepted as a deprecated alias for `critical` |
-| `create_vcon_from_template` | `template_name` (required: `phone_call`, `chat_conversation`, `email_thread`, `video_meeting`, `custom`), `parties` (required, non-empty), `subject`, `metadata` | Builds a vCon from a named template and stores it |
+| `create_vcon` | `parties` (required), `subject`, `dialog`, `analysis`, `attachments`, `extensions`, `critical` | Validates and stores a new vCon. `must_support` is accepted as a deprecated alias for `critical`. The response carries `warnings`, a list of strings that flags a missing or incomplete `lawful_basis` attachment. Warnings never block the write and the server adds no basis of its own |
+| `create_vcon_from_template` | `template_name` (required: `phone_call`, `chat_conversation`, `email_thread`, `video_meeting`, `custom`), `parties` (required, non-empty), `subject` | Builds a vCon from a named template and stores it. The response carries `warnings`, as for `create_vcon` |
 | `get_vcon` | `uuid` (required), `response_format` (`full` default, `summary`, `metadata`) | Returns one vCon. `summary` keeps only analyses of type `summary`. LLM clients should prefer `vcon_fetch` |
-| `update_vcon` | `uuid`, `updates` (both required), `return_updated` (default true) | Updates top-level `subject`, `extensions` and `critical` only. Use the child tools for everything else |
+| `update_vcon` | `uuid`, `updates` (both required), `return_updated` (default true) | Updates top-level `subject`, `extensions` and `critical` only, all inside `updates`. `must_support` is accepted there as an alias for `critical`; `critical` wins if both are sent. Use the child tools for everything else |
 | `delete_vcon` | `uuid` (required) | Deletes the vCon and its parties, dialog, analysis and attachments. No confirmation parameter; it cannot be undone |
 | `add_dialog` | `vcon_uuid`, `dialog` (both required; `dialog.type` required) | Appends a dialog: `recording`, `text`, `transfer` or `incomplete` |
 | `add_analysis` | `vcon_uuid`, `analysis` (both required; `analysis.type` and `analysis.vendor` required) | Appends an analysis |
@@ -44,7 +44,7 @@ Every write is validated before it reaches the database: at least one party, and
 an identifier; a valid dialog type; `disposition` on an `incomplete` dialog; `vendor` on every
 analysis; encodings of `base64url`, `json` or `none`; either `body` and `encoding` or `url` and
 `content_hash`; ISO 8601 dates. An analysis that uses `schema_version` instead of `schema` is
-rejected.
+rejected. Bad input comes back as an MCP `InvalidParams` error, not an internal error.
 
 ## Contract and discovery (7 tools)
 
@@ -69,8 +69,8 @@ The original search tools. Still supported. New clients should use `vcon_search`
 | ---- | -------------- | ------------ |
 | `search_vcons` | `subject`, `party_name`, `party_email`, `party_tel`, `start_date`, `end_date`, `tags`, `limit` (default 10, max 1000), `response_format` (`metadata` default, `full`, `ids_only`), `include_count` | Metadata filters only |
 | `search_vcons_content` | `query` (required), dates, `tags`, `limit` (default 50), `response_format` (`snippets` default, `full`, `metadata`, `ids_only`), `include_count` | Keyword search over subject, parties, dialog and analysis |
-| `search_vcons_semantic` | `query` or `embedding` (384 numbers), `tags`, `threshold` (default 0.7), `limit` (default 50), `response_format`, `include_count` | Similarity search over stored embeddings |
-| `search_vcons_hybrid` | `query` (required), `embedding`, `tags`, `semantic_weight` (default 0.6), `limit` (default 50), `response_format`, `include_count` | Keyword and semantic scores blended by `semantic_weight` |
+| `search_vcons_semantic` | `query` or `embedding` (384 numbers), `tags`, `threshold` (default 0.7; 0 is honoured), `limit` (default 50), `response_format` (`metadata` default, `ids_only`, `full`) | Similarity search over stored embeddings |
+| `search_vcons_hybrid` | `query` (required), `embedding`, `tags`, `semantic_weight` (default 0.6; 0 is honoured), `limit` (default 50), `response_format` (`metadata` default, `ids_only`, `full`) | Keyword and semantic scores blended by `semantic_weight` |
 
 Keyword search is Postgres full text search (`tsvector` and `plainto_tsquery`). It stems, so
 "refunds" matches "refund", and it does not correct misspellings. Semantic search embeds the query
@@ -115,7 +115,7 @@ For operators. Category `infra`.
 | `get_database_shape` | `include_counts`, `include_sizes`, `include_indexes` (all default true), `include_columns` (default false) | Tables, row counts, sizes and indexes |
 | `get_database_stats` | `include_query_stats`, `include_index_usage`, `include_cache_stats`, `table_name` | Table access, index usage and cache hit ratios |
 | `get_database_size_info` | `include_recommendations` (default true) | Store size with suggested query limits |
-| `get_smart_search_limits` | `query_type` (`basic`, `content`, `semantic`, `hybrid`, `analytics`), `estimated_result_size` | A suggested result limit for a planned query |
+| `get_smart_search_limits` | `query_type` (required: `basic`, `content`, `semantic`, `hybrid`, `analytics`), `estimated_result_size` (`small`, `medium`, `large`, `unknown` default) | A suggested result limit for a planned query |
 | `analyze_query` | `query` (required, SQL starting with `SELECT`), `analyze_mode` (`explain` default, `explain_analyze`) | Postgres plan for the caller's SQL. `explain_analyze` runs the query |
 
 ## Schema and examples (2 tools)
@@ -124,18 +124,20 @@ Category `schema`.
 
 | Tool | Key parameters | What it does |
 | ---- | -------------- | ------------ |
-| `get_schema` | `format` (`json_schema` default, `typescript`), `version` (default `latest`) | The vCon schema the server validates against |
+| `get_schema` | `format` (`json_schema` default, `typescript`) | The vCon schema the server validates against |
 | `get_examples` | `example_type` (required: `minimal`, `phone_call`, `chat`, `email`, `video`, `full_featured`), `format` (`json` default, `yaml`) | An example vCon |
 
 ## Resources
 
 Read-only data at `vcon://v1/` URIs. Resource reads run no plugin hooks.
 
+`resources/list` returns the 7 concrete URIs: `vcons/recent`, `vcons/recent/ids`, `vcons/ids`, the three `discovery/` URIs and `graph/shape`. The 16 parameterised forms below are served by `resources/templates/list` as RFC 6570 templates, so a client that only calls `resources/list` does not see them.
+
 | URI | Returns |
 | --- | ------- |
 | `vcon://v1/vcons/recent`, `.../recent/{n}` | The newest vCons in full, 10 by default, at most 100 |
 | `vcon://v1/vcons/recent/ids`, `.../recent/ids/{n}` | UUID, timestamp and subject of the newest vCons |
-| `vcon://v1/vcons/ids`, `.../ids/{n}`, `.../ids/{n}/after/{timestamp}` | Every vCon ID, paged by timestamp, 100 by default, at most 1000 |
+| `vcon://v1/vcons/ids`, `.../ids/{limit}`, `.../ids/{limit}/after/{cursor}` | Every vCon ID, newest first, 100 by default, at most 1000. `next_cursor` is `<created_at>,<uuid>`; pass it back unchanged (URL-encoded) as `{cursor}` for the strictly older rows. A bare timestamp is still accepted |
 | `vcon://v1/vcons/{uuid}` | One vCon |
 | `vcon://v1/vcons/{uuid}/metadata`, `/parties`, `/dialog`, `/analysis`, `/attachments` | One part of a vCon |
 | `vcon://v1/vcons/{uuid}/attachments/purpose/{purpose}` | Attachments with that purpose |

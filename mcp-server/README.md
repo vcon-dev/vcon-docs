@@ -12,7 +12,7 @@ with optional Redis caching and pgvector semantic search.
 
 The code is at [vcon-dev/vcon-mcp](https://github.com/vcon-dev/vcon-mcp), MIT-licensed TypeScript,
 published as the npm package `vcon-mcp` and the Docker image
-`public.ecr.aws/r4g1k2s3/vcon-dev/vcon-mcp`. These pages describe release 1.9.2.
+`public.ecr.aws/r4g1k2s3/vcon-dev/vcon-mcp`. These pages describe release 1.10.0.
 
 ## Pages in this section
 

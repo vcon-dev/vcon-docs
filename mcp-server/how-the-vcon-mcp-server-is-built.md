@@ -8,7 +8,7 @@ description: How the vCon MCP server turns a tool call into Postgres reads and w
 The server is TypeScript on the official MCP SDK, with Supabase Postgres underneath. A request
 passes through three layers: the MCP layer that speaks the protocol, a business layer that
 validates and runs hooks, and a query layer that reads and writes normalized tables. This page
-follows the code at release 1.9.2 of [vcon-dev/vcon-mcp](https://github.com/vcon-dev/vcon-mcp).
+follows the code at release 1.10.0 of [vcon-dev/vcon-mcp](https://github.com/vcon-dev/vcon-mcp).
 For transports, keys and environment variables see
 [Transport and Deployment](transport-and-deployment.md).
 
@@ -16,14 +16,14 @@ For transports, keys and environment variables see
 
 ## The MCP layer
 
-`src/server/` registers handlers for listing and calling tools, listing and reading resources, and
+`src/server/` registers handlers for listing and calling tools, listing resources and resource templates, reading resources, and
 listing and getting prompts. On `tools/list` it gathers the 46 built-in tools, drops those the
 deployment's profile or the caller's read-only key excludes, and appends any plugin tools. On
 `tools/call` it finds the tool's handler in a registry (`src/tools/handlers/`) and runs it, or hands
 the call to the plugin that registered the tool.
 
-Resources are read-only views at `vcon://v1/` URIs, for example `vcon://v1/vcons/{uuid}` and
-`vcon://v1/vcons/{uuid}/parties`. Prompts are templates that tell a client which tools to call for
+Resources are read-only views at `vcon://v1/` URIs. `resources/list` returns the concrete ones; parameterised URIs such as `vcon://v1/vcons/{uuid}` and
+`vcon://v1/vcons/{uuid}/parties` come from `resources/templates/list`. Prompts are templates that tell a client which tools to call for
 a kind of question. Both are listed in the [Tool Reference](tool-reference.md#resources).
 
 ## The business layer
@@ -39,7 +39,7 @@ Every create and append is checked before it reaches the database (`src/utils/va
 * every encoding is `base64url`, `json` or `none`, and a body with `encoding: "json"` parses
 * every analysis and attachment has `body` and `encoding` or `url` and `content_hash`
 
-A failure returns an MCP invalid-params error listing what is wrong. A `critical` entry that is not
+A failure returns an MCP `InvalidParams` error listing what is wrong. A `critical` entry that is not
 in `extensions` is a warning, not a failure. The `vcon` version field is not checked. Index
 references from dialog to parties are not checked.
 
@@ -66,6 +66,8 @@ tag searches, the child-edit tools and resource reads run no hooks. A redaction 
 but reads of those URIs are not passed to the plugin.
 
 No plugins ship with the server.
+
+Create responses (`create_vcon`, `create_vcon_from_template`, REST create) carry `warnings`, which flags a missing or incomplete `lawful_basis` attachment. It never blocks the write and the server does not invent a basis.
 
 ## The query layer
 
@@ -103,7 +105,7 @@ tools, `max_response_bytes`.
 | `dialog` | Dialog entries, keyed by vCon and index |
 | `analysis` | Analyses, keyed by vCon and index |
 | `attachments` | Attachments, keyed by vCon and index, including the tags attachment |
-| `groups`, `party_history` | Group references and party join, drop, hold and mute events |
+| `groups` | Group references |
 | `vcon_embeddings` | 384-dimension vectors with the model that produced them |
 | `embedding_queue` | vCons waiting for embedding, filled by an insert trigger |
 | `privacy_requests`, `s3_sync_tracking`, `migration_reports` | Supporting tables used by scripts and edge functions |

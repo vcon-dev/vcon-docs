@@ -215,7 +215,7 @@ optional server sent events, allowed origins and DNS rebinding protection.
 
 You need a Supabase Postgres project (the free tier is fine to start) with the migrations from
 the repository applied, an MCP client, and for semantic search an embedding provider, OpenAI when `OPENAI_API_KEY` is set, otherwise Supabase's built-in gte-small. Redis is optional. Then either `npx -y vcon-mcp` from a host's MCP configuration, or
-the published Docker image, `public.ecr.aws/r4g1k2s3/vcon-dev/vcon-mcp:latest`. Pin a version tag such as `:1.9.2` in
+the published Docker image, `public.ecr.aws/r4g1k2s3/vcon-dev/vcon-mcp:latest`. Pin a version tag such as `:1.10.0` in
 production.
 
 In stateless mode it scales by running more of it behind a load balancer. With an OTLP exporter

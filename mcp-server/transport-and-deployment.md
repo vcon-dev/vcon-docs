@@ -9,7 +9,7 @@ description: >-
 
 The server runs over stdio by default and over Streamable HTTP when `MCP_TRANSPORT=http`. It needs
 a Supabase Postgres project with the repository's migrations applied. Everything else is optional.
-Values on this page are read from `src/` at release 1.9.2 of
+Values on this page are read from `src/` at release 1.10.0 of
 [vcon-dev/vcon-mcp](https://github.com/vcon-dev/vcon-mcp).
 
 ## Transports
@@ -45,7 +45,7 @@ In HTTP mode the same port also serves a REST API under `REST_API_BASE_PATH` (de
 vCon create, batch create, get, delete and child appends, plus search, tag, analytics, discovery
 and database routes. It is on unless `REST_API_ENABLED=false`, uses the same keys as the MCP
 endpoint, and sends `Access-Control-Allow-Origin` from `CORS_ORIGIN` (default `*`). `health`,
-`version`, `schema` and `examples` need no key. The conserver's `vcon_mcp` storage writes through
+`version`, `schema` and `examples` need no key; unauthenticated `health` returns status only, and database connection details need a valid key. Missing vCons return 404, invalid query parameters return 400, and child writes get the same validation as the MCP tools. The conserver's `vcon_mcp` storage writes through
 this API; see [Sharing a store with the conserver](#sharing-a-store-with-the-conserver).
 
 ## Authentication
@@ -207,11 +207,11 @@ docker run --rm -p 3000:3000 \
   -e SUPABASE_URL="https://your-project.supabase.co" \
   -e SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
   -e API_KEYS="$MCP_API_KEY" \
-  public.ecr.aws/r4g1k2s3/vcon-dev/vcon-mcp:1.9.2
+  public.ecr.aws/r4g1k2s3/vcon-dev/vcon-mcp:1.10.0
 ```
 
-CI pushes `latest` and `main-<sha>` from every commit on `main`, and `1.9.2`, `1.9` and `1` from a
-`v1.9.2` release tag. Image tags carry no `v`. Pin a release tag in production.
+CI pushes `latest` and `main-<sha>` from every commit on `main`, and `1.10.0`, `1.10` and `1` from a
+`v1.10.0` release tag. Image tags carry no `v`. Pin a release tag in production.
 
 ### Sharing a store with the conserver
 

@@ -20,8 +20,10 @@ in the old `appended` column comes back as `amended`.
 
 * `create_vcon` takes `critical`. It also takes `must_support` as a deprecated alias and stores it
   as `critical` when `critical` is absent. It does this silently, with no warning in the response.
-* `update_vcon` applies `subject`, `extensions` and `critical`. Its published schema still lists
-  `must_support`, but the handler ignores that key, so send `critical`.
+* `update_vcon` applies `subject`, `extensions` and `critical` from `updates`. It also accepts
+  `must_support` there as an alias for `critical`; if both are sent, `critical` wins.
+* REST create maps `must_support`, `appended` and dialog, analysis and attachment `mimetype` to
+  `critical`, `amended` and `mediatype`.
 * `create_vcon` has no `amended` parameter.
 
 ## What the database holds
