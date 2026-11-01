@@ -6,6 +6,7 @@
   * [💡 Concepts](vcons/concepts.md)
   * [📋 Field Reference](vcons/field-reference.md)
   * [🔒 Privacy Primer](vcons/privacy-primer.md)
+  * [🏛️ AI Regulation Primer](vcons/ai-regulation-primer.md)
   * [👜 The Journey of a vCon](conserver/vcon-conveyor-infographic.md)
   * [✨ More Information](vcons/more-information.md)
 * [Conserver](conserver/README.md)
