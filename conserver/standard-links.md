@@ -4,7 +4,7 @@ description: Reference for the 23 links that ship with vcon-server, with the opt
 
 # 🔗 Standard Links
 
-A link does one thing to a vCon as it moves through a chain. The conserver ships 23. The option tables below come from each module's `default_options` at vcon-server `b603b15`. A key you leave out takes the default shown. For what a link's return value does, and the order a chain runs in, see [Concepts](concepts.md).
+A link does one thing to a vCon as it moves through a chain. The conserver ships 23. The option tables below come from each module's `default_options` at vcon-server `b603b15`. A key you leave out takes the default shown. For what a link's return value does, and the order a chain runs in, see [Concepts](concepts.md). The manual has [a page for each link](https://vcon-dev.github.io/vcon-server/reference/links/).
 
 | Category | Links |
 | -------- | ----- |

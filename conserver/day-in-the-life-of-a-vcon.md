@@ -269,6 +269,11 @@ event. With that in place the vCon is gone. The proof that it existed, that cons
 and that deletion happened, stays on the ledger forever. When a regulator asks what happened to
 that conversation, the answer comes from the ledger rather than from reconstructed logs.
 
+Each consent step in this story belongs to something outside the conserver's core. The adapter wrote
+the attachment, a configured `scitt` link registered the withdrawal, and the dealership's own hook
+registered the deletion. The open source conserver carries the attachment and runs what it is
+configured to run. It does not create, check or enforce consent. See [Editions](https://vcon-dev.github.io/vcon-server/concepts/editions/).
+
 ## The point
 
 Each station alone is useful. Together they turn a phone call that would have sat in a recording
@@ -288,3 +293,4 @@ the lawful basis attachment mean every one of those readers can trust what they 
 * [Lawful Basis](../extensions/lawful-basis.md) and [Lifecycle](../extensions/lifecycle.md) are the
   two extensions that make the record governable.
 * [The Journey of a vCon](vcon-conveyor-infographic.md) is this page as a picture.
+* The [vCon lifecycle](https://vcon-dev.github.io/vcon-server/concepts/vcon-lifecycle/) page in the manual traces the same states from the server's side.

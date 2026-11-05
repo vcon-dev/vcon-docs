@@ -4,7 +4,7 @@ description: Reference for the 15 storage modules in vcon-server, with their opt
 
 # 🗄️ Storage
 
-A storage is where a chain writes a vCon when it finishes. The conserver ships 15 modules. The option tables below come from each module's `default_options` at vcon-server `b603b15`. For where storage sits in a chain, and how failed writes are queued, see [Concepts](concepts.md).
+A storage is where a chain writes a vCon when it finishes. The conserver ships 15 modules. The option tables below come from each module's `default_options` at vcon-server `b603b15`. For where storage sits in a chain, and how failed writes are queued, see [Concepts](concepts.md). The manual has [a page for each adapter](https://vcon-dev.github.io/vcon-server/reference/storage-adapters/).
 
 ## How storage behaves
 
@@ -394,6 +394,7 @@ storages:
 | `webhook-urls` | URLs to POST to, in order. If empty the write is skipped with a warning | `[]` |
 | `headers` | Headers for every request | `{}` |
 | `timeout` | Seconds per request | `30` |
+| `pool-size` | Keep-alive connections kept per worker process | `16` |
 
 A non-2xx reply raises, so the UUID goes to `DLQ:storage:<name>`. A vCon whose `vcon` field is `0.0.1` is sent as `0.3.0`. The call time is recorded in `conserver.webhook.duration`. Unlike the link, this module does not apply `EGRESS_FORMAT_VERSION`.
 

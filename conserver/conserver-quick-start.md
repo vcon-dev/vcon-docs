@@ -20,6 +20,8 @@ docker network create conserver
 
 The compose file bind-mounts `./config.yml`. If the file does not exist, Docker creates a directory with that name and the conserver cannot start, so copy it before the first `up`.
 
+`example_config.yml` is a syntax sample that names packages a fresh stack does not have. The copy only creates the file. Replace its contents in [Write a minimal chain](#write-a-minimal-chain) before you start the stack.
+
 Edit `.env`:
 
 | Variable | Set it to |
@@ -50,7 +52,7 @@ chains:
     egress_lists: [demo_out]
 ```
 
-The conserver re-reads this file between vCons, so you can change it without a restart. A chain, its lists and the rules for what a link returns are defined on [Concepts](concepts.md).
+The conserver re-reads this file between vCons, so you can change it without a restart. Compose mounts the file on its own, so on a Linux host an editor that saves by replacing the file leaves the container on the old copy. If an edit has no effect, run `docker compose up -d --force-recreate conserver`. A chain, its lists and the rules for what a link returns are defined on [Concepts](concepts.md).
 
 ## Start the stack
 
@@ -141,3 +143,7 @@ docker compose logs -f conserver api
 ```
 
 Logs are JSON by default. A line such as `Completed processing vCon ... Chain: demo` confirms the run. If the vCon did not move, start with [Troubleshooting](troubleshooting.md).
+
+## Next steps
+
+The [vCon Server manual](https://vcon-dev.github.io/vcon-server/) has a [longer quick start](https://vcon-dev.github.io/vcon-server/getting-started/quick-start/) that writes vCons to file storage, along with [installation](https://vcon-dev.github.io/vcon-server/installation/) and [configuration](https://vcon-dev.github.io/vcon-server/configuration/) guides.

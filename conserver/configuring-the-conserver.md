@@ -6,6 +6,8 @@ description: Every environment variable and every section of config.yml that the
 
 Two things configure the conserver. Environment variables set server behavior: Redis, authentication, workers, telemetry. A YAML file, `config.yml`, defines the processing: links, storages, chains, tracers and followers. For what a chain does with a vCon, see [Concepts](concepts.md).
 
+The manual lists [every environment variable, generated from the code](https://vcon-dev.github.io/vcon-server/reference/environment/), and has [configuration guides](https://vcon-dev.github.io/vcon-server/configuration/).
+
 ## Environment variables
 
 Set these in `.env` or the container environment. The `api` and `conserver` services read the same names. Settings are read once at process start, so changing one needs a restart.
@@ -28,7 +30,8 @@ Set these in `.env` or the container environment. The `api` and `conserver` serv
 | `CONSERVER_API_TOKEN` | Token that authorizes the main API. With no token and no token file, authentication is off. | (unset) |
 | `CONSERVER_API_TOKEN_FILE` | File of accepted tokens, one per line. Read once when the API starts. This is the only variable with a `_FILE` form. | (unset) |
 | `CONSERVER_HEADER_NAME` | Header that carries the token. | `x-conserver-api-token` |
-| `API_ROOT_PATH` | URL prefix for every route, including `/health`. | `/api` |
+| `API_ROOT_PATH` | FastAPI `root_path`. It does not move the routes. See [API](api.md#base-url-and-headers). | `/api` |
+| `CONSERVER_EXTERNAL_PORT` | Host port that the compose file publishes for the `api` service. The compose file reads it, not the services. | `8000` |
 
 ### Redis and caching
 

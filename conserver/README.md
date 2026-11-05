@@ -9,6 +9,10 @@ The conserver is an open source server that takes in vCons, runs each one throug
 
 Use a conserver when vCons arrive from adapters (phone systems, SIPREC, chat, AI agent sessions) and something has to happen to every one of them, the same way, with failures captured in dead letter queues.
 
+These pages explain the conserver and get one running. The [vCon Server manual](https://vcon-dev.github.io/vcon-server/) is the operator reference. It lives in the vcon-server repo, and CI checks its generated reference pages against the code.
+
+Both describe the open source server, which carries `lawful_basis` attachments through a chain but does not create, validate, enforce or manage consent. Active consent management belongs to the commercial edition. See [Editions](https://vcon-dev.github.io/vcon-server/concepts/editions/).
+
 ## Path through this section
 
 **1. Understand it**
@@ -41,3 +45,4 @@ Use a conserver when vCons arrive from adapters (phone systems, SIPREC, chat, AI
 - [Inside the Conserver](inside-the-conserver.md): workers, Redis keys and the processing loop
 - [Troubleshooting](troubleshooting.md): common failures and fixes
 - [Operational Benefits](operational-benefits-of-conservers.md): what running one buys you, with public sources
+- [vCon Server manual](https://vcon-dev.github.io/vcon-server/): installation, configuration, every link and storage adapter, and operations runbooks
