@@ -4,7 +4,7 @@ description: Symptoms, causes and fixes for the problems operators hit when runn
 
 # 😥 Troubleshooting
 
-Commands below use the service names in the checked-in `docker-compose.yml`: `api`, `conserver` and `redis`. Rename them if your compose file differs. For how chains, links and queues behave, see [Concepts](concepts.md).
+Commands below use the service names in the checked-in `docker-compose.yml`: `api`, `conserver` and `redis`. Rename them if your compose file differs. For how chains, links and queues behave, see [Concepts](concepts.md). The manual has a longer [troubleshooting page](https://vcon-dev.github.io/vcon-server/operations/troubleshooting/).
 
 ## Start with these checks
 

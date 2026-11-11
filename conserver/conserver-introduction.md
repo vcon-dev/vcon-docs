@@ -23,3 +23,5 @@ The [vCon Progress Report (TADSummit, August 2025)](https://blog.tadsummit.com/2
 - [Concepts](concepts.md) defines links, chains, storages and tracers, and how a chain runs.
 - [Quick Start](conserver-quick-start.md) gets one running.
 - [Operational Benefits](operational-benefits-of-conservers.md) covers what running one buys you.
+- The [vCon Server manual](https://vcon-dev.github.io/vcon-server/) is the operator reference.
+- [Editions](https://vcon-dev.github.io/vcon-server/concepts/editions/) sets out what the open source server does and does not do with consent.

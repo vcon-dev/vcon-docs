@@ -4,11 +4,11 @@ description: Every route of the conserver REST API, with authentication, paramet
 
 # 🧩 API
 
-The conserver API is a FastAPI application. It stores and fetches vCons, feeds and drains chains, reads and writes the configuration, and manages the dead letter queues.
+The conserver API is a FastAPI application. It stores and fetches vCons, feeds and drains chains, reads and writes the configuration, and manages the dead letter queues. The manual has a [route index generated from the code](https://vcon-dev.github.io/vcon-server/reference/api-routes/) and a [full API reference](https://vcon-dev.github.io/vcon-server/reference/api/).
 
 ## Base URL and headers
 
-Every route, including the system routes, sits under `API_ROOT_PATH` (default `/api`). With the compose file, the API listens on port 8000, so the health route is `http://localhost:8000/api/health`.
+`API_ROOT_PATH` (default `/api`) sets the FastAPI `root_path`. It does not move the routes, so `/health` and `/api/health` reach the same handler. This page uses the `/api` form. With the compose file, the API listens on port 8000, so the health route is `http://localhost:8000/api/health`.
 
 Every response carries `X-Vcon-Server-Version` and `X-Vcon-Server-Commit`, taken from the image build arguments. Both read `dev` or `unknown` on an image built without them. CORS is open to all origins.
 

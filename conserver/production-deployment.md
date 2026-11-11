@@ -4,7 +4,7 @@ description: How to run the conserver in production, covering images, Redis, sca
 
 # 🏭 Production Deployment
 
-The conserver is two processes that share one Redis. The API accepts and serves vCons. The workers run the chains. Redis holds the queues and the working copy of every vCon. This page covers the deployment choices that follow from that. For the file format see [Configuring the Conserver](configuring-the-conserver.md). For symptoms and fixes see [Troubleshooting](troubleshooting.md).
+The conserver is two processes that share one Redis. The API accepts and serves vCons. The workers run the chains. Redis holds the queues and the working copy of every vCon. This page covers the deployment choices that follow from that. For the file format see [Configuring the Conserver](configuring-the-conserver.md). For symptoms and fixes see [Troubleshooting](troubleshooting.md). The manual has [installation guides](https://vcon-dev.github.io/vcon-server/installation/) and [operations runbooks](https://vcon-dev.github.io/vcon-server/operations/), including [dead letter queue](https://vcon-dev.github.io/vcon-server/operations/dead-letter-queue/) recovery.
 
 ## Images
 
