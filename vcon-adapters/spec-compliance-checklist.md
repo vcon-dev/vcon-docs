@@ -10,7 +10,7 @@ This page is the one place the adapter rules are written down. The [Extensions C
 
 ## Spec target
 
-Adapters here target IETF [`draft-ietf-vcon-vcon-core-04`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), with the `vcon` syntax parameter set to `"0.4.0"` and the [`vcon`](../vcon-library/README.md) Python library at 0.10.0 or later. Code or examples citing `0.2.0`, `0.3.0`, `-02` or `-03` are out of date.
+Adapters here target IETF [`draft-ietf-vcon-vcon-core-04`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), with the `vcon` syntax parameter set to `"0.4.0"` and the [`vcon`](../vcon-library/README.md) Python library at 0.10.x. `vcon` 1.0.0 writes core-05 (`"0.5.0"`), so pin `vcon>=0.10,<1` until the adapter moves to core-05. Code or examples citing `0.2.0`, `0.3.0`, `-02` or `-03` are out of date.
 
 With `encoding: "json"`, an attachment or analysis `body` is the JSON value itself (an object or array), not a `json.dumps()` string. Stringified JSON is still accepted, so readers must handle both, and the template's `json_body()` does. Writers emit the value form. Where an extension draft's own example shows a stringified body, write the value form anyway.
 

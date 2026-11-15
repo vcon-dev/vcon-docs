@@ -215,7 +215,7 @@ def content_hash(data: bytes) -> str:
     return "sha512-" + base64.urlsafe_b64encode(hashlib.sha512(data).digest()).rstrip(b"=").decode()
 ```
 
-The [`vcon`](../vcon-library/README.md) library (0.10.0 or later) does most of this: `Vcon.build_new()` sets `"vcon": "0.4.0"` and a version 8 `uuid`, and `add_analysis()` takes keyword arguments and requires `vendor`.
+The [`vcon`](../vcon-library/README.md) library 0.10.x does most of this for core-04: `Vcon.build_new()` sets `"vcon": "0.4.0"` and a version 8 `uuid`, and `add_analysis()` takes keyword arguments and requires `vendor`. `vcon` 1.0.0 and later write core-05 (`"vcon": "0.5.0"`, with sessions and events), so pin `vcon<1` when you need the core-04 output this page describes.
 
 ### Validation rules
 

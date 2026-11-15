@@ -115,15 +115,16 @@ Section 6 tells readers what to do before acting on a vCon:
 
 ## Python
 
-The [`vcon`](https://pypi.org/project/vcon/) library (0.10.0) builds this attachment and fills in `purpose`, `encoding`, `party`, `dialog`, `mediatype` and `start`. `Vcon.build_new()` already sets `"vcon": "0.4.0"`, and the helper adds `lawful_basis` to `extensions`. Proof mechanisms must be `ProofMechanism` objects, not dicts.
+The [`vcon`](https://pypi.org/project/vcon/) library (1.0.0) builds this attachment and fills in `purpose`, `encoding`, `party`, `mediatype` and `start`. Version 1.0.0 targets core-05: `Vcon.build_new()` sets `"vcon": "0.5.0"`, and the attachment is scoped to a session with `session_index` rather than to a dialog. With only `dialog_index` the helper logs a warning and writes a dialog-only scope, as in the core-04 form described above; with neither, it uses the vCon's only session or raises `ValueError`. The helper adds `lawful_basis` to `extensions`, which `is_valid()` requires. Proof mechanisms must be `ProofMechanism` objects, not dicts. For core-04 output (`"0.4.0"`, `dialog` scope), stay on `vcon` 0.10.x.
 
 ```python
-from vcon import Vcon
+from vcon import Session, Vcon
 from vcon.party import Party
 from vcon.extensions.lawful_basis.attachment import ProofMechanism, ProofType
 
 v = Vcon.build_new()
 v.add_party(Party(tel="+12025550100", name="Alice"))
+v.add_session(Session(start="2026-10-06T14:00:00Z", parties=[0]))
 
 v.add_lawful_basis_attachment(
     lawful_basis="consent",
@@ -140,7 +141,7 @@ v.add_lawful_basis_attachment(
         )
     ],
     party_index=0,
-    dialog_index=0,
+    session_index=0,
 )
 
 v.check_lawful_basis_permission("transcription", 0)  # True
