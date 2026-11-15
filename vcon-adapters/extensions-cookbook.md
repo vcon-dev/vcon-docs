@@ -8,7 +8,7 @@ description: >-
 
 Most of what adapters care about beyond the core spec (transcripts, recording consent, SIP signaling, AI-agent sessions) lives in extensions. Each recipe below shows the library or template call and the resulting JSON. The draft is the authority for every field; the field rules and spec target are on the [Spec Compliance Checklist](spec-compliance-checklist.md), and the field definitions are in the [vCon field reference](../vcons/field-reference.md).
 
-The recipes use the template's `new_vcon()` and `vcon` library 0.10.0 or later. `add_party()` and `add_dialog()` take `Party` and `Dialog` objects (`from vcon.party import Party`, `from vcon.dialog import Dialog`); `add_attachment()` and `add_analysis()` take keyword arguments. JSON bodies are written as values, not `json.dumps()` strings.
+The recipes use the template's `new_vcon()` and `vcon` library 0.10.x, which writes core-04 (`vcon` 1.0.0 writes core-05). `add_party()` and `add_dialog()` take `Party` and `Dialog` objects (`from vcon.party import Party`, `from vcon.dialog import Dialog`); `add_attachment()` and `add_analysis()` take keyword arguments. JSON bodies are written as values, not `json.dumps()` strings.
 
 ***
 

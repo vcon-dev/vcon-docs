@@ -114,13 +114,18 @@ All confidence values are normalized to the range 0 to 1 (Section 8.1).
 
 ## Python
 
-Build the analysis entry with the [`vcon`](https://pypi.org/project/vcon/) library's `add_analysis()`, which takes keyword arguments only:
+Build the analysis entry with the [`vcon`](https://pypi.org/project/vcon/) library's `add_analysis()`, which takes keyword arguments only. The example uses `vcon` 1.0.0, which writes core-05 (`"vcon": "0.5.0"`), so the recording dialog sits in a session:
 
 ```python
-from vcon import Vcon
+from vcon import Dialog, Session, Vcon
+from vcon.party import Party
 
-v = Vcon.build_new()  # sets "vcon": "0.4.0"
-# add parties and the recording dialog first
+v = Vcon.build_new()  # sets "vcon": "0.5.0"
+v.add_party(Party(tel="+15551230001", name="Alice"))
+v.add_party(Party(tel="+15551230002", name="Bob"))
+v.add_session(Session(start="2026-10-06T14:00:00Z", parties=[0, 1]))
+v.add_dialog(Dialog(type="recording", start="2026-10-06T14:00:00Z", parties=[0, 1],
+                    url="https://example.com/call.wav", mediatype="audio/x-wav"), session=0)
 
 wtf = {
     "transcript": {"text": "Hello, I need help with my account.", "language": "en-US",
@@ -140,10 +145,10 @@ v.add_analysis(
     encoding="json",
     body=wtf,
 )
-v.add_extension("wtf_transcription")
+v.add_extension("wtf_transcription")  # is_valid() fails without it
 ```
 
-Avoid the library's WTF helpers in 0.10.0 for now. `add_wtf_transcription_attachment()` stores WTF in `attachments[]`, which the draft does not allow. `add_wtf_transcription_analysis()` writes `type: "transcription"` instead of `"wtf_transcription"` and passes the body through `json.dumps`, producing a string. Both are upstream bugs in vcon 0.10.0.
+Avoid the library's WTF helpers for now; vcon 1.0.0 still has the bugs that 0.10.0 had. `add_wtf_transcription_attachment()` stores WTF in `attachments[]`, which the draft does not allow. `add_wtf_transcription_analysis()` writes `type: "transcription"` instead of `"wtf_transcription"` and passes the body through `json.dumps`, producing a string. Both helpers do add `wtf_transcription` to `extensions`.
 
 ## See also
 
