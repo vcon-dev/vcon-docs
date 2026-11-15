@@ -1,5 +1,5 @@
 ---
-description: Where to start with the Python vCon library, version 1.0.0 on core-05.
+description: Where to start with the Python vCon library, version 1.0.1 on core-05.
 icon: plug
 ---
 
@@ -7,7 +7,7 @@ icon: plug
 
 ## vCon Python Library
 
-> **Current version:** `vcon` **1.0.0** · `pip install vcon` · [GitHub: vcon-dev/vcon-lib](https://github.com/vcon-dev/vcon-lib) · Targets [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), syntax `"0.5.0"` · Reads and migrates `"0.4.0"` · Python 3.12 or later.
+> **Current version:** `vcon` **1.0.1** · `pip install vcon` · [GitHub: vcon-dev/vcon-lib](https://github.com/vcon-dev/vcon-lib) · Targets [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), syntax `"0.5.0"` · Reads and migrates `"0.4.0"` · Python 3.12 or later.
 
 ### About the library
 
@@ -31,6 +31,8 @@ Version 1.0.0 is a breaking release. Code written for 0.10.0 and core-04 needs c
 * [Quickstart](quickstart.md): install, build a vCon, load a 0.4.0 vCon, release notes
 * [Library API reference](library-api-reference.md): classes, methods, constants
 * [Guide for LLMs](vcon-library-guide-for-llms.md): a compact reference for models that write code against the library
+* [Generated API docs](https://vcon-dev.github.io/vcon-lib/): Sphinx pages built from the source
+* [Changelog](https://github.com/vcon-dev/vcon-lib/blob/main/CHANGELOG.md) and [migration guide](https://github.com/vcon-dev/vcon-lib/blob/main/MIGRATION_GUIDE.md) on GitHub
 
 Field rules live in the [field reference](../vcons/field-reference.md). That page describes core-04 (`"0.4.0"`), which the conserver still writes; the library writes core-05 (`"0.5.0"`).
 

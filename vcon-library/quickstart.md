@@ -6,7 +6,7 @@ description: Install the Python vCon library and build, save, load, sign and val
 
 ## vCon Library
 
-`vcon` 1.0.0 on PyPI. It targets [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) and writes `"vcon": "0.5.0"`. It reads 0.4.0 and 0.5.0 and migrates 0.4.0 on load. Python 3.12 or later.
+`vcon` 1.0.1 on PyPI. It targets [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) and writes `"vcon": "0.5.0"`. It reads 0.4.0 and 0.5.0 and migrates 0.4.0 on load. Python 3.12 or later.
 
 ```bash
 pip install vcon
@@ -325,6 +325,8 @@ The migration follows Appendix A.1 of core-05. It adds a session for the dialogs
 A signed 0.4.0 vCon is not migrated on load, because migrating drops the signature. Verify it, call `Vcon.migrate_0_4_0_to_0_5_0(signed)`, and sign the result again (`report.resign_required` is `True`).
 
 ### Release notes
+
+**1.0.1** is a documentation release: README, PyPI links and the [generated API docs](https://vcon-dev.github.io/vcon-lib/). The code is the same as 1.0.0.
 
 **1.0.0** retargets the library to core-05 (syntax `"0.5.0"`). It is a breaking release.
 
