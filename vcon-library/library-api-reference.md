@@ -6,7 +6,7 @@ description: Signatures, return types and working examples for every public clas
 
 ## vCon Library API Reference
 
-Reference for `vcon` **1.0.1** (same code as 1.0.0), which implements [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) (`"vcon": "0.5.0"`) and reads and migrates 0.4.0. The [quickstart](quickstart.md) has release notes and known limits. What each field means, and when it is required, is in the [field reference](../vcons/field-reference.md); that page describes core-04 (`"0.4.0"`), while the library writes core-05.
+Reference for `vcon` **1.0.2** (same code as 1.0.0), which implements [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) (`"vcon": "0.5.0"`) and reads and migrates 0.4.0. The [quickstart](quickstart.md) has release notes and known limits. What each field means, and when it is required, is in the [field reference](../vcons/field-reference.md); that page describes core-04 (`"0.4.0"`), while the library writes core-05.
 
 ### Installation
 
