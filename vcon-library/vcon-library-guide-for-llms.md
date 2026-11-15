@@ -4,7 +4,7 @@ description: A compact, self-contained reference for language models that write 
 
 # 📜 vCon Library Guide for LLMs
 
-Reference for models that generate code with the `vcon` Python library, version 1.0 (1.0.0 and 1.0.1 have the same code), which implements `draft-ietf-vcon-vcon-core-05` (`"vcon": "0.5.0"`). Every code block below was run against `vcon==1.0.0`. For field semantics see the [field reference](../vcons/field-reference.md), which describes core-04; where it differs, the rules on this page are what the library writes. For the full method list see the [API reference](library-api-reference.md).
+Reference for models that generate code with the `vcon` Python library, version 1.0 (1.0.0 and 1.0.2 have the same code), which implements `draft-ietf-vcon-vcon-core-05` (`"vcon": "0.5.0"`). Every code block below was run against `vcon==1.0.0`. For field semantics see the [field reference](../vcons/field-reference.md), which describes core-04; where it differs, the rules on this page are what the library writes. For the full method list see the [API reference](library-api-reference.md).
 
 ### Rules for generated code
 
