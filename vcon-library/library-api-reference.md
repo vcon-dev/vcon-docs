@@ -6,7 +6,7 @@ description: Signatures, return types and working examples for every public clas
 
 ## vCon Library API Reference
 
-Reference for `vcon` **1.0.2** (same code as 1.0.0), which implements [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) (`"vcon": "0.5.0"`) and reads and migrates 0.4.0. The [quickstart](quickstart.md) has release notes and known limits. What each field means, and when it is required, is in the [field reference](../vcons/field-reference.md); that page describes core-04 (`"0.4.0"`), while the library writes core-05.
+Reference for `vcon` **1.0.3**, which implements [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) (`"vcon": "0.5.0"`) and reads and migrates 0.4.0. The [quickstart](quickstart.md) has release notes and known limits. What each field means, and when it is required, is in the [field reference](../vcons/field-reference.md); that page describes core-04 (`"0.4.0"`), while the library writes core-05.
 
 ### Installation
 
@@ -54,7 +54,7 @@ from vcon.extensions.wtf import (
 
 `from vcon import Party` raises `ImportError`.
 
-Importing `vcon` sets the root logger to `INFO` on stdout through the `logger` dependency. Call `logging.getLogger().setLevel(logging.WARNING)` after the import to quiet it.
+The library logs through `logging.getLogger(__name__)` in each module and does not configure logging on import. Configure logging in your application to see its messages.
 
 ### Vcon
 
@@ -129,7 +129,7 @@ Read-only: `vcon`, `uuid`, `subject`, `created_at`, `updated_at`, `parties` (a `
 add_attachment(purpose, body=None, encoding="none", mediatype=None, filename=None,
                url=None, content_hash=None, start=None, party=None, dialog=None,
                session=None) -> Attachment
-add_image(image_path, purpose="image") -> Attachment
+add_image(image_path, purpose="image", party=None, dialog=None, session=None) -> Attachment
 find_attachment_by_purpose(purpose) -> dict | None
 add_analysis(*, type, vendor, body, dialog=None, sessions=None, attachment=None,
              analysis=None, encoding="none", mediatype=None, filename=None, product=None,
@@ -139,7 +139,7 @@ find_analysis_by_type(type) -> dict | None
 
 `encoding` is `"json"`, `"base64url"` or `"none"`; anything else raises `ValueError` from `add_attachment` and `Exception` from `add_analysis`. With `encoding="json"`, `body` is the JSON value itself. `party` defaults to `0`, `start` to the vCon's `created_at`, and `mediatype` to `application/json` for JSON bodies. `dialog` has no default. With neither `dialog` nor `session`, `add_attachment()` uses the only session when the vCon has exactly one and raises `ValueError` otherwise. `session` may be an index or a list of indices. `add_analysis` takes keyword arguments only and requires `vendor`; `dialog`, `sessions`, `attachment` and `analysis` are optional references (an index or a list). `type=` is analysis only; attachments use `purpose=`.
 
-`add_image()` does not set `dialog` or `session`, so the vCon fails `is_valid()` until you set one on the new attachment.
+`add_image()` reads a JPEG, TIFF or PDF file (anything else raises `ValueError`; it needs `vcon[image]`) and writes a `base64url` attachment. It resolves `dialog` and `session` like `add_attachment()`: with neither, it uses the only session or raises `ValueError`.
 
 ```python
 vcon.add_attachment(purpose="notes", body={"agent_note": "Verified."}, encoding="json", session=0)
@@ -181,13 +181,13 @@ vcon.remove_extension("x-example")
 | `add_lawful_basis_attachment(lawful_basis, expiration, purpose_grants, party_index=None, dialog_index=None, session_index=None, **kwargs)` | `purpose_grants` is a list of dicts. Extra keywords go to `LawfulBasisAttachment` (`terms_of_service`, `status_interval`, `content_hash`, `registry`, `proof_mechanisms`, `metadata`). Writes `purpose: "lawful_basis"` and adds the `lawful_basis` extension. `expiration` may be `None`. Pass `session_index`; with only `dialog_index` it logs a warning and writes a dialog-only scope, and with neither it uses the only session or raises `ValueError`. A missing `party_index` defaults to 0 with a warning. |
 | `find_lawful_basis_attachments(party_index=None)` | |
 | `check_lawful_basis_permission(purpose, party_index=None) -> bool` | |
-| `add_wtf_transcription_analysis(transcript, segments, metadata, dialog_index=None, **kwargs)` | Writes to `analysis[]` and adds the `wtf_transcription` extension. Preferred. |
-| `add_wtf_transcription_attachment(transcript, segments, metadata, party_index=None, dialog_index=None, session_index=None, **kwargs)` | Writes to `attachments[]`, scoped like `add_attachment()`. |
+| `add_wtf_transcription_analysis(transcript, segments, metadata, dialog_index=None, session_index=None, **kwargs)` | Writes a `type: "wtf_transcription"` entry to `analysis[]` and adds the `wtf_transcription` extension. Preferred. |
+| `add_wtf_transcription_attachment(transcript, segments, metadata, party_index=None, dialog_index=None, session_index=None, **kwargs)` | Writes to `attachments[]`, scoped like `add_attachment()`. The WTF draft does not allow WTF in `attachments[]`; use the analysis form. |
 | `find_wtf_attachments(party_index=None)` | Searches `attachments[]` only. |
 | `validate_extensions() -> dict` | Keyed by extension name, plus `attachments`. |
 | `process_extensions() -> dict` | Name to `ProcessingResult`. |
 
-`add_wtf_transcription_analysis()` writes `type: "transcription"`, while [`draft-howe-vcon-wtf-extension`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/) defines `wtf_transcription`, and it stores the body as a JSON string. Both gaps are still present in 1.0.0. To write the draft values, call `add_analysis(type="wtf_transcription", ..., body=wtf_dict, encoding="json")` and `add_extension("wtf_transcription")`.
+`add_wtf_transcription_analysis()` writes the entry [`draft-howe-vcon-wtf-extension`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/) defines: `type: "wtf_transcription"`, `encoding: "json"`, the WTF document as the `body` value, `vendor` and `product` from `metadata["provider"]` and `metadata["model"]`, and the draft URL in `schema`. `dialog_index` becomes `dialog: [n]`; `session_index` becomes `sessions`. Releases before 1.0.3 wrote `type: "transcription"` with a JSON-string body; `Vcon.decoded_body()` reads both.
 
 ### Session
 
@@ -353,11 +353,9 @@ The 0.4.0 parameters `originator`, `party_history`, `transfer`, `transferee`, `t
 | `is_transfer()` | Deprecated; warns and returns `False`. |
 | `set_session_id(session_id)` / `get_session_id()` | Dict or list of dicts. |
 | `set_content_hash(h)` / `get_content_hash()` | |
-| `calculate_content_hash(algorithm="sha512") -> str` | Hashes the stored `body` string. Raises `ValueError` with no body. |
-| `verify_content_hash(expected_hash, algorithm=None) -> bool` | Reads the algorithm from the prefix of `expected_hash`. A legacy unprefixed SHA-256 value still verifies. |
+| `calculate_content_hash(algorithm="sha512") -> str` | Hashes the content: the decoded bytes of a `base64url` body, otherwise the `body` as UTF-8. Raises `ValueError` with no body. |
+| `verify_content_hash(expected_hash, algorithm=None) -> bool` | Reads the algorithm from the prefix of `expected_hash`. Also accepts a hash of the encoded `base64url` text, as 1.0.0 and earlier computed it. A legacy unprefixed SHA-256 value still verifies. |
 | `is_external_data_changed() -> bool` | |
-
-Known gap: `add_image_data()` hashes the raw image bytes, but `verify_content_hash()` recomputes over the encoded body, so it returns `False` for image dialogs.
 
 ```python
 from vcon import compute_content_hash, parse_content_hash_algorithm
@@ -415,7 +413,7 @@ LawfulBasisAttachment(lawful_basis: LawfulBasisType, expiration, purpose_grants:
 
 Methods: `is_valid()`, `has_permission(purpose)`, `get_conditions(purpose)`, `validate_content_hash()`, `to_dict()`, `LawfulBasisAttachment.from_dict(d)`.
 
-`PurposeGrant(purpose, granted, granted_at, conditions=None)` has `is_expired(status_interval=None)`. `ProofMechanism(proof_type, timestamp, proof_data)`. `ContentHash(algorithm, canonicalization, value)` has `validate(content)`. `RegistryInfo(registry_type, url)`.
+`PurposeGrant(purpose, granted, granted_at, conditions=None)` has `is_expired(status_interval=None)`. `ProofMechanism(proof_type, timestamp, proof_data)`. `ContentHash(algorithm, canonicalization, value)` takes `HashAlgorithm` and `CanonicalizationMethod` values or their strings (`"sha-256"`, `"jcs"`), raises `ValueError` for anything else, and has `validate(content)`. `RegistryInfo(registry_type, url)`.
 
 `LawfulBasisExtension` offers `create_lawful_basis_attachment(lawful_basis, expiration, purpose_grants, **kwargs) -> dict` (the attachment dict, `purpose: "lawful_basis"`, without `party`, scope, `start` or `mediatype`), `validate_lawful_basis_attachment(attachment) -> bool` and `check_permission(vcon_dict, purpose, party_index=None) -> bool`. `LawfulBasisValidator` and `LawfulBasisProcessor` expose the `validate_*` and `check_permission` methods with `ValidationResult` and `ProcessingResult` returns.
 
@@ -493,7 +491,7 @@ vcon.add_wtf_transcription_analysis(
     metadata=wtf.metadata.to_dict(),
     dialog_index=0,
 )
-entry = vcon.find_analysis_by_type("transcription")
+entry = vcon.find_analysis_by_type("wtf_transcription")
 print(WTFAttachment.from_dict(Vcon.decoded_body(entry)).export_to_srt())
 ```
 
@@ -559,12 +557,12 @@ from PIL import Image   # installed by vcon[image]
 path = os.path.join(tempfile.mkdtemp(), "pic.jpg")
 Image.new("RGB", (20, 20), "red").save(path)
 
-attachment = vcon.add_image(path, purpose="photo")
-vcon.attachments[-1]["session"] = 0   # add_image() sets no scope
+attachment = vcon.add_image(path, purpose="photo", session=0)
 print(attachment.to_dict()["encoding"], vcon.is_valid())   # base64url (True, [])
 image_dialog = Dialog(type="text", start=now, parties=[0], mediatype="image/jpeg")
 image_dialog.add_image_data(path, "image/jpeg")
 print(image_dialog.is_image())     # True
+print(image_dialog.verify_content_hash(image_dialog.content_hash))   # True
 ```
 
 #### HTTP

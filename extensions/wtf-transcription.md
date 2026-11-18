@@ -114,7 +114,7 @@ All confidence values are normalized to the range 0 to 1 (Section 8.1).
 
 ## Python
 
-Build the analysis entry with the [`vcon`](https://pypi.org/project/vcon/) library's `add_analysis()`, which takes keyword arguments only. The example uses `vcon` 1.0.0, which writes core-05 (`"vcon": "0.5.0"`), so the recording dialog sits in a session:
+Build the analysis entry with the [`vcon`](https://pypi.org/project/vcon/) library. The example uses `vcon` 1.0.3, which writes core-05 (`"vcon": "0.5.0"`), so the recording dialog sits in a session. `add_wtf_transcription_analysis()` writes the entry this draft defines: `type: "wtf_transcription"`, `encoding: "json"`, the WTF document as the `body` value, `vendor` and `product` from `metadata["provider"]` and `metadata["model"]`, and the draft URL in `schema`. It also adds `wtf_transcription` to `extensions`.
 
 ```python
 from vcon import Dialog, Session, Vcon
@@ -136,6 +136,17 @@ wtf = {
                  "provider": "whisper", "model": "whisper-large-v3"},
 }
 
+v.add_wtf_transcription_analysis(**wtf, dialog_index=0)
+
+entry = v.find_analysis_by_type("wtf_transcription")
+print(entry["vendor"], entry["product"], entry["encoding"])   # whisper whisper-large-v3 json
+print(entry["body"]["transcript"]["text"])                    # Hello, I need help with my account.
+print(v.get_extensions(), v.is_valid())                       # ['wtf_transcription'] (True, [])
+```
+
+To set `vendor` and `product` yourself, write the entry with `add_analysis()`, which takes keyword arguments only, and list the extension:
+
+```python
 v.add_analysis(
     type="wtf_transcription",
     dialog=0,
@@ -148,7 +159,7 @@ v.add_analysis(
 v.add_extension("wtf_transcription")  # is_valid() fails without it
 ```
 
-Avoid the library's WTF helpers for now; vcon 1.0.0 still has the bugs that 0.10.0 had. `add_wtf_transcription_attachment()` stores WTF in `attachments[]`, which the draft does not allow. `add_wtf_transcription_analysis()` writes `type: "transcription"` instead of `"wtf_transcription"` and passes the body through `json.dumps`, producing a string. Both helpers do add `wtf_transcription` to `extensions`.
+Before 1.0.3, `add_wtf_transcription_analysis()` wrote `type: "transcription"` and passed the body through `json.dumps`, producing a string; `Vcon.decoded_body()` reads entries in either form. Do not use `add_wtf_transcription_attachment()`: it still stores WTF in `attachments[]`, which the draft does not allow.
 
 ## See also
 

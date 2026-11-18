@@ -115,7 +115,7 @@ Section 6 tells readers what to do before acting on a vCon:
 
 ## Python
 
-The [`vcon`](https://pypi.org/project/vcon/) library (1.0.0) builds this attachment and fills in `purpose`, `encoding`, `party`, `mediatype` and `start`. Version 1.0.0 targets core-05: `Vcon.build_new()` sets `"vcon": "0.5.0"`, and the attachment is scoped to a session with `session_index` rather than to a dialog. With only `dialog_index` the helper logs a warning and writes a dialog-only scope, as in the core-04 form described above; with neither, it uses the vCon's only session or raises `ValueError`. The helper adds `lawful_basis` to `extensions`, which `is_valid()` requires. Proof mechanisms must be `ProofMechanism` objects, not dicts. For core-04 output (`"0.4.0"`, `dialog` scope), stay on `vcon` 0.10.x.
+The [`vcon`](https://pypi.org/project/vcon/) library (1.0.3) builds this attachment and fills in `purpose`, `encoding`, `party`, `mediatype` and `start`. Version 1.0 and later target core-05: `Vcon.build_new()` sets `"vcon": "0.5.0"`, and the attachment is scoped to a session with `session_index` rather than to a dialog. With only `dialog_index` the helper logs a warning and writes a dialog-only scope, as in the core-04 form described above; with neither, it uses the vCon's only session or raises `ValueError`. The helper adds `lawful_basis` to `extensions`, which `is_valid()` requires. Proof mechanisms must be `ProofMechanism` objects, not dicts. For core-04 output (`"0.4.0"`, `dialog` scope), stay on `vcon` 0.10.x.
 
 ```python
 from vcon import Session, Vcon

@@ -6,7 +6,7 @@ description: Install the Python vCon library and build, save, load, sign and val
 
 ## vCon Library
 
-`vcon` 1.0.2 on PyPI. It targets [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) and writes `"vcon": "0.5.0"`. It reads 0.4.0 and 0.5.0 and migrates 0.4.0 on load. Python 3.12 or later.
+`vcon` 1.0.3 on PyPI. It targets [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) and writes `"vcon": "0.5.0"`. It reads 0.4.0 and 0.5.0 and migrates 0.4.0 on load. Python 3.12 or later.
 
 ```bash
 pip install vcon
@@ -14,8 +14,6 @@ pip install "vcon[image]"   # adds Pillow and pypdf for image and PDF helpers
 ```
 
 The package root exports `Vcon`, `Dialog`, `Session`, `SessionReference`, `Event`, `AlgorithmNotPermittedError`, `MigrationError`, `MigrationReport`, `MigrationResult`, `migrate_0_4_0_to_0_5_0`, `compute_content_hash` and `parse_content_hash_algorithm`. Import the rest from its module: `vcon.party.Party`, `vcon.civic_address.CivicAddress`, `vcon.extensions`. Field rules live in the [field reference](../vcons/field-reference.md), which describes core-04 (`"0.4.0"`); this page shows the library calls and the core-05 shape the library writes.
-
-Importing `vcon` sets the root logger to `INFO` on stdout (through its `logger` dependency), so every call logs a line. Add `logging.getLogger().setLevel(logging.WARNING)` after the import to quiet it.
 
 ### Build a vCon
 
@@ -111,7 +109,7 @@ vcon.add_wtf_transcription_analysis(
     dialog_index=0,
 )
 
-entry = vcon.find_analysis_by_type("transcription")
+entry = vcon.find_analysis_by_type("wtf_transcription")
 wtf = Vcon.decoded_body(entry)
 print(wtf["transcript"]["text"])         # Hello, I need help with my account.
 
@@ -119,9 +117,9 @@ from vcon.extensions.wtf import WTFAttachment
 print(WTFAttachment.from_dict(wtf).export_to_srt())
 ```
 
-Known upstream gap, still present in 1.0.0: `add_wtf_transcription_analysis()` writes `type: "transcription"`, while [`draft-howe-vcon-wtf-extension`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/) defines `wtf_transcription`, and it writes the body as a JSON string rather than the JSON value. `decoded_body()` reads both forms. To write the draft values, call `add_analysis(type="wtf_transcription", dialog=0, vendor=..., body=wtf_dict, encoding="json")` and `add_extension("wtf_transcription")` yourself; `is_valid()` reports a `wtf_transcription` analysis whose extension is not listed. `metadata` must include `created_at`, `processed_at`, `provider` and `model`. See the [WTF extension](../extensions/wtf-transcription.md).
+`add_wtf_transcription_analysis()` writes the entry that [`draft-howe-vcon-wtf-extension`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/) defines: `type: "wtf_transcription"`, `encoding: "json"`, the WTF document as the `body` value, `vendor` and `product` from `metadata["provider"]` and `metadata["model"]`, and the draft URL in `schema`. It adds `wtf_transcription` to `extensions`. Scope it with `dialog_index` or `session_index`. `metadata` must include `created_at`, `processed_at`, `provider` and `model`. Before 1.0.3 it wrote `type: "transcription"` and a JSON-string body; `decoded_body()` still reads those entries. See the [WTF extension](../extensions/wtf-transcription.md).
 
-`add_wtf_transcription_attachment()` also exists and writes to `attachments[]`. Prefer the analysis form.
+`add_wtf_transcription_attachment()` also exists. It writes WTF to `attachments[]`, which the draft does not allow, so use the analysis form.
 
 ### Common operations
 
@@ -209,7 +207,7 @@ vcon.add_tag("department", "billing")
 print(vcon.get_tag("department"))                          # billing
 ```
 
-A JSON body is the value itself (an object, array or string), not a `json.dumps` string. Use `Vcon.decoded_body(entry)` to read an entry either way. Attachments take `purpose`, never `type`. `add_analysis()` takes `dialog`, `sessions`, `attachment` and `analysis` as optional keyword references. `add_tag()` scopes the tags attachment to every session and adds an empty `{}` session if there is none. Images: `vcon.add_image(path, purpose="image")`, which needs `vcon[image]`.
+A JSON body is the value itself (an object, array or string), not a `json.dumps` string. Use `Vcon.decoded_body(entry)` to read an entry either way. Attachments take `purpose`, never `type`. `add_analysis()` takes `dialog`, `sessions`, `attachment` and `analysis` as optional keyword references. `add_tag()` scopes the tags attachment to every session and adds an empty `{}` session if there is none. Images: `vcon.add_image(path, purpose="image")` takes JPEG, TIFF or PDF, needs `vcon[image]`, and takes `party`, `dialog` and `session` like `add_attachment()`.
 
 #### Extensions and critical
 
@@ -326,7 +324,15 @@ A signed 0.4.0 vCon is not migrated on load, because migrating drops the signatu
 
 ### Release notes
 
-**1.0.2** is a documentation release: README, PyPI links and the [generated API docs](https://vcon-dev.github.io/vcon-lib/). The code is the same as 1.0.0.
+**1.0.3** fixes:
+
+* `add_wtf_transcription_analysis()` writes `type: "wtf_transcription"` with the WTF document as the JSON `body`, and takes `session_index`.
+* `add_image()` takes `party`, `dialog` and `session` and scopes the attachment like `add_attachment()`, so the vCon passes `is_valid()`.
+* `Dialog.calculate_content_hash()` hashes the decoded bytes of a `base64url` body, so `verify_content_hash()` succeeds on image dialogs from `add_image_data()`. A hash of the encoded text, as 1.0.0 computed it, also verifies.
+* Lawful basis `ContentHash` accepts strings (`"sha-256"`, `"jcs"`) as well as enums.
+* Importing `vcon` no longer configures the root logger, and the `logger` dependency is gone. Configure logging in your application to see the library's messages.
+
+**1.0.2** is a documentation release: README, PyPI links and the [generated API docs](https://vcon-dev.github.io/vcon-lib/). No change to library behavior.
 
 **1.0.0** retargets the library to core-05 (syntax `"0.5.0"`). It is a breaking release.
 
@@ -344,12 +350,11 @@ A signed 0.4.0 vCon is not migrated on load, because migrating drops the signatu
 
 **0.9.5** content hashes use the spec form `sha512-<unpadded base64url>`, and `compute_content_hash` and `parse_content_hash_algorithm` were added. Old unprefixed SHA-256 hashes still verify. **0.9.6** security: `requests` bump. **0.9.3** fixed `add_tag()` defaults. **0.9.2** `build_new()` emitted `"vcon": "0.4.0"` and `add_wtf_transcription_analysis()` was added.
 
-### Known limits in 1.0.0
+### Known limits in 1.0.3
 
 * `subject` has no setter.
-* `add_wtf_transcription_analysis()` uses `type: "transcription"` and a string body (see above).
-* `add_image()` writes an attachment with no `dialog` or `session`, so `is_valid()` then fails. Set the scope after the call, for example `vcon.attachments[-1]["session"] = 0`.
-* `add_inline_data()` does not encode its body, and `add_image_data()` hashes the raw image bytes while `verify_content_hash()` recomputes over the encoded body string, so verification of an image dialog returns `False`.
+* `add_wtf_transcription_attachment()` writes WTF to `attachments[]`, which the WTF draft does not allow. Use `add_wtf_transcription_analysis()`.
+* `add_inline_data()` does not encode its body.
 * `Dialog.VALID_TYPES` still lists `audio` and `video`, which are accepted for backward compatibility and written as `recording`.
 
 ### Next
