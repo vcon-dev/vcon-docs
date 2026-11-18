@@ -11,7 +11,7 @@ Paste this page into a model's context to generate adapter code. It holds the gr
 ## Ground truth
 
 * Spec: `draft-ietf-vcon-vcon-core-04`. The `vcon` syntax parameter is `"0.4.0"`.
-* Library: `vcon` (PyPI) 0.10.x (`vcon>=0.10,<1`). `vcon` 1.0.0 writes core-05 (`"0.5.0"`), not the core-04 output this guide describes. Start from [vcon-adapter-template](https://github.com/vcon-dev/vcon-adapter-template) and use its `src/<package>/vcon_builder.py` helpers: `new_vcon()`, `add_lawful_basis()`, `external_media_url()`, `sha512_b64url()`, `finalize_vcon()`, `json_body()`.
+* Library: `vcon` (PyPI) 0.10.x (`vcon>=0.10,<1`). `vcon` 1.0 and later write core-05 (`"0.5.0"`), not the core-04 output this guide describes. Start from [vcon-adapter-template](https://github.com/vcon-dev/vcon-adapter-template) and use its `src/<package>/vcon_builder.py` helpers: `new_vcon()`, `add_lawful_basis()`, `external_media_url()`, `sha512_b64url()`, `finalize_vcon()`, `json_body()`.
 * `add_party()` and `add_dialog()` take `Party` and `Dialog` objects (`from vcon.party import Party`, `from vcon.dialog import Dialog`). `add_attachment()`, `add_analysis()` and `add_tag()` take keyword arguments.
 * With `encoding="json"`, `body` is the JSON value itself, never a `json.dumps()` string. Readers accept both; use `json_body()`.
 * Attachments use `purpose`, never `type`, and carry `start`, `party`, `dialog`. A body carries `mediatype` and `encoding`.

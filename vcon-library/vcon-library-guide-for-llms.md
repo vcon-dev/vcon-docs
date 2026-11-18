@@ -4,7 +4,7 @@ description: A compact, self-contained reference for language models that write 
 
 # 📜 vCon Library Guide for LLMs
 
-Reference for models that generate code with the `vcon` Python library, version 1.0 (1.0.0 and 1.0.2 have the same code), which implements `draft-ietf-vcon-vcon-core-05` (`"vcon": "0.5.0"`). Every code block below was run against `vcon==1.0.0`. For field semantics see the [field reference](../vcons/field-reference.md), which describes core-04; where it differs, the rules on this page are what the library writes. For the full method list see the [API reference](library-api-reference.md).
+Reference for models that generate code with the `vcon` Python library, version 1.0.3, which implements `draft-ietf-vcon-vcon-core-05` (`"vcon": "0.5.0"`). Every code block below was run against `vcon==1.0.3`. For field semantics see the [field reference](../vcons/field-reference.md), which describes core-04; where it differs, the rules on this page are what the library writes. For the full method list see the [API reference](library-api-reference.md).
 
 ### Rules for generated code
 
@@ -125,7 +125,8 @@ print(vcon.get_tag("department"))                                # billing
 ```text
 add_attachment(purpose, body=None, encoding="none", mediatype=None, filename=None,
                url=None, content_hash=None, start=None, party=None, dialog=None, session=None)
-add_image(image_path, purpose="image")        Attachment.from_image(path, purpose="image")
+add_image(image_path, purpose="image", party=None, dialog=None, session=None)
+Attachment.from_image(path, purpose="image")
 add_analysis(*, type, vendor, body, dialog=None, sessions=None, attachment=None, analysis=None,
              encoding="none", mediatype=None, filename=None, product=None, url=None,
              content_hash=None, schema=None, meta=None, **extra)
@@ -134,7 +135,7 @@ add_analysis(*, type, vendor, body, dialog=None, sessions=None, attachment=None,
 * `encoding` is `json`, `base64url` or `none`.
 * Defaults on every attachment: `party` 0, `start` from `created_at`, `mediatype` `application/json` for `json` bodies. There is no `dialog` default. With neither `dialog` nor `session`, the only session is used if there is exactly one; otherwise `ValueError`.
 * `add_tag()` scopes the tags attachment to every session and adds an empty session if there is none.
-* `add_image()` sets no `dialog` or `session`; set one on `vcon.attachments[-1]` afterwards or `is_valid()` fails.
+* `add_image()` accepts JPEG, TIFF or PDF only and scopes the attachment like `add_attachment()`: pass `dialog=` or `session=`, or it uses the only session and raises `ValueError` otherwise.
 * Find helpers: `find_attachment_by_purpose(purpose)` (not `find_attachment_by_type`), `find_analysis_by_type(type)`.
 
 ### Extensions and critical
@@ -189,7 +190,7 @@ vcon.add_wtf_transcription_analysis(
               "provider": "whisper", "model": "whisper-1"},
     dialog_index=0,
 )
-entry = vcon.find_analysis_by_type("transcription")
+entry = vcon.find_analysis_by_type("wtf_transcription")
 wtf = Vcon.decoded_body(entry)
 
 from vcon.extensions.wtf import WTFAttachment
@@ -197,8 +198,8 @@ print(WTFAttachment.from_dict(wtf).export_to_srt())
 ```
 
 * `metadata` needs `created_at`, `processed_at`, `provider`, `model`. `Metadata(audio_quality=...)` raises `TypeError`: `audio_quality` belongs to `Quality`.
-* `add_wtf_transcription_analysis()` writes `type: "transcription"` and a JSON-string body. The extension draft defines `wtf_transcription`. This upstream gap is still present in 1.0.0. For draft-conformant output call `vcon.add_analysis(type="wtf_transcription", dialog=0, vendor=..., product=..., body=wtf_dict, encoding="json")` and `vcon.add_extension("wtf_transcription")`.
-* `add_wtf_transcription_attachment(...)` (same arguments with `party_index`, `dialog_index`, `session_index`) writes to `attachments[]`; `find_wtf_attachments()` searches only there.
+* `add_wtf_transcription_analysis()` writes `type: "wtf_transcription"`, `encoding: "json"`, the WTF document as the `body` value, `vendor`/`product` from `metadata["provider"]`/`metadata["model"]` and the draft URL in `schema`, and adds the `wtf_transcription` extension. Scope it with `dialog_index` or `session_index`. Look it up with `find_analysis_by_type("wtf_transcription")`. Releases before 1.0.3 wrote `type: "transcription"` with a string body; `Vcon.decoded_body()` reads both.
+* Do not use `add_wtf_transcription_attachment(...)`: it writes to `attachments[]`, which the WTF draft does not allow. `find_wtf_attachments()` searches only `attachments[]`.
 * Provider conversion: `WhisperAdapter().convert(data)`, `DeepgramAdapter`, `AssemblyAIAdapter` return a `WTFAttachment` with `.transcript`, `.segments`, `.metadata`, `export_to_srt()`, `export_to_vtt()`, `get_speaking_time()`, `find_low_confidence_segments(threshold=0.5)`, `extract_keywords(min_confidence=0.8)`.
 * `WTFExtension` (dict in, dict out): `create_wtf_attachment`, `convert_from_provider(data, provider)`, `validate_wtf_attachment`, `export_transcription(att, format)`, `analyze_transcription`, `compare_transcriptions`. `WTFProcessor` has the same methods over `WTFAttachment` objects.
 
@@ -239,7 +240,7 @@ d = Dialog(type="text", start=now, parties=[0], body="hello",
 print(d.verify_content_hash(d.calculate_content_hash()))   # True
 ```
 
-`Dialog.verify_content_hash()` recomputes over the stored `body` string, so for base64url image dialogs from `add_image_data()` (hash taken over raw bytes) it returns `False`. That upstream gap is still present in 1.0.0.
+`Dialog.calculate_content_hash()` hashes the decoded bytes of a `base64url` body, so it matches the hash `add_image_data()` stores. `verify_content_hash()` also accepts a hash of the encoded text, as 1.0.0 and earlier computed it.
 
 ### Other public API
 

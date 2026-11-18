@@ -15,7 +15,7 @@ icon: plug
 
 `libvcon` 0.1.0 matches Python `vcon-lib` **0.9.6** and `draft-ietf-vcon-vcon-core-02` (syntax `"0.4.0"`). Parity is behavioral, proven by golden fixtures generated from vcon-lib 0.9.6.
 
-`libvcon` has not yet tracked the 0.10 changes in `vcon-lib` (core-04), nor `vcon-lib` 1.0.0, which targets core-05 (syntax `"0.5.0"`, with sessions and events). The 0.10 changes that differ from what the C library writes today:
+`libvcon` has not yet tracked the 0.10 changes in `vcon-lib` (core-04), nor `vcon-lib` 1.0 and later, which target core-05 (syntax `"0.5.0"`, with sessions and events). The 0.10 changes that differ from what the C library writes today:
 
 * Empty `meta` and `metadata` placeholders. `vcon_add_dialog` adds `meta:{}` and `metadata:{}` as 0.9.6 did. Newer Python drops empty `meta`.
 * The tags attachment body shape. `vcon_add_tag` writes the body as a list of `"name:value"` strings. [vcon-js](../vcon-js-library/) writes an object.
