@@ -114,7 +114,7 @@ All confidence values are normalized to the range 0 to 1 (Section 8.1).
 
 ## Python
 
-Build the analysis entry with the [`vcon`](https://pypi.org/project/vcon/) library. The example uses `vcon` 1.0.4, which writes core-05 (`"vcon": "0.5.0"`), so the recording dialog sits in a session. `add_wtf_transcription_analysis()` writes the entry this draft defines: `type: "wtf_transcription"`, `encoding: "json"`, the WTF document as the `body` value, `vendor` and `product` from `metadata["provider"]` and `metadata["model"]`, and the draft URL in `schema`. It also adds `wtf_transcription` to `extensions`.
+Build the analysis entry with the [`vcon`](https://pypi.org/project/vcon/) library. The example uses `vcon` 1.0.5, which writes core-05 (`"vcon": "0.5.0"`), so the recording dialog sits in a session. `add_wtf_transcription_analysis()` writes the entry this draft defines: `type: "wtf_transcription"`, `encoding: "json"`, the WTF document as the `body` value, `vendor` and `product` from `metadata["provider"]` and `metadata["model"]`, and the draft URL in `schema`. It also adds `wtf_transcription` to `extensions`.
 
 ```python
 from vcon import Dialog, Session, Vcon
