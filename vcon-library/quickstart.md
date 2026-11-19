@@ -6,7 +6,7 @@ description: Install the Python vCon library and build, save, load, sign and val
 
 ## vCon Library
 
-`vcon` 1.0.4 on PyPI. It targets [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) and writes `"vcon": "0.5.0"`. It reads 0.4.0 and 0.5.0 and migrates 0.4.0 on load. Python 3.12 or later.
+`vcon` 1.0.5 on PyPI. It targets [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) and writes `"vcon": "0.5.0"`. It reads 0.4.0 and 0.5.0 and migrates 0.4.0 on load. Python 3.12 or later.
 
 ```bash
 pip install vcon
@@ -184,7 +184,7 @@ print(vcon.is_valid())                                          # (True, [])
 print(vcon.get_validation_warnings())                           # []
 ```
 
-A dialog or attachment with a `url` needs a `content_hash` (core-05 section 2.4). In 1.0.4 a `url` without one is a warning from `get_validation_warnings()`; it will be an `is_valid()` error in 1.1.
+A dialog or attachment with a `url` needs a `content_hash` (core-05 section 2.4). In 1.0.x a `url` without one is a warning from `get_validation_warnings()`; it will be an `is_valid()` error in 1.1.
 
 Dialog types are `recording`, `text` and `incomplete`. `Dialog(type="audio")` and `Dialog(type="video")` still work but warn and build a `recording`. `transfer` and `recording-set` dialogs are gone: `Dialog(party_history=...)`, `originator=`, `transferee=` and the other transfer parameters raise `ValueError`, and `add_transfer_dialog()` raises `NotImplementedError`. An `Event` checks the per-type parameter table when built, so `Event(type="join", time=now, party=0)` raises `ValueError` for the missing `sessions`. `add_incomplete_dialog()` writes no `body`; `details` goes to `metadata["details"]`.
 
@@ -367,6 +367,12 @@ A signed 0.4.0 vCon is not migrated on load, because migrating drops the signatu
 
 ### Release notes
 
+**1.0.5** fixes:
+
+* `is_valid()` no longer raises on a malformed `lawful_basis` body (a 1.0.4 regression): a non-string or offset-less `expiration`, a non-object grant, proof mechanism, `content_hash` or `registry`, or a non-string `lawful_basis` are reported as errors. A timestamp with no offset is read as UTC.
+* A `content_hash` with a trailing newline, and a `created_at` or `updated_at` offset of 24 hours or more, are invalid.
+* Signed (JWS) and encrypted (JWE) vCons are kept exactly as loaded. `is_valid()` checks a signed vCon as a JWS and validates its payload as a vCon; an encrypted vCon is checked as a JWE and `get_validation_warnings()` notes that its content was not validated. The core-05 Appendix B6 and B7 examples validate.
+
 **1.0.4** fixes:
 
 * `is_valid()` reports a malformed `content_hash` on a dialog, attachment, analysis, `redacted_from` or `amended_from`. The form is `<algorithm>-<unpadded base64url digest>`; for `sha512` (86 characters) and `sha256` (43) the digest length is checked, which catches hex digests and padded values.
@@ -409,7 +415,7 @@ A signed 0.4.0 vCon is not migrated on load, because migrating drops the signatu
 
 **0.9.5** content hashes use the spec form `sha512-<unpadded base64url>`, and `compute_content_hash` and `parse_content_hash_algorithm` were added. Old unprefixed SHA-256 hashes still verify. **0.9.6** security: `requests` bump. **0.9.3** fixed `add_tag()` defaults. **0.9.2** `build_new()` emitted `"vcon": "0.4.0"` and `add_wtf_transcription_analysis()` was added.
 
-### Known limits in 1.0.4
+### Known limits in 1.0.5
 
 * `subject` has no setter.
 * `add_wtf_transcription_attachment()` is deprecated but still writes WTF to `attachments[]`, and `is_valid()` does not flag it. Use `add_wtf_transcription_analysis()`.

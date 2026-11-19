@@ -6,7 +6,7 @@ description: Signatures, return types and working examples for every public clas
 
 ## vCon Library API Reference
 
-Reference for `vcon` **1.0.4**, which implements [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) (`"vcon": "0.5.0"`) and reads and migrates 0.4.0. The [quickstart](quickstart.md) has release notes and known limits. What each field means, and when it is required, is in the [field reference](../vcons/field-reference.md); that page describes core-04 (`"0.4.0"`), while the library writes core-05.
+Reference for `vcon` **1.0.5**, which implements [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) (`"vcon": "0.5.0"`) and reads and migrates 0.4.0. The [quickstart](quickstart.md) has release notes and known limits. What each field means, and when it is required, is in the [field reference](../vcons/field-reference.md); that page describes core-04 (`"0.4.0"`), while the library writes core-05.
 
 ### Installation
 
@@ -77,7 +77,7 @@ The library logs through `logging.getLogger(__name__)` in each module and does n
 | `is_valid()` | `(bool, list[str])` | Core-05 rules, see below. |
 | `get_validation_warnings()` | `list[str]` | SHOULD-level findings, not errors. |
 | `Vcon.validate_file(file_path)` / `Vcon.validate_json(json_str)` | `(bool, list[str])` | |
-| `sign(private_key, alg="RS256")` / `verify(public_key)` | `None` / `bool` | JWS through joserfc. Keys are `cryptography` RSA, EC or Ed25519 objects; pass the matching `alg` (`ES256`, `EdDSA`, ...). Signing adds `payload` and `signatures`. `alg` "none" raises `AlgorithmNotPermittedError` in both. `verify()` returns `False` when no `alg` is declared and raises `ValueError` for an unsigned vCon. |
+| `sign(private_key, alg="RS256")` / `verify(public_key)` | `None` / `bool` | JWS through joserfc. Keys are `cryptography` RSA, EC or Ed25519 objects; pass the matching `alg` (`ES256`, `EdDSA`, ...). Signing adds `payload` and `signatures`. A signed or encrypted vCon loaded from JSON is kept as is; `is_valid()` validates a signed vCon's payload, and an encrypted one only as a JWE. `alg` "none" raises `AlgorithmNotPermittedError` in both. `verify()` returns `False` when no `alg` is declared and raises `ValueError` for an unsigned vCon. |
 | `Vcon.generate_key_pair()` | `(private_key, public_key)` | RSA 2048. |
 | `Vcon.uuid8_domain_name(domain)` / `Vcon.uuid8_time(custom_c_62_bits)` | `str` | UUID8 helpers. |
 | `set_created_at(ts)` / `set_updated_at(ts)` | `None` | `str` or `datetime`. |

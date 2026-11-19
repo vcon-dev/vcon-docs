@@ -1,5 +1,5 @@
 ---
-description: Where to start with the Python vCon library, version 1.0.4 on core-05.
+description: Where to start with the Python vCon library, version 1.0.5 on core-05.
 icon: plug
 ---
 
@@ -7,7 +7,7 @@ icon: plug
 
 ## vCon Python Library
 
-> **Current version:** `vcon` **1.0.4** · `pip install vcon` · [GitHub: vcon-dev/vcon-lib](https://github.com/vcon-dev/vcon-lib) · Targets [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), syntax `"0.5.0"` · Reads and migrates `"0.4.0"` · Python 3.12 or later.
+> **Current version:** `vcon` **1.0.5** · `pip install vcon` · [GitHub: vcon-dev/vcon-lib](https://github.com/vcon-dev/vcon-lib) · Targets [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/), syntax `"0.5.0"` · Reads and migrates `"0.4.0"` · Python 3.12 or later.
 
 ### About the library
 
