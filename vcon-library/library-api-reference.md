@@ -6,16 +6,17 @@ description: Signatures, return types and working examples for every public clas
 
 ## vCon Library API Reference
 
-Reference for `vcon` **1.0.3**, which implements [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) (`"vcon": "0.5.0"`) and reads and migrates 0.4.0. The [quickstart](quickstart.md) has release notes and known limits. What each field means, and when it is required, is in the [field reference](../vcons/field-reference.md); that page describes core-04 (`"0.4.0"`), while the library writes core-05.
+Reference for `vcon` **1.0.4**, which implements [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) (`"vcon": "0.5.0"`) and reads and migrates 0.4.0. The [quickstart](quickstart.md) has release notes and known limits. What each field means, and when it is required, is in the [field reference](../vcons/field-reference.md); that page describes core-04 (`"0.4.0"`), while the library writes core-05.
 
 ### Installation
 
 ```bash
 pip install vcon
 pip install "vcon[image]"    # Pillow and pypdf for image and PDF helpers
+pip install "vcon[video]"    # ffmpeg-python for video helpers
 ```
 
-Python 3.12 or later. Video helpers need the `ffmpeg` binary.
+Python 3.12 or later. Video helpers need the `video` extra and the `ffmpeg` binary on `PATH`; without the extra they raise `ImportError`. JWS signing uses joserfc, and `import vcon` prints no warnings.
 
 ### Imports
 
@@ -62,7 +63,7 @@ The library logs through `logging.getLogger(__name__)` in each module and does n
 
 | Method | Returns | Notes |
 |---|---|---|
-| `Vcon(vcon_dict=None, property_handling="default", migrate_legacy=True, strict_migration=False)` | `Vcon` | Wraps an existing dict. A dict with `"vcon": "0.4.0"` is migrated (see [Migration](#migration)). |
+| `Vcon(vcon_dict=None, property_handling="default", migrate_legacy=True, strict_migration=False)` | `Vcon` | Wraps an existing dict. A dict with `"vcon": "0.4.0"` is migrated (see [Migration](#migration)). `created_at` is kept exactly as written; an invalid value is reported by `is_valid()`, not raised. |
 | `Vcon.build_new(created_at=None, property_handling="default")` | `Vcon` | New vCon with `vcon: "0.5.0"`, a UUID8, `created_at` and empty `parties`, `dialog`, `attachments`, `analysis`. No `sessions` until you add one. |
 | `Vcon.build_from_json(json_string, property_handling="default", migrate_legacy=True, strict_migration=False)` | `Vcon` | |
 | `Vcon.load(source, property_handling="default", migrate_legacy=True, strict_migration=False)` | `Vcon` | Path or URL. |
@@ -76,14 +77,16 @@ The library logs through `logging.getLogger(__name__)` in each module and does n
 | `is_valid()` | `(bool, list[str])` | Core-05 rules, see below. |
 | `get_validation_warnings()` | `list[str]` | SHOULD-level findings, not errors. |
 | `Vcon.validate_file(file_path)` / `Vcon.validate_json(json_str)` | `(bool, list[str])` | |
-| `sign(private_key, alg="RS256")` / `verify(public_key)` | `None` / `bool` | JWS. Signing adds `payload` and `signatures`. `alg` "none" raises `AlgorithmNotPermittedError` in both. `verify()` returns `False` when no `alg` is declared and raises `ValueError` for an unsigned vCon. |
+| `sign(private_key, alg="RS256")` / `verify(public_key)` | `None` / `bool` | JWS through joserfc. Keys are `cryptography` RSA, EC or Ed25519 objects; pass the matching `alg` (`ES256`, `EdDSA`, ...). Signing adds `payload` and `signatures`. `alg` "none" raises `AlgorithmNotPermittedError` in both. `verify()` returns `False` when no `alg` is declared and raises `ValueError` for an unsigned vCon. |
 | `Vcon.generate_key_pair()` | `(private_key, public_key)` | RSA 2048. |
 | `Vcon.uuid8_domain_name(domain)` / `Vcon.uuid8_time(custom_c_62_bits)` | `str` | UUID8 helpers. |
 | `set_created_at(ts)` / `set_updated_at(ts)` | `None` | `str` or `datetime`. |
 
 `property_handling` is `"default"` (keep unknown properties), `"strict"` (remove them) or `"meta"` (move them into `meta`). The constants are `vcon.vcon.PROPERTY_HANDLING_DEFAULT`, `_STRICT` and `_META`. An unmigrated 0.4.0 dict (`migrate_legacy=False`, or a signed one) is kept exactly as given and `property_handling` is not applied to it.
 
-`is_valid()` checks required fields; that `vcon`, when present, is `"0.5.0"`; that a session exists when there is dialog or events; every party, dialog, session, attachment and analysis index; the event parameter table; that attachments have `party` and `dialog` or `session`; that `redacted_from` and `amended_from` are not both present; that `extensions` lists every extension in use and every `critical` entry; that a dialog or attachment with inline content has a `mediatype`; and that every `__REDACTED_REF_#` has a `redacted_strings` entry. A dialog that no session lists, or a session without `start` or `parties`, is a warning.
+`is_valid()` checks required fields; that `vcon`, when present, is `"0.5.0"`; that a session exists when there is dialog or events; every party, dialog, session, attachment and analysis index; the event parameter table; that attachments have `party` and `dialog` or `session`; that `redacted_from` and `amended_from` are not both present; that `extensions` lists every extension in use and every `critical` entry; that a dialog or attachment with inline content has a `mediatype`; that every `__REDACTED_REF_#` has a `redacted_strings` entry; that `created_at` is ISO 8601; that every `content_hash` (dialog, attachment, analysis, `redacted_from`, `amended_from`) is `<algorithm>-<unpadded base64url digest>`, with an 86-character digest for `sha512` and 43 for `sha256`, so hex and padded digests fail; and that every `purpose: "lawful_basis"` attachment body has `lawful_basis`, `expiration` and `purpose_grants` and well-formed grants and proof mechanisms.
+
+`get_validation_warnings()` reports a dialog that no session lists, a session without `start` or `parties`, a `url` without a `content_hash` (an `is_valid()` error from 1.1), an `encoding: "json"` body that is a serialized JSON string, and lawful basis proof types, hash algorithms or canonicalization methods the draft does not define.
 
 `PERMITTED_JWS_ALGORITHMS` in `vcon.vcon` lists `RS256`, `RS384`, `RS512`, `PS256`, `PS384`, `PS512`, `ES256`, `ES384`, `ES512` and `EdDSA`. `AlgorithmNotPermittedError` is a `ValueError`.
 
@@ -100,6 +103,15 @@ vcon.add_session(Session(start=now, parties=[0, 1]))
 vcon.add_dialog(Dialog(type="text", start=now, parties=[0],
                        body="Hello", encoding="none", mediatype="text/plain"), session=0)
 print(vcon.vcon, vcon.is_valid(), vcon.get_validation_warnings())   # 0.5.0 (True, []) []
+
+ref = Dialog(type="recording", start=now, parties=[0], mediatype="audio/x-wav",
+             url="https://example.com/call.wav")   # placeholder URL, no content_hash
+draft = Vcon(vcon.to_dict())
+draft.add_dialog(ref, session=0)
+print(draft.is_valid()[0], draft.get_validation_warnings()[0][:40])   # True Dialog at index 1 has a url but no conte
+ref.content_hash = "sha512-" + "ab" * 64                               # hex, not base64url
+draft.vcon_dict["dialog"][1] = ref.to_dict()
+print(draft.is_valid()[1][0][:46])                                     # Dialog at index 1 has an invalid content_hash
 ```
 
 #### Properties
@@ -115,6 +127,8 @@ Read-only: `vcon`, `uuid`, `subject`, `created_at`, `updated_at`, `parties` (a `
 | `add_party(party: Party)` | |
 | `get_party_objects() -> list[Party]` | `parties` returns dicts, this returns `Party` objects. |
 | `find_party_index(by, val) -> int or None` | `by` is a party attribute such as `"name"` or `"tel"`. |
+
+`add_party()`, `add_dialog()`, `add_analysis()` and the `find_*` methods work on a vCon that has no `parties`, `dialog` or `analysis` key (all optional in core-05).
 | `add_session(session=None) -> int` | A `Session`, a dict, or nothing for an empty `{}` session. Returns the index. |
 | `add_dialog(dialog: Dialog, session=None) -> int` | Returns the dialog index. `session` is the index of an existing session; the dialog index is appended to its `dialog` list. An out-of-range index raises `ValueError`. |
 | `add_event(event: Event or dict) -> int` | Returns the event index. An `Event` is checked when built; a dict is checked by `is_valid()`. |
@@ -153,7 +167,20 @@ print(Vcon.decoded_body(vcon.find_analysis_by_type("sentiment")))   # {'sentimen
 
 #### Tags
 
-`add_tag(tag_name, tag_value)`, `get_tag(tag_name) -> str | None`, and the `tags` property (the tags attachment). Tags are stored as a list of `"name:value"` strings in a `purpose: "tags"` attachment. The tags attachment lists every session in `session`; if the vCon has no session, `add_tag()` adds an empty `{}` session first.
+`add_tag(tag_name, tag_value, party=None)`, `get_tag(tag_name) -> str | None`, and the `tags` property (the tags attachment). Tags are stored as a list of `"name:value"` strings in a `purpose: "tags"` attachment. The tags attachment lists every session in `session`; if the vCon has no session, `add_tag()` adds an empty `{}` session first.
+
+`party` is the party that adds the tags and is used when the tags attachment is created; it defaults to 0. An index that does not exist raises `ValueError`. On a vCon with no parties, `add_tag()` still writes party 0 but emits a `DeprecationWarning`, because the result fails `is_valid()`; from 1.1 it will raise.
+
+```python
+tagged = Vcon.build_new()
+tagged.add_party(Party(name="Alice"))
+try:
+    tagged.add_tag("priority", "high", party=3)
+except ValueError as e:
+    print(str(e)[:47])   # add_tag() needs a valid party index for the tag
+tagged.add_tag("priority", "high")
+print(tagged.get_tag("priority"), tagged.tags["party"])   # high 0
+```
 
 #### Extensions and critical
 
@@ -182,7 +209,7 @@ vcon.remove_extension("x-example")
 | `find_lawful_basis_attachments(party_index=None)` | |
 | `check_lawful_basis_permission(purpose, party_index=None) -> bool` | |
 | `add_wtf_transcription_analysis(transcript, segments, metadata, dialog_index=None, session_index=None, **kwargs)` | Writes a `type: "wtf_transcription"` entry to `analysis[]` and adds the `wtf_transcription` extension. Preferred. |
-| `add_wtf_transcription_attachment(transcript, segments, metadata, party_index=None, dialog_index=None, session_index=None, **kwargs)` | Writes to `attachments[]`, scoped like `add_attachment()`. The WTF draft does not allow WTF in `attachments[]`; use the analysis form. |
+| `add_wtf_transcription_attachment(transcript, segments, metadata, party_index=None, dialog_index=None, session_index=None, **kwargs)` | Deprecated since 1.0.4; emits a `DeprecationWarning`. Writes to `attachments[]`, scoped like `add_attachment()`. The WTF draft does not allow WTF in `attachments[]`; use `add_wtf_transcription_analysis()`. |
 | `find_wtf_attachments(party_index=None)` | Searches `attachments[]` only. |
 | `validate_extensions() -> dict` | Keyed by extension name, plus `attachments`. |
 | `process_extensions() -> dict` | Name to `ProcessingResult`. |
@@ -342,12 +369,17 @@ The 0.4.0 parameters `originator`, `party_history`, `transfer`, `transferee`, `t
 |---|---|
 | `to_dict()` | Omits empty `meta` and `metadata`. |
 | `add_external_data(url, filename, mediatype)` | Downloads the URL, sets `url` and a `sha512-` hash. Raises if the fetch fails. |
-| `add_inline_data(body, filename, mediatype)` | Sets `encoding="base64url"` and the hash. Does not encode: pass an already base64url body. |
+| `add_inline_data(body: bytes \| str, filename, mediatype)` | Sets `encoding="base64url"` and a `sha512-` hash over the decoded content. `bytes` are encoded to unpadded base64url; a `str` is taken to be base64url already. |
 | `add_image_data(image_path, mediatype=None)`, `extract_image_metadata(image_data, mediatype)` | Needs `vcon[image]`. Body is unpadded base64url. |
-| `add_video_data(video_data, filename=None, mediatype=None, inline=True, metadata=None)` | Sets `type` to `recording`. Needs `ffmpeg` for metadata. |
+| `add_video_data(video_data, filename=None, mediatype=None, inline=True, metadata=None)` | Sets `type` to `recording`; `mediatype` is guessed from the filename extension when not given. With `inline=False`, `video_data` must be a URL. |
 | `add_video_with_optimal_storage(video_data, filename, mediatype=None, size_threshold_mb=10)` | |
 | `add_streaming_video_reference(reference_id, mediatype, metadata=None)` | |
-| `extract_video_metadata(video_path=None)`, `generate_thumbnail(max_size=(200, 200))`, `transcode_video(target_format, codec=None, bit_rate=None, width=None, height=None)` | |
+| `extract_video_metadata(video_path=None) -> dict` | Duration, size, codec, width, height, frame rate and more from ffprobe. Reads the inline body, the `url`, or `video_path`. Needs `vcon[video]` and ffmpeg. |
+| `generate_thumbnail(*args, **kwargs)` | Calls `generate_video_thumbnail()` for a video dialog, otherwise `generate_image_thumbnail()`. |
+| `generate_video_thumbnail(timestamp=0.0, width=320, height=240, quality=90) -> bytes` | JPEG bytes of one frame. Needs `vcon[video]` and ffmpeg; raises `ValueError` for a dialog that is not video. |
+| `generate_image_thumbnail(max_size=(200, 200)) -> str \| None` | Base64url JPEG thumbnail of an image dialog. Needs `vcon[image]`. |
+| `get_video_format_from_mediatype(mediatype=None) -> str` | Container name such as `mp4`; defaults to the dialog's `mediatype`. |
+| `transcode_video(target_format, codec=None, bit_rate=None, width=None, height=None)` | Rewrites the inline body in the new format and records the original format. Needs `vcon[video]` and ffmpeg. |
 | `to_inline_data()` | Fetches an external body and inlines it as unpadded base64url. |
 | `is_external_data()`, `is_inline_data()`, `is_text()`, `is_recording()`, `is_incomplete()`, `is_placeholder()`, `is_audio()`, `is_video()`, `is_email()`, `is_image()`, `is_pdf()`, `has_thumbnail()` | `bool`. `is_audio()` and `is_video()` test `mediatype`. |
 | `is_transfer()` | Deprecated; warns and returns `False`. |
@@ -413,6 +445,8 @@ LawfulBasisAttachment(lawful_basis: LawfulBasisType, expiration, purpose_grants:
 
 Methods: `is_valid()`, `has_permission(purpose)`, `get_conditions(purpose)`, `validate_content_hash()`, `to_dict()`, `LawfulBasisAttachment.from_dict(d)`.
 
+`Vcon.is_valid()` runs `LawfulBasisValidator` over the body of every `purpose: "lawful_basis"` attachment, so a hand-written body missing `lawful_basis`, `expiration` or `purpose_grants`, or with a malformed grant or proof mechanism, fails. A `proof_type`, hash algorithm or canonicalization method the draft does not define is a warning from `get_validation_warnings()`, not an error.
+
 `PurposeGrant(purpose, granted, granted_at, conditions=None)` has `is_expired(status_interval=None)`. `ProofMechanism(proof_type, timestamp, proof_data)`. `ContentHash(algorithm, canonicalization, value)` takes `HashAlgorithm` and `CanonicalizationMethod` values or their strings (`"sha-256"`, `"jcs"`), raises `ValueError` for anything else, and has `validate(content)`. `RegistryInfo(registry_type, url)`.
 
 `LawfulBasisExtension` offers `create_lawful_basis_attachment(lawful_basis, expiration, purpose_grants, **kwargs) -> dict` (the attachment dict, `purpose: "lawful_basis"`, without `party`, scope, `start` or `mediatype`), `validate_lawful_basis_attachment(attachment) -> bool` and `check_permission(vcon_dict, purpose, party_index=None) -> bool`. `LawfulBasisValidator` and `LawfulBasisProcessor` expose the `validate_*` and `check_permission` methods with `ValidationResult` and `ProcessingResult` returns.
@@ -443,6 +477,12 @@ vcon.add_lawful_basis_attachment(
     proof_mechanisms=[proof],
 )
 print(vcon.check_lawful_basis_permission("recording", party_index=1))   # True
+
+hand_written = Vcon(vcon.to_dict())
+hand_written.add_attachment(purpose="lawful_basis", body={"lawful_basis": "consent"},
+                            encoding="json", session=0)
+print(hand_written.is_valid()[1])
+# ['Attachment at index 2 (lawful_basis): Missing required field: expiration', 'Attachment at index 2 (lawful_basis): Missing required field: purpose_grants']
 ```
 
 ### WTF extension
@@ -542,12 +582,23 @@ except AlgorithmNotPermittedError as e:
 
 #### Video and images
 
+Video helpers need `pip install "vcon[video]"` and the `ffmpeg` binary. This example makes a one-second test clip with ffmpeg-python.
+
 ```python
-# placeholder: needs a local video file and the ffmpeg binary, not run
-video = Dialog(type="recording", start=now, parties=[0, 1], mediatype="video/mp4",
-               resolution="1920x1080", frame_rate=30.0, codec="H.264")
-video.add_video_data(open("meeting.mp4", "rb").read(), filename="meeting.mp4")
-print(video.extract_video_metadata(), video.generate_thumbnail())
+import os, tempfile
+import ffmpeg   # installed by vcon[video]
+
+clip = os.path.join(tempfile.mkdtemp(), "clip.mp4")
+ffmpeg.input("testsrc=size=320x240:rate=10:duration=1", f="lavfi").output(
+    clip, pix_fmt="yuv420p", loglevel="error").run()
+
+video = Dialog(type="recording", start=now, parties=[0, 1])
+with open(clip, "rb") as f:
+    video.add_video_data(f.read(), filename="clip.mp4")   # mediatype video/mp4
+meta = video.extract_video_metadata()
+print(meta["width"], meta["height"], meta["duration"])     # 320 240 1.0
+thumb = video.generate_thumbnail(timestamp=0.5)            # generate_video_thumbnail()
+print(thumb[:3])                                           # b'\xff\xd8\xff' (JPEG)
 ```
 
 ```python
