@@ -114,7 +114,7 @@ All confidence values are normalized to the range 0 to 1 (Section 8.1).
 
 ## Python
 
-Build the analysis entry with the [`vcon`](https://pypi.org/project/vcon/) library. The example uses `vcon` 1.0.3, which writes core-05 (`"vcon": "0.5.0"`), so the recording dialog sits in a session. `add_wtf_transcription_analysis()` writes the entry this draft defines: `type: "wtf_transcription"`, `encoding: "json"`, the WTF document as the `body` value, `vendor` and `product` from `metadata["provider"]` and `metadata["model"]`, and the draft URL in `schema`. It also adds `wtf_transcription` to `extensions`.
+Build the analysis entry with the [`vcon`](https://pypi.org/project/vcon/) library. The example uses `vcon` 1.0.4, which writes core-05 (`"vcon": "0.5.0"`), so the recording dialog sits in a session. `add_wtf_transcription_analysis()` writes the entry this draft defines: `type: "wtf_transcription"`, `encoding: "json"`, the WTF document as the `body` value, `vendor` and `product` from `metadata["provider"]` and `metadata["model"]`, and the draft URL in `schema`. It also adds `wtf_transcription` to `extensions`.
 
 ```python
 from vcon import Dialog, Session, Vcon
@@ -125,7 +125,10 @@ v.add_party(Party(tel="+15551230001", name="Alice"))
 v.add_party(Party(tel="+15551230002", name="Bob"))
 v.add_session(Session(start="2026-10-06T14:00:00Z", parties=[0, 1]))
 v.add_dialog(Dialog(type="recording", start="2026-10-06T14:00:00Z", parties=[0, 1],
-                    url="https://example.com/call.wav", mediatype="audio/x-wav"), session=0)
+                    url="https://example.com/call.wav", mediatype="audio/x-wav",
+                    # placeholder hash; a url needs a content_hash
+                    content_hash="sha512-GLy6IPaIUM1GqzZqfIPZlWjaDsNgNvZM0iCONNThnH0a75fhUM6cYzLZ5GynSURREvZwmOh54-2lRRieyj82UQ"),
+             session=0)
 
 wtf = {
     "transcript": {"text": "Hello, I need help with my account.", "language": "en-US",
@@ -142,6 +145,7 @@ entry = v.find_analysis_by_type("wtf_transcription")
 print(entry["vendor"], entry["product"], entry["encoding"])   # whisper whisper-large-v3 json
 print(entry["body"]["transcript"]["text"])                    # Hello, I need help with my account.
 print(v.get_extensions(), v.is_valid())                       # ['wtf_transcription'] (True, [])
+print(v.get_validation_warnings())                            # []
 ```
 
 To set `vendor` and `product` yourself, write the entry with `add_analysis()`, which takes keyword arguments only, and list the extension:
@@ -159,7 +163,7 @@ v.add_analysis(
 v.add_extension("wtf_transcription")  # is_valid() fails without it
 ```
 
-Before 1.0.3, `add_wtf_transcription_analysis()` wrote `type: "transcription"` and passed the body through `json.dumps`, producing a string; `Vcon.decoded_body()` reads entries in either form. Do not use `add_wtf_transcription_attachment()`: it still stores WTF in `attachments[]`, which the draft does not allow.
+Before 1.0.3, `add_wtf_transcription_analysis()` wrote `type: "transcription"` and passed the body through `json.dumps`, producing a string; `Vcon.decoded_body()` reads entries in either form. `add_wtf_transcription_attachment()` is deprecated in 1.0.4 and emits a `DeprecationWarning`: it stores WTF in `attachments[]`, which the draft does not allow. Use `add_wtf_transcription_analysis()`. Write `body` as the WTF object, not `json.dumps(wtf)`; since 1.0.4 `get_validation_warnings()` flags a `json` body that is a serialized JSON string.
 
 ## See also
 

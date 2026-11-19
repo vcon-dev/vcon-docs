@@ -4,11 +4,11 @@ description: A compact, self-contained reference for language models that write 
 
 # 📜 vCon Library Guide for LLMs
 
-Reference for models that generate code with the `vcon` Python library, version 1.0.3, which implements `draft-ietf-vcon-vcon-core-05` (`"vcon": "0.5.0"`). Every code block below was run against `vcon==1.0.3`. For field semantics see the [field reference](../vcons/field-reference.md), which describes core-04; where it differs, the rules on this page are what the library writes. For the full method list see the [API reference](library-api-reference.md).
+Reference for models that generate code with the `vcon` Python library, version 1.0.4, which implements `draft-ietf-vcon-vcon-core-05` (`"vcon": "0.5.0"`). Every code block below was run against `vcon==1.0.4`. For field semantics see the [field reference](../vcons/field-reference.md), which describes core-04; where it differs, the rules on this page are what the library writes. For the full method list see the [API reference](library-api-reference.md).
 
 ### Rules for generated code
 
-1. Install with `pip install vcon` (Python 3.12 or later). Add `"vcon[image]"` for Pillow and pypdf.
+1. Install with `pip install vcon` (Python 3.12 or later). Add `"vcon[image]"` for Pillow and pypdf, and `"vcon[video]"` (plus the `ffmpeg` binary) for the video helpers.
 2. Import `Vcon`, `Dialog`, `Session`, `SessionReference`, `Event`, `migrate_0_4_0_to_0_5_0`, `MigrationError`, `AlgorithmNotPermittedError`, `compute_content_hash` and `parse_content_hash_algorithm` from the package root. Use `from vcon.party import Party` and `from vcon.civic_address import CivicAddress`. `from vcon import Party` fails.
 3. Every vCon with dialog or events needs at least one session. Add it with `vcon.add_session(Session(start=..., parties=[...]))` and add dialogs with `vcon.add_dialog(dialog, session=0)`.
 4. Dialog `parties` lists the contributors only. The receivers go in the session's `parties`; the first session party is the originator.
@@ -17,14 +17,16 @@ Reference for models that generate code with the `vcon` Python library, version 
 7. Attachments take `purpose=` and need `party` plus `dialog` or `session`. Pass `session=` explicitly when the vCon has more than one session. Analysis takes `type=`, `vendor=` and optional `dialog=`, `sessions=`, all keyword-only.
 8. The lawful basis attachment uses `purpose: "lawful_basis"`. Build it with `vcon.add_lawful_basis_attachment(..., party_index=..., session_index=...)`, never by hand, and add one to every complete vCon you create.
 9. A `json`-encoded `body` is the JSON value itself (dict, list, string), not `json.dumps(...)`. Read any entry with `Vcon.decoded_body(entry)`.
-10. `content_hash` is `sha512-` plus unpadded base64url. Create it with `compute_content_hash(data)` or `Dialog.calculate_content_hash()`.
-11. Put WTF transcripts in `analysis[]` with `add_wtf_transcription_analysis()`, not in `attachments[]`.
+10. `content_hash` is `sha512-` plus unpadded base64url (86 characters). Create it with `compute_content_hash(data)` or `Dialog.calculate_content_hash()`; never write a hex digest, a padded value or a shortened placeholder, because `is_valid()` rejects them. Every dialog or attachment with a `url` needs a `content_hash` (a warning now, an `is_valid()` error from 1.1).
+11. Put WTF transcripts in `analysis[]` with `add_wtf_transcription_analysis()`, not in `attachments[]`. `add_wtf_transcription_attachment()` is deprecated.
 12. Give every dialog with a `body` a `mediatype`; `is_valid()` fails without one.
 13. `Vcon` is not a dict. There is no `vcon.get(...)` and no `vcon["parties"]`. Use properties (`vcon.parties`, `vcon.sessions`, `vcon.events`) or `vcon.to_dict()` or `vcon.vcon_dict`.
 14. Dispositions are lowercase and hyphenated: `no-answer`, `congestion`, `failed`, `busy`, `hung-up`, `voicemail-no-message`. `"NO_ANSWER"` raises `ValueError`.
 15. List every extension you use in `extensions` (`add_extension()`); `is_valid()` fails otherwise. The library's helpers add `lawful_basis` and `wtf_transcription` for you.
 16. Never sign with `alg="none"`; it raises `AlgorithmNotPermittedError`.
 17. Do not invent a lawful basis. If the source data has no consent record, say so and omit the attachment.
+18. Add parties before `add_tag()`. On a vCon with no parties it warns (`DeprecationWarning`) and writes a tags attachment that fails `is_valid()`; from 1.1 it raises.
+19. Do not rewrite `created_at`. The library keeps it exactly as written (`Z` stays `Z`).
 
 ### Minimal complete vCon
 
@@ -77,7 +79,8 @@ from vcon import Event, SessionReference
 
 vcon.add_dialog(Dialog(
     type="recording", start=now, parties=[0, 1],
-    url="https://example.com/recording.wav",   # placeholder URL
+    url="https://example.com/recording.wav",   # placeholder URL and hash; a url needs a content_hash
+    content_hash="sha512-GLy6IPaIUM1GqzZqfIPZlWjaDsNgNvZM0iCONNThnH0a75fhUM6cYzLZ5GynSURREvZwmOh54-2lRRieyj82UQ",
     mediatype="audio/x-wav", duration=62.5,
 ), session=0)
 vcon.add_event(Event(type="join", time=now, sessions=0, party=0))
@@ -92,6 +95,7 @@ vcon.add_event(Event(type="blind-transfer", time=now, sessions=0, party=1,
                      transferee=0, transfer_target=2, target_session=target))
 print(len(vcon.dialog), len(vcon.sessions), len(vcon.events))   # 3 2 3
 print(vcon.is_valid())                                          # (True, [])
+print(vcon.get_validation_warnings())                           # []
 ```
 
 * `Session(start=None, duration=None, parties=None, originator=None, session_id=None, sessions=None, dialog=None)`. Set `originator` only when it is not the first party. `Session()` is an allowed empty `{}`.
@@ -104,7 +108,7 @@ print(vcon.is_valid())                                          # (True, [])
 * Other extra keyword arguments are accepted silently, so a wrong name such as `mimetype=` ends up as a stray property. Check spelling.
 * `add_incomplete_dialog(start, disposition, details=None, parties=None, metadata=None, session=None)` writes no `body`; `details` goes to `metadata["details"]`.
 * `Dialog.placeholder()` is an empty `{}` dialog that keeps indices stable.
-* `add_external_data(url, filename, mediatype)` downloads the URL and hashes it. `add_inline_data(body, filename, mediatype)` does not encode: pass a body that is already base64url. `add_image_data(path, mediatype=None)` needs `vcon[image]`. `add_video_data(...)` needs `ffmpeg`.
+* `add_external_data(url, filename, mediatype)` downloads the URL and hashes it. `add_inline_data(body, filename, mediatype)` encodes `bytes` to base64url (a `str` must already be base64url) and hashes the decoded content. `add_image_data(path, mediatype=None)` needs `vcon[image]`. `extract_video_metadata()`, `generate_video_thumbnail()` and `transcode_video()` need `vcon[video]` and the `ffmpeg` binary; `generate_thumbnail()` picks the image or video version for the dialog.
 * Type tests: `is_text()`, `is_recording()`, `is_incomplete()`, `is_audio()`, `is_video()` (by `mediatype`), `is_image()`, `is_pdf()`, `is_email()`, `is_external_data()`, `is_inline_data()`, `is_placeholder()`.
 * Search: `vcon.find_dialogs_by_type("text")`, `vcon.find_dialog("type", "text")`.
 
@@ -115,7 +119,7 @@ vcon.add_attachment(purpose="notes", body={"summary": "Account verified."},
                     encoding="json", session=0)
 vcon.add_analysis(type="sentiment", dialog=0, vendor="example-vendor",
                   body={"sentiment": "positive", "confidence": 0.9}, encoding="json")
-vcon.add_tag("department", "billing")
+vcon.add_tag("department", "billing")      # party defaults to 0; a bad index raises ValueError
 
 print(vcon.find_attachment_by_purpose("notes")["party"])         # 0, default
 print(Vcon.decoded_body(vcon.find_analysis_by_type("sentiment")))  # {'sentiment': 'positive', 'confidence': 0.9}
@@ -134,7 +138,7 @@ add_analysis(*, type, vendor, body, dialog=None, sessions=None, attachment=None,
 
 * `encoding` is `json`, `base64url` or `none`.
 * Defaults on every attachment: `party` 0, `start` from `created_at`, `mediatype` `application/json` for `json` bodies. There is no `dialog` default. With neither `dialog` nor `session`, the only session is used if there is exactly one; otherwise `ValueError`.
-* `add_tag()` scopes the tags attachment to every session and adds an empty session if there is none.
+* `add_tag(tag_name, tag_value, party=None)` scopes the tags attachment to every session and adds an empty session if there is none. `party` defaults to 0; an index that does not exist raises `ValueError`.
 * `add_image()` accepts JPEG, TIFF or PDF only and scopes the attachment like `add_attachment()`: pass `dialog=` or `session=`, or it uses the only session and raises `ValueError` otherwise.
 * Find helpers: `find_attachment_by_purpose(purpose)` (not `find_attachment_by_type`), `find_analysis_by_type(type)`.
 
@@ -172,7 +176,8 @@ print(vcon.check_lawful_basis_permission("analysis", party_index=1))   # True
 print(len(vcon.find_lawful_basis_attachments(party_index=1)))         # 1
 ```
 
-* Body shape: `lawful_basis`, `expiration` (may be null), `purpose_grants[]` (`purpose`, `granted`, `granted_at`, optional `conditions`), optional `proof_mechanisms[]` (`proof_type`, `timestamp`, `proof_data`).
+* `is_valid()` checks the body of every `lawful_basis` attachment. A proof type, hash algorithm or canonicalization method the draft does not define is a warning, not an error.
+* Body shape: `lawful_basis`, `expiration` (required, may be null), `purpose_grants[]` (`purpose`, `granted`, `granted_at`, optional `conditions`), optional `proof_mechanisms[]` (`proof_type`, `timestamp`, `proof_data`).
 * Scope with `session_index` (an index or list). `dialog_index` alone logs a warning; with neither, the only session is used or `ValueError` is raised. A missing `party_index` defaults to 0 with a warning.
 * Extra keywords reach `LawfulBasisAttachment`: `terms_of_service`, `status_interval`, `content_hash`, `registry`, `proof_mechanisms`, `metadata`. `proof_mechanisms` takes `ProofMechanism` objects, not dicts.
 * `ProofType`: `verbal_confirmation`, `signed_document`, `cryptographic_signature`, `external_system`.
@@ -199,7 +204,7 @@ print(WTFAttachment.from_dict(wtf).export_to_srt())
 
 * `metadata` needs `created_at`, `processed_at`, `provider`, `model`. `Metadata(audio_quality=...)` raises `TypeError`: `audio_quality` belongs to `Quality`.
 * `add_wtf_transcription_analysis()` writes `type: "wtf_transcription"`, `encoding: "json"`, the WTF document as the `body` value, `vendor`/`product` from `metadata["provider"]`/`metadata["model"]` and the draft URL in `schema`, and adds the `wtf_transcription` extension. Scope it with `dialog_index` or `session_index`. Look it up with `find_analysis_by_type("wtf_transcription")`. Releases before 1.0.3 wrote `type: "transcription"` with a string body; `Vcon.decoded_body()` reads both.
-* Do not use `add_wtf_transcription_attachment(...)`: it writes to `attachments[]`, which the WTF draft does not allow. `find_wtf_attachments()` searches only `attachments[]`.
+* Do not use `add_wtf_transcription_attachment(...)`: it is deprecated (`DeprecationWarning`) and writes to `attachments[]`, which the WTF draft does not allow. `find_wtf_attachments()` searches only `attachments[]`.
 * Provider conversion: `WhisperAdapter().convert(data)`, `DeepgramAdapter`, `AssemblyAIAdapter` return a `WTFAttachment` with `.transcript`, `.segments`, `.metadata`, `export_to_srt()`, `export_to_vtt()`, `get_speaking_time()`, `find_low_confidence_segments(threshold=0.5)`, `extract_keywords(min_confidence=0.8)`.
 * `WTFExtension` (dict in, dict out): `create_wtf_attachment`, `convert_from_provider(data, provider)`, `validate_wtf_attachment`, `export_transcription(att, format)`, `analyze_transcription`, `compare_transcriptions`. `WTFProcessor` has the same methods over `WTFAttachment` objects.
 
@@ -240,7 +245,7 @@ d = Dialog(type="text", start=now, parties=[0], body="hello",
 print(d.verify_content_hash(d.calculate_content_hash()))   # True
 ```
 
-`Dialog.calculate_content_hash()` hashes the decoded bytes of a `base64url` body, so it matches the hash `add_image_data()` stores. `verify_content_hash()` also accepts a hash of the encoded text, as 1.0.0 and earlier computed it.
+`Dialog.calculate_content_hash()` hashes the decoded bytes of a `base64url` body, so it matches the hash `add_image_data()` and `add_inline_data()` store. `verify_content_hash()` also accepts a hash of the encoded text, as 1.0.0 and earlier computed it. `is_valid()` rejects a `content_hash` that is not `<algorithm>-<unpadded base64url>` with the right digest length (86 characters for `sha512`, 43 for `sha256`).
 
 ### Other public API
 
@@ -286,7 +291,9 @@ for call in (
 * Invalid dialog `type`, removed dialog parameter, `disposition`, `encoding`, event parameters, attachment scope or lawful basis type raises `ValueError`. `AlgorithmNotPermittedError` and `MigrationError` are `ValueError` subclasses.
 * `add_transfer_dialog()` raises `NotImplementedError`.
 * A missing file raises `FileNotFoundError`; malformed JSON raises `json.JSONDecodeError`.
-* `is_valid()` returns problems as strings and does not raise. `get_validation_warnings()` returns SHOULD-level findings.
+* `is_valid()` returns problems as strings and does not raise, including for an invalid `created_at`. `get_validation_warnings()` returns SHOULD-level findings, a `url` without a `content_hash`, and a `json` body that is a serialized JSON string.
+* `add_tag(..., party=n)` with an index that does not exist raises `ValueError`.
+* `sign()` and `verify()` take `cryptography` RSA, EC or Ed25519 key objects (joserfc). `import vcon` prints no warnings.
 * `add_party()` needs a `Party`, not a dict (`AttributeError`).
 
 ### Common mistakes
@@ -312,5 +319,8 @@ for call in (
 | `{"type": "lawful_basis", ...}` attachment | `purpose: "lawful_basis"` (not `type`) via `add_lawful_basis_attachment()` |
 | WTF in `attachments[]` | `add_wtf_transcription_analysis()` |
 | `Metadata(audio_quality=...)` | `Quality(audio_quality=...)` |
-| `sha256` hash without prefix | `sha512-<base64url>` from `compute_content_hash()` |
+| `sha256` hash without prefix, a hex digest, or `"sha512-abc"` | `sha512-<base64url>` from `compute_content_hash()` |
+| `url=...` with no `content_hash` | `url=...` plus `content_hash=` |
+| `add_wtf_transcription_attachment(...)` | `add_wtf_transcription_analysis(...)` |
+| `add_tag(...)` before any party | `add_party(...)`, then `add_tag(...)` |
 | `sign(key, alg="none")` | `sign(key)` (RS256) |

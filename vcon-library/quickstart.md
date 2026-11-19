@@ -6,11 +6,12 @@ description: Install the Python vCon library and build, save, load, sign and val
 
 ## vCon Library
 
-`vcon` 1.0.3 on PyPI. It targets [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) and writes `"vcon": "0.5.0"`. It reads 0.4.0 and 0.5.0 and migrates 0.4.0 on load. Python 3.12 or later.
+`vcon` 1.0.4 on PyPI. It targets [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) and writes `"vcon": "0.5.0"`. It reads 0.4.0 and 0.5.0 and migrates 0.4.0 on load. Python 3.12 or later.
 
 ```bash
 pip install vcon
 pip install "vcon[image]"   # adds Pillow and pypdf for image and PDF helpers
+pip install "vcon[video]"   # adds ffmpeg-python for video helpers; also needs the ffmpeg binary
 ```
 
 The package root exports `Vcon`, `Dialog`, `Session`, `SessionReference`, `Event`, `AlgorithmNotPermittedError`, `MigrationError`, `MigrationReport`, `MigrationResult`, `migrate_0_4_0_to_0_5_0`, `compute_content_hash` and `parse_content_hash_algorithm`. Import the rest from its module: `vcon.party.Party`, `vcon.civic_address.CivicAddress`, `vcon.extensions`. Field rules live in the [field reference](../vcons/field-reference.md), which describes core-04 (`"0.4.0"`); this page shows the library calls and the core-05 shape the library writes.
@@ -119,7 +120,7 @@ print(WTFAttachment.from_dict(wtf).export_to_srt())
 
 `add_wtf_transcription_analysis()` writes the entry that [`draft-howe-vcon-wtf-extension`](https://datatracker.ietf.org/doc/draft-howe-vcon-wtf-extension/) defines: `type: "wtf_transcription"`, `encoding: "json"`, the WTF document as the `body` value, `vendor` and `product` from `metadata["provider"]` and `metadata["model"]`, and the draft URL in `schema`. It adds `wtf_transcription` to `extensions`. Scope it with `dialog_index` or `session_index`. `metadata` must include `created_at`, `processed_at`, `provider` and `model`. Before 1.0.3 it wrote `type: "transcription"` and a JSON-string body; `decoded_body()` still reads those entries. See the [WTF extension](../extensions/wtf-transcription.md).
 
-`add_wtf_transcription_attachment()` also exists. It writes WTF to `attachments[]`, which the draft does not allow, so use the analysis form.
+`add_wtf_transcription_attachment()` is deprecated since 1.0.4 and emits a `DeprecationWarning`. It writes WTF to `attachments[]`, which the draft does not allow; use the analysis form.
 
 ### Common operations
 
@@ -152,12 +153,14 @@ print(len(vcon.get_party_objects()))     # 3 (get_party_objects() returns Party 
 ```python
 from vcon import Event
 
-# External recording: reference by URL (placeholder URL; the library does not fetch it here)
+# External recording: reference by URL plus content_hash (placeholders; the
+# library does not fetch the URL here)
 rec = vcon.add_dialog(Dialog(
     type="recording",
     start=now,
     parties=[0, 1],
     url="https://example.com/recording.wav",
+    content_hash="sha512-GLy6IPaIUM1GqzZqfIPZlWjaDsNgNvZM0iCONNThnH0a75fhUM6cYzLZ5GynSURREvZwmOh54-2lRRieyj82UQ",
     mediatype="audio/x-wav",
 ), session=0)
 
@@ -178,11 +181,22 @@ vcon.add_event(Event(type="blind-transfer", time=now, sessions=0, party=1,
 
 print(len(vcon.dialog), len(vcon.sessions), len(vcon.events))   # 3 2 4
 print(vcon.is_valid())                                          # (True, [])
+print(vcon.get_validation_warnings())                           # []
 ```
+
+A dialog or attachment with a `url` needs a `content_hash` (core-05 section 2.4). In 1.0.4 a `url` without one is a warning from `get_validation_warnings()`; it will be an `is_valid()` error in 1.1.
 
 Dialog types are `recording`, `text` and `incomplete`. `Dialog(type="audio")` and `Dialog(type="video")` still work but warn and build a `recording`. `transfer` and `recording-set` dialogs are gone: `Dialog(party_history=...)`, `originator=`, `transferee=` and the other transfer parameters raise `ValueError`, and `add_transfer_dialog()` raises `NotImplementedError`. An `Event` checks the per-type parameter table when built, so `Event(type="join", time=now, party=0)` raises `ValueError` for the missing `sessions`. `add_incomplete_dialog()` writes no `body`; `details` goes to `metadata["details"]`.
 
-`add_external_data(url, filename, mediatype)` downloads the URL and hashes it, so it needs a reachable file. `add_inline_data(body, filename, mediatype)` labels the body `base64url` but does not encode it, so pass a body that is already base64url.
+`add_external_data(url, filename, mediatype)` downloads the URL and hashes it, so it needs a reachable file. `add_inline_data(body, filename, mediatype)` writes `encoding: "base64url"`: pass `bytes` and it encodes them, or pass a string that is already base64url. The `content_hash` is over the decoded content.
+
+```python
+from vcon import compute_content_hash
+
+inline = Dialog(type="recording", start=now, parties=[0])
+inline.add_inline_data(b"hello", "hello.txt", "text/plain")
+print(inline.body, inline.content_hash == compute_content_hash(b"hello"))   # aGVsbG8 True
+```
 
 #### Analysis, attachments and tags
 
@@ -203,11 +217,11 @@ vcon.add_attachment(
 )
 print(vcon.find_attachment_by_purpose("notes")["party"])   # 0, filled by default
 
-vcon.add_tag("department", "billing")
+vcon.add_tag("department", "billing")                      # party defaults to 0
 print(vcon.get_tag("department"))                          # billing
 ```
 
-A JSON body is the value itself (an object, array or string), not a `json.dumps` string. Use `Vcon.decoded_body(entry)` to read an entry either way. Attachments take `purpose`, never `type`. `add_analysis()` takes `dialog`, `sessions`, `attachment` and `analysis` as optional keyword references. `add_tag()` scopes the tags attachment to every session and adds an empty `{}` session if there is none. Images: `vcon.add_image(path, purpose="image")` takes JPEG, TIFF or PDF, needs `vcon[image]`, and takes `party`, `dialog` and `session` like `add_attachment()`.
+A JSON body is the value itself (an object, array or string), not a `json.dumps` string. Use `Vcon.decoded_body(entry)` to read an entry either way. Attachments take `purpose`, never `type`. `add_analysis()` takes `dialog`, `sessions`, `attachment` and `analysis` as optional keyword references. `add_tag(tag_name, tag_value, party=None)` scopes the tags attachment to every session and adds an empty `{}` session if there is none. `party` (default 0) is the party that adds the tags; an index that does not exist raises `ValueError`. On a vCon with no parties it still writes party 0 but emits a `DeprecationWarning`, because the result fails `is_valid()`; in 1.1 that will raise, so add a party first. Images: `vcon.add_image(path, purpose="image")` takes JPEG, TIFF or PDF, needs `vcon[image]`, and takes `party`, `dialog` and `session` like `add_attachment()`.
 
 #### Extensions and critical
 
@@ -249,7 +263,17 @@ signed.sign(private_key)                 # RS256 by default; alg="none" raises A
 print(signed.verify(public_key))         # True
 ```
 
-Signing adds `payload` and `signatures` to the vCon, so sign last. `sign()` takes `alg=` (default `RS256`) and refuses `none`; `verify()` raises `AlgorithmNotPermittedError` for a signature that declares `alg: "none"`.
+Signing adds `payload` and `signatures` to the vCon, so sign last. `sign()` takes `alg=` (default `RS256`) and refuses `none`; `verify()` raises `AlgorithmNotPermittedError` for a signature that declares `alg: "none"`. JWS uses [joserfc](https://jose.authlib.org/). `sign()` and `verify()` accept RSA, EC (`ES256`, `ES384`, `ES512`) and Ed25519 (`EdDSA`) key objects from `cryptography`; `generate_key_pair()` makes RSA keys.
+
+```python
+from cryptography.hazmat.primitives.asymmetric import ec
+
+ec_key = ec.generate_private_key(ec.SECP256R1())
+es = Vcon.build_new()
+es.add_party(Party(name="Alice"))
+es.sign(ec_key, alg="ES256")
+print(es.verify(ec_key.public_key()))    # True
+```
 
 #### Validate and load
 
@@ -268,6 +292,22 @@ print(strict.uuid == loaded.uuid)        # True
 
 `property_handling` is `"default"` (keep unknown properties), `"strict"` (drop them) or `"meta"` (move them into `meta`).
 
+Loading keeps `created_at` exactly as written: `"2026-10-06T14:00:00Z"` stays `Z`. A value that is not ISO 8601 does not stop the load; `is_valid()` reports it.
+
+`is_valid()` also checks every `content_hash` (on dialogs, attachments, analysis, `redacted_from` and `amended_from`): it must be `<algorithm>-<unpadded base64url digest>`, and a `sha512` digest is 86 characters (`sha256`, 43). Hex digests and padded values are errors.
+
+```python
+draft = Vcon({"vcon": "0.5.0", "uuid": "01928e10-193e-8231-b9a2-279e0d16bc46",
+              "created_at": "2026-10-06T14:00:00Z",
+              "parties": [{"name": "Alice"}],
+              "sessions": [{"start": "2026-10-06T14:00:00Z", "parties": [0], "dialog": [0]}],
+              "dialog": [{"type": "recording", "start": "2026-10-06T14:00:00Z", "parties": [0],
+                          "url": "https://example.com/recording.wav", "mediatype": "audio/x-wav",
+                          "content_hash": "sha512-" + "ab" * 64}]})   # a hex digest
+print(draft.created_at)                  # 2026-10-06T14:00:00Z
+print(draft.is_valid()[1][0][:52])       # Dialog at index 0 has an invalid content_hash: 'sha5
+```
+
 `subject` has no setter. Set it with `vcon.vcon_dict["subject"] = "Refund request"`.
 
 #### Validate extensions
@@ -277,6 +317,8 @@ results = vcon.validate_extensions()
 print(results["lawful_basis"]["is_valid"])        # True
 print(results["wtf_transcription"]["is_valid"])   # True
 ```
+
+`is_valid()` runs the lawful basis validator over the body of every `purpose: "lawful_basis"` attachment. `lawful_basis`, `expiration` (may be `null`) and `purpose_grants` are required, and each grant and proof mechanism is checked. A proof type, hash algorithm or canonicalization method that the draft does not define is a warning, since the draft's lists are open.
 
 ### Load a 0.4.0 vCon
 
@@ -294,7 +336,8 @@ old = {
     "dialog": [{
         "type": "recording", "start": "2026-10-06T14:00:00+00:00", "duration": 62.5,
         "parties": [0, 1], "originator": 0, "mediatype": "audio/x-wav",
-        "url": "https://example.com/recording.wav", "content_hash": "sha512-GLy6IPa",
+        "url": "https://example.com/recording.wav",
+        "content_hash": "sha512-GLy6IPaIUM1GqzZqfIPZlWjaDsNgNvZM0iCONNThnH0a75fhUM6cYzLZ5GynSURREvZwmOh54-2lRRieyj82UQ",
         "party_history": [
             {"party": 0, "event": "join", "time": "2026-10-06T14:00:00+00:00"},
             {"party": 1, "event": "join", "time": "2026-10-06T14:00:02+00:00"},
@@ -324,6 +367,22 @@ A signed 0.4.0 vCon is not migrated on load, because migrating drops the signatu
 
 ### Release notes
 
+**1.0.4** fixes:
+
+* `is_valid()` reports a malformed `content_hash` on a dialog, attachment, analysis, `redacted_from` or `amended_from`. The form is `<algorithm>-<unpadded base64url digest>`; for `sha512` (86 characters) and `sha256` (43) the digest length is checked, which catches hex digests and padded values.
+* `is_valid()` checks the body of every `lawful_basis` attachment: `lawful_basis`, `expiration` and `purpose_grants` are required, and the fields of each grant and proof mechanism are checked. Proof types, hash algorithms and canonicalization methods the draft does not define are warnings, not errors.
+* Loading keeps `created_at` exactly as written. It used to be rewritten (`Z` became `+00:00`), and an unparseable value made `Vcon()` raise; now `is_valid()` reports it.
+* A vCon without `analysis`, `parties` or `dialog` no longer raises `KeyError` in `add_analysis()`, `add_party()`, `add_dialog()`, `find_analysis_by_type()`, `find_dialog()`, `find_dialogs_by_type()` or `find_party_index()`.
+* `add_inline_data()` accepts `bytes` and encodes them to base64url; its `content_hash` is over the decoded content, as `calculate_content_hash()` computes it.
+* The video helpers work. Install `vcon[video]` (ffmpeg-python) and the ffmpeg binary; without them the helpers raise a clear `ImportError`. `generate_thumbnail()` calls `generate_image_thumbnail()` or `generate_video_thumbnail()` to suit the dialog.
+
+**1.0.4** changes:
+
+* JWS uses joserfc instead of `authlib.jose`, so `import vcon` no longer prints a deprecation warning. Signatures interoperate with 1.0.3 in both directions, and `sign()` and `verify()` also accept EC and Ed25519 keys.
+* `get_validation_warnings()` reports a `url` without a `content_hash` (an `is_valid()` error from 1.1) and an `encoding: "json"` body that is a serialized JSON string.
+* `add_tag()` takes `party` (default 0) and raises `ValueError` for an index that does not exist. On a vCon with no parties it warns (`DeprecationWarning`) and will raise in 1.1.
+* `add_wtf_transcription_attachment()` is deprecated. Use `add_wtf_transcription_analysis()`.
+
 **1.0.3** fixes:
 
 * `add_wtf_transcription_analysis()` writes `type: "wtf_transcription"` with the WTF document as the JSON `body`, and takes `session_index`.
@@ -350,11 +409,12 @@ A signed 0.4.0 vCon is not migrated on load, because migrating drops the signatu
 
 **0.9.5** content hashes use the spec form `sha512-<unpadded base64url>`, and `compute_content_hash` and `parse_content_hash_algorithm` were added. Old unprefixed SHA-256 hashes still verify. **0.9.6** security: `requests` bump. **0.9.3** fixed `add_tag()` defaults. **0.9.2** `build_new()` emitted `"vcon": "0.4.0"` and `add_wtf_transcription_analysis()` was added.
 
-### Known limits in 1.0.3
+### Known limits in 1.0.4
 
 * `subject` has no setter.
-* `add_wtf_transcription_attachment()` writes WTF to `attachments[]`, which the WTF draft does not allow. Use `add_wtf_transcription_analysis()`.
-* `add_inline_data()` does not encode its body.
+* `add_wtf_transcription_attachment()` is deprecated but still writes WTF to `attachments[]`, and `is_valid()` does not flag it. Use `add_wtf_transcription_analysis()`.
+* A `url` without a `content_hash` passes `is_valid()` and is only a warning until 1.1.
+* `add_tag()` on a vCon with no parties writes a party index that does not exist (with a `DeprecationWarning`) until 1.1.
 * `Dialog.VALID_TYPES` still lists `audio` and `video`, which are accepted for backward compatibility and written as `recording`.
 
 ### Next
