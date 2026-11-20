@@ -23,7 +23,7 @@ Both libraries write the same JSON structure and each reads the other's output. 
 * Classes: `Vcon`, `Party`, `Dialog`, `Attachment`, `PartyHistory`. `Analysis` is a type, passed as a plain object to `addAnalysis`.
 * Current core-draft surface: `recording-set` dialogs (`recordings`, `recording_set`), analysis `attachment` reference with `dialog` optional, party `type`, `org`, `dept`, and a typed `provenance` parameter on dialog and analysis.
 * Spec-correct names: `amended`, `critical`, `purpose` on attachments, `mediatype`. `vcon: "0.4.0"` is set for you.
-* Inline and external content: `body` plus `encoding`, or `url` plus `content_hash` (format `sha512-<base64url>`, checked by `validate()`).
+* Inline and external content: `body` plus `encoding`, or `url` plus `content_hash` (format `sha512-<base64url>`, checked by `validate()`). 0.5.2 requires the `content_hash` with a `url`. vcon-js `main` (the upcoming 1.0.0, not yet on npm) allows a `url` without one on dialog, attachment, and analysis, following the WG direction on [core issue #40](https://github.com/ietf-wg-vcon/draft-ietf-vcon-vcon-core/issues/40), and still rejects a malformed hash.
 * `addAnalysis` accepts an object or array body, serializes it to a string, and sets `encoding: "json"`.
 * Tags through `addTag`, `getTag`, and the `tags` getter, stored as one `purpose: "tags"` attachment with `start` set.
 * Declared extensions through `addExtension`, `addCriticalExtension`, `hasExtension`, `isCriticalExtension`.

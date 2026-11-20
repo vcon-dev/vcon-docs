@@ -19,7 +19,7 @@ Output that breaks these is not a valid vCon.
 3. **Attachments use `purpose`.** There is no `type` field on attachments, including the lawful basis attachment: `purpose: 'lawful_basis'`. Always pass `start`; the core schema requires it and `addAttachment` does not fill it in.
 4. **Analysis requires `vendor`.** Use `schema` to name the body format. Never write `schema_version`.
 5. **Structured bodies.** Pass objects and arrays as the value. `addAnalysis` serializes an object or array body to a string and sets `encoding: 'json'` for you. `addAttachment` stores the body as given, so pass `encoding: 'json'` with an object body.
-6. **External media needs `url` and `content_hash`.** The hash is `sha512-<base64url>` of the file bytes. Compute it with `createHash('sha512').update(bytes).digest('base64url')` from `node:crypto`. Never write a placeholder hash into output.
+6. **External media: `url`, plus `content_hash` when you have the bytes.** The hash is `sha512-<base64url>` of the file bytes. Compute it with `createHash('sha512').update(bytes).digest('base64url')` from `node:crypto`. If you cannot get stable bytes (a streaming-service page, audio behind a login), leave `content_hash` out; never write a placeholder hash into output. In 0.5.2, `Dialog.validate()` and `Attachment.validate()` reject a `url` without `content_hash`. vcon-js `main` (the upcoming 1.0.0, not yet on npm) allows it on dialog, attachment, and analysis, following the WG direction on [core issue #40](https://github.com/ietf-wg-vcon/draft-ietf-vcon-vcon-core/issues/40); the core-05 text still says MUST until the WG revises it. A malformed `content_hash` is always an error, and `redacted_from` / `amended_from` with a `url` still need one.
 7. **Timestamps are RFC 3339 with timezone.** Use `new Date().toISOString()` or an explicit offset.
 8. **Do not emit empty `group: []` or `redacted: {}`.**
 9. **Transcripts are analysis**, not attachments. Use `type: 'wtf_transcription'` for the WTF extension.
@@ -119,7 +119,7 @@ console.log(vcon.toJson());
 * `vcon.addAttachment({ type: 'transcript', ... })`. Transcripts live in `analysis[]`. Use `addAnalysis`.
 * `appended: {...}` or `must_support: [...]`. Use `amended` and `critical[]`.
 * `start: '2026-05-18 14:00:00'` with no timezone. Use `.toISOString()`.
-* External media without `content_hash`, or with a made-up hash.
+* External media with a made-up `content_hash`. Compute it from the bytes or leave it out (0.5.2's `validate()` still rejects a `url` without one).
 * Importing `Signature` or calling a signing method. Removed in 0.5.2.
 * Mutating an `Attachment` after `vcon.addAttachment(att)` and expecting the vCon to change. The vCon holds a copy.
 
