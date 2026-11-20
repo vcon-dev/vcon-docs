@@ -44,7 +44,7 @@ Build through the `vcon` library helpers (`add_party`, `add_dialog`, `add_attach
 
 ## External media
 
-* [ ] A dialog that points at media has both `url` and `content_hash`
+* [ ] A dialog that points at media has both `url` and `content_hash`. The exception is a URL with no stable bytes to hash, such as a streaming page or audio behind a login: the working group's direction on [core issue #40](https://github.com/ietf-wg-vcon/draft-ietf-vcon-vcon-core/issues/40) allows a `url` without a `content_hash` there (accepted by `vcon` 1.0.6; the draft text still says MUST). An adapter that downloads the recording has the bytes, so it hashes them. Never invent a hash
 * [ ] `content_hash` is `sha512-<base64url digest>`, not hex, not padded base64, not SHA-256
 * [ ] `mediatype` is set
 

@@ -16,7 +16,7 @@ Paste this page into a model's context to generate adapter code. It holds the gr
 * With `encoding="json"`, `body` is the JSON value itself, never a `json.dumps()` string. Readers accept both; use `json_body()`.
 * Attachments use `purpose`, never `type`, and carry `start`, `party`, `dialog`. A body carries `mediatype` and `encoding`.
 * Analysis uses `schema`, never `schema_version`, and requires `vendor`. Transcripts go in `analysis[]` with `type: "wtf_transcription"`.
-* External media needs both `url` and `content_hash`, formatted `sha512-<base64url digest>`.
+* External media needs both `url` and `content_hash`, formatted `sha512-<base64url digest>`, when the adapter has the bytes. Leave the hash out only for a URL with no stable bytes to hash (see the [checklist](spec-compliance-checklist.md#external-media)); never invent one.
 * Field names: `critical` (not `must_support`), `amended` (not `appended`), `mediatype` (not `mimetype`). Do not emit `did` on parties.
 * Timestamps are ISO 8601 with a timezone. List every extension used in `extensions[]`.
 * Build through helpers. Hand-set only `subject` and `extensions`.

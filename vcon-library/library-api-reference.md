@@ -6,7 +6,7 @@ description: Signatures, return types and working examples for every public clas
 
 ## vCon Library API Reference
 
-Reference for `vcon` **1.0.5**, which implements [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) (`"vcon": "0.5.0"`) and reads and migrates 0.4.0. The [quickstart](quickstart.md) has release notes and known limits. What each field means, and when it is required, is in the [field reference](../vcons/field-reference.md); that page describes core-04 (`"0.4.0"`), while the library writes core-05.
+Reference for `vcon` **1.0.6**, which implements [`draft-ietf-vcon-vcon-core-05`](https://datatracker.ietf.org/doc/draft-ietf-vcon-vcon-core/) (`"vcon": "0.5.0"`) and reads and migrates 0.4.0. The [quickstart](quickstart.md) has release notes and known limits. What each field means, and when it is required, is in the [field reference](../vcons/field-reference.md); that page describes core-04 (`"0.4.0"`), while the library writes core-05.
 
 ### Installation
 
@@ -86,7 +86,9 @@ The library logs through `logging.getLogger(__name__)` in each module and does n
 
 `is_valid()` checks required fields; that `vcon`, when present, is `"0.5.0"`; that a session exists when there is dialog or events; every party, dialog, session, attachment and analysis index; the event parameter table; that attachments have `party` and `dialog` or `session`; that `redacted_from` and `amended_from` are not both present; that `extensions` lists every extension in use and every `critical` entry; that a dialog or attachment with inline content has a `mediatype`; that every `__REDACTED_REF_#` has a `redacted_strings` entry; that `created_at` is ISO 8601; that every `content_hash` (dialog, attachment, analysis, `redacted_from`, `amended_from`) is `<algorithm>-<unpadded base64url digest>`, with an 86-character digest for `sha512` and 43 for `sha256`, so hex and padded digests fail; and that every `purpose: "lawful_basis"` attachment body has `lawful_basis`, `expiration` and `purpose_grants` and well-formed grants and proof mechanisms.
 
-`get_validation_warnings()` reports a dialog that no session lists, a session without `start` or `parties`, a `url` without a `content_hash` (an `is_valid()` error from 1.1), an `encoding: "json"` body that is a serialized JSON string, and lawful basis proof types, hash algorithms or canonicalization methods the draft does not define.
+`get_validation_warnings()` reports a dialog that no session lists, a session without `start` or `parties`, an `encoding: "json"` body that is a serialized JSON string, and lawful basis proof types, hash algorithms or canonicalization methods the draft does not define.
+
+A `url` without a `content_hash` on a dialog, attachment or analysis entry is neither an error nor a warning from 1.0.6 (1.0.4 and 1.0.5 warned), because a producer cannot always get stable bytes for the URL, such as a YouTube page or audio behind a login. This follows the working group's direction on [core issue #40](https://github.com/ietf-wg-vcon/draft-ietf-vcon-vcon-core/issues/40); the core-05 text still says MUST. Set `content_hash` whenever you have the bytes. `redacted_from` and `amended_from` with a `url` still need a `content_hash` (an `is_valid()` error), and an attachment needs `body` and `encoding`, or `url`.
 
 `PERMITTED_JWS_ALGORITHMS` in `vcon.vcon` lists `RS256`, `RS384`, `RS512`, `PS256`, `PS384`, `PS512`, `ES256`, `ES384`, `ES512` and `EdDSA`. `AlgorithmNotPermittedError` is a `ValueError`.
 
@@ -108,7 +110,7 @@ ref = Dialog(type="recording", start=now, parties=[0], mediatype="audio/x-wav",
              url="https://example.com/call.wav")   # placeholder URL, no content_hash
 draft = Vcon(vcon.to_dict())
 draft.add_dialog(ref, session=0)
-print(draft.is_valid()[0], draft.get_validation_warnings()[0][:40])   # True Dialog at index 1 has a url but no conte
+print(draft.is_valid(), draft.get_validation_warnings())               # (True, []) []
 ref.content_hash = "sha512-" + "ab" * 64                               # hex, not base64url
 draft.vcon_dict["dialog"][1] = ref.to_dict()
 print(draft.is_valid()[1][0][:46])                                     # Dialog at index 1 has an invalid content_hash

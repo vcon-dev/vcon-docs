@@ -4,7 +4,7 @@ description: A compact, self-contained reference for language models that write 
 
 # 📜 vCon Library Guide for LLMs
 
-Reference for models that generate code with the `vcon` Python library, version 1.0.5, which implements `draft-ietf-vcon-vcon-core-05` (`"vcon": "0.5.0"`). Every code block below was run against `vcon==1.0.5`. For field semantics see the [field reference](../vcons/field-reference.md), which describes core-04; where it differs, the rules on this page are what the library writes. For the full method list see the [API reference](library-api-reference.md).
+Reference for models that generate code with the `vcon` Python library, version 1.0.6, which implements `draft-ietf-vcon-vcon-core-05` (`"vcon": "0.5.0"`). Every code block below was run against `vcon==1.0.6`. For field semantics see the [field reference](../vcons/field-reference.md), which describes core-04; where it differs, the rules on this page are what the library writes. For the full method list see the [API reference](library-api-reference.md).
 
 ### Rules for generated code
 
@@ -17,7 +17,7 @@ Reference for models that generate code with the `vcon` Python library, version 
 7. Attachments take `purpose=` and need `party` plus `dialog` or `session`. Pass `session=` explicitly when the vCon has more than one session. Analysis takes `type=`, `vendor=` and optional `dialog=`, `sessions=`, all keyword-only.
 8. The lawful basis attachment uses `purpose: "lawful_basis"`. Build it with `vcon.add_lawful_basis_attachment(..., party_index=..., session_index=...)`, never by hand, and add one to every complete vCon you create.
 9. A `json`-encoded `body` is the JSON value itself (dict, list, string), not `json.dumps(...)`. Read any entry with `Vcon.decoded_body(entry)`.
-10. `content_hash` is `sha512-` plus unpadded base64url (86 characters). Create it with `compute_content_hash(data)` or `Dialog.calculate_content_hash()`; never write a hex digest, a padded value or a shortened placeholder, because `is_valid()` rejects them. Every dialog or attachment with a `url` needs a `content_hash` (a warning now, an `is_valid()` error from 1.1).
+10. `content_hash` is `sha512-` plus unpadded base64url (86 characters). Create it with `compute_content_hash(data)` or `Dialog.calculate_content_hash()`; never write a hex digest, a padded value or a shortened placeholder, because `is_valid()` rejects them. Set `content_hash` with a `url` whenever you have the bytes. It may be left out on a dialog, attachment or analysis entry only when you cannot get stable bytes for the URL, such as a YouTube page or audio behind a login (allowed from 1.0.6, following the WG direction on core issue #40; core-05 text still says MUST). Never invent a hash. `redacted_from` and `amended_from` with a `url` always need one.
 11. Put WTF transcripts in `analysis[]` with `add_wtf_transcription_analysis()`, not in `attachments[]`. `add_wtf_transcription_attachment()` is deprecated.
 12. Give every dialog with a `body` a `mediatype`; `is_valid()` fails without one.
 13. `Vcon` is not a dict. There is no `vcon.get(...)` and no `vcon["parties"]`. Use properties (`vcon.parties`, `vcon.sessions`, `vcon.events`) or `vcon.to_dict()` or `vcon.vcon_dict`.
@@ -79,7 +79,7 @@ from vcon import Event, SessionReference
 
 vcon.add_dialog(Dialog(
     type="recording", start=now, parties=[0, 1],
-    url="https://example.com/recording.wav",   # placeholder URL and hash; a url needs a content_hash
+    url="https://example.com/recording.wav",   # placeholder URL and hash; set content_hash when you have the bytes
     content_hash="sha512-GLy6IPaIUM1GqzZqfIPZlWjaDsNgNvZM0iCONNThnH0a75fhUM6cYzLZ5GynSURREvZwmOh54-2lRRieyj82UQ",
     mediatype="audio/x-wav", duration=62.5,
 ), session=0)
@@ -291,7 +291,7 @@ for call in (
 * Invalid dialog `type`, removed dialog parameter, `disposition`, `encoding`, event parameters, attachment scope or lawful basis type raises `ValueError`. `AlgorithmNotPermittedError` and `MigrationError` are `ValueError` subclasses.
 * `add_transfer_dialog()` raises `NotImplementedError`.
 * A missing file raises `FileNotFoundError`; malformed JSON raises `json.JSONDecodeError`.
-* `is_valid()` returns problems as strings and does not raise, including for an invalid `created_at`. `get_validation_warnings()` returns SHOULD-level findings, a `url` without a `content_hash`, and a `json` body that is a serialized JSON string.
+* `is_valid()` returns problems as strings and does not raise, including for an invalid `created_at`. `get_validation_warnings()` returns SHOULD-level findings and a `json` body that is a serialized JSON string.
 * `add_tag(..., party=n)` with an index that does not exist raises `ValueError`.
 * `sign()` and `verify()` take `cryptography` RSA, EC or Ed25519 key objects (joserfc). `import vcon` prints no warnings.
 * `add_party()` needs a `Party`, not a dict (`AttributeError`).
@@ -320,7 +320,8 @@ for call in (
 | WTF in `attachments[]` | `add_wtf_transcription_analysis()` |
 | `Metadata(audio_quality=...)` | `Quality(audio_quality=...)` |
 | `sha256` hash without prefix, a hex digest, or `"sha512-abc"` | `sha512-<base64url>` from `compute_content_hash()` |
-| `url=...` with no `content_hash` | `url=...` plus `content_hash=` |
+| `url=...` with no `content_hash` when you have the file | `url=...` plus `content_hash=compute_content_hash(data)` (leave it out only when stable bytes cannot be obtained) |
+| A made-up `content_hash` for a URL you could not fetch | No `content_hash` (allowed on dialog, attachment and analysis from 1.0.6) |
 | `add_wtf_transcription_attachment(...)` | `add_wtf_transcription_analysis(...)` |
 | `add_tag(...)` before any party | `add_party(...)`, then `add_tag(...)` |
 | `sign(key, alg="none")` | `sign(key)` (RS256) |
