@@ -30,7 +30,7 @@ An entry in `attachments` for material supplied alongside the conversation rathe
 
 ## Inline and external content
 
-Dialog, analysis and attachment entries hold content one of two ways. Inline content sits in `body` with an `encoding`: `none` for plain text, `base64url` for binary, `json` for a JSON value. External content is referenced by an HTTPS `url` with a `content_hash` (`sha512-` followed by the Base64url digest), so a reader can tell whether the file changed. A `mediatype` gives the content's media type.
+Dialog, analysis and attachment entries hold content one of two ways. Inline content sits in `body` with an `encoding`: `none` for plain text, `base64url` for binary, `json` for a JSON value. External content is referenced by an HTTPS `url` with a `content_hash` (`sha512-` followed by the Base64url digest), so a reader can tell whether the file changed. Set the hash whenever the producer has the bytes. When it cannot get stable bytes for the URL, such as a YouTube page that returns different HTML on each fetch or audio behind a login, the working group's direction on [core issue #40](https://github.com/ietf-wg-vcon/draft-ietf-vcon-vcon-core/issues/40) allows a dialog, analysis or attachment `url` without a `content_hash`, and the [`vcon`](../vcon-library/README.md) library accepts it from 1.0.6. The core-05 text still says MUST until the WG revises it, and `redacted_from` and `amended_from` with a `url` always need the hash. A `mediatype` gives the content's media type.
 
 ## Extension
 

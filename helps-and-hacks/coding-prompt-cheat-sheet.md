@@ -221,7 +221,7 @@ The [`vcon`](../vcon-library/README.md) library 0.10.x does most of this for cor
 
 * `redacted` and `amended` are mutually exclusive.
 * Every index must point at an existing array element.
-* `url` always comes with `content_hash`.
+* `url` comes with `content_hash` whenever you have the bytes. `redacted` and `amended` always need it. On a dialog, attachment or analysis whose URL has no stable bytes to hash (a YouTube page, audio behind a login), the WG direction on core issue #40 allows leaving it out (accepted by `vcon` 1.0.6); never invent a hash.
 * `incomplete` dialogs need `disposition`; `recording-set` dialogs need `recordings`.
 * Every attachment has `start`, `party` and `dialog`; every analysis has `vendor`.
 * A reader that finds an unsupported name in `critical` rejects the vCon.

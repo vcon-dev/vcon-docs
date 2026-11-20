@@ -114,7 +114,7 @@ All confidence values are normalized to the range 0 to 1 (Section 8.1).
 
 ## Python
 
-Build the analysis entry with the [`vcon`](https://pypi.org/project/vcon/) library. The example uses `vcon` 1.0.5, which writes core-05 (`"vcon": "0.5.0"`), so the recording dialog sits in a session. `add_wtf_transcription_analysis()` writes the entry this draft defines: `type: "wtf_transcription"`, `encoding: "json"`, the WTF document as the `body` value, `vendor` and `product` from `metadata["provider"]` and `metadata["model"]`, and the draft URL in `schema`. It also adds `wtf_transcription` to `extensions`.
+Build the analysis entry with the [`vcon`](https://pypi.org/project/vcon/) library. The example uses `vcon` 1.0.6, which writes core-05 (`"vcon": "0.5.0"`), so the recording dialog sits in a session. `add_wtf_transcription_analysis()` writes the entry this draft defines: `type: "wtf_transcription"`, `encoding: "json"`, the WTF document as the `body` value, `vendor` and `product` from `metadata["provider"]` and `metadata["model"]`, and the draft URL in `schema`. It also adds `wtf_transcription` to `extensions`.
 
 ```python
 from vcon import Dialog, Session, Vcon
@@ -126,7 +126,7 @@ v.add_party(Party(tel="+15551230002", name="Bob"))
 v.add_session(Session(start="2026-10-06T14:00:00Z", parties=[0, 1]))
 v.add_dialog(Dialog(type="recording", start="2026-10-06T14:00:00Z", parties=[0, 1],
                     url="https://example.com/call.wav", mediatype="audio/x-wav",
-                    # placeholder hash; a url needs a content_hash
+                    # placeholder hash; set content_hash when you have the bytes
                     content_hash="sha512-GLy6IPaIUM1GqzZqfIPZlWjaDsNgNvZM0iCONNThnH0a75fhUM6cYzLZ5GynSURREvZwmOh54-2lRRieyj82UQ"),
              session=0)
 
