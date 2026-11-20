@@ -148,6 +148,8 @@ Methods: `addInlineData(body, mediatype, { encoding?, filename? })`, `addExterna
 
 `validate()` requires `purpose`, rejects both `body` and `url`, and requires a `sha512-<base64url>` `content_hash` when `url` is set.
 
+On vcon-js `main` (the upcoming 1.0.0, not yet on npm), `Dialog.validate()` and `Attachment.validate()` no longer require `content_hash` with a `url`, following the WG direction on [core issue #40](https://github.com/ietf-wg-vcon/draft-ietf-vcon-vcon-core/issues/40); a `content_hash` that is present must still be well formed. The vCon-level validator on `main` reports an attachment with neither inline content nor a `url` as `Attachment at index {i} must include body+encoding or url.`
+
 Note that `Vcon.addAttachment` copies the attachment's `toDict()` into the vCon. Calling `addInlineData` or `addExternalData` on the returned instance afterwards does not change the vCon. Set content on an `Attachment` before adding it, or pass it in `params`.
 
 ### Lawful basis attachment

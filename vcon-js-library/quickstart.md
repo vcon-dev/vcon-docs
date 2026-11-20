@@ -45,6 +45,8 @@ vcon.addDialog(chat);
 
 Keep audio and video out of the JSON. Reference it with `url` and a `content_hash` of the form `sha512-<base64url>`. `addExternalData(url, mediatype, { filename, content_hash })` sets all three and clears any inline body.
 
+In 0.5.2, `validate()` rejects a `url` without a `content_hash`. vcon-js `main` (the upcoming 1.0.0, not yet on npm) allows a `url` without one on dialogs, attachments, and analysis, for media whose stable bytes you can't get, following the WG direction on [core issue #40](https://github.com/ietf-wg-vcon/draft-ietf-vcon-vcon-core/issues/40). A malformed `content_hash` is still an error.
+
 ```typescript
 import { createHash } from 'node:crypto';
 
